@@ -23,6 +23,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.UserRole
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocalCafe
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.size
+
 
 @Composable
 fun LoginScreen(
@@ -49,9 +56,19 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Icon(
+                imageVector = Icons.Outlined.LocalCafe,
+                contentDescription = "Coffee Cup Icon",
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(64.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Text(
                 text = "Royal Coffee POS",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -134,4 +151,13 @@ fun LoginScreen(
             }
         }
     }
+}
+
+class Icons(
+    imageVector: Any,
+    contentDescription: String,
+    tint: Color,
+    modifier: Modifier
+) {
+
 }

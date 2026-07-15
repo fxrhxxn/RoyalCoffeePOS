@@ -1,53 +1,62 @@
 # Royal Coffee POS - Development Log
 
-## Current Status
+## Project Overview
+
+Royal Coffee POS is a native Android tablet Point-of-Sale application for a café environment.
+
+The application is being developed using:
+
+- Kotlin
+- Jetpack Compose
+- Android Studio
+- Material Design 3
+- Room/SQLite later for local database
+- Firebase later for cloud synchronization
+
+The app is designed for landscape orientation only and follows a local-first architecture.
+
+---
+
+## Current Development Status
+
+Last updated: After implementing payment screens for Cash, Card, and Mobile Payment.
+
+The project currently builds and runs successfully on the Pixel Tablet emulator.
+
+---
+
+## Completed Features
+
+### 1. Android Project Setup
 
 Completed:
-- Android Studio project created
-- Kotlin + Jetpack Compose project running
-- Landscape orientation configured
-- Royal green and gold theme added
-- Login screen created
-- Fake login added
-    - admin / 1234
-    - barista / 1234
-- Role-based side menu working
-    - Admin sees Sales, Dashboard, Inventory, Settings
-    - Barista sees Sales and Settings only
-- Sales/POS screen created
-- Product cards displayed
-- Product click adds item to ticket/cart
-- Repeated product click increases quantity
-- + and - controls update quantity
-- Subtotal, tax, and total are calculated
-- Charge button updates based on cart total
 
-## Current Test Credentials
+- Created Android Studio project
+- Configured project package as `com.royalcoffee.pos`
+- Used Kotlin as the programming language
+- Used Jetpack Compose for UI development
+- App successfully runs on Android Emulator
 
-Admin:
-username: admin
-PIN: 1234
+---
 
-Barista:
-username: barista
-PIN: 1234
+### 2. Landscape Orientation
 
-## Next Step
+Completed:
 
-Next task:
-- Implement category filtering
+- Configured the app to use landscape orientation
+- Updated `AndroidManifest.xml`
+- App is intended for Android tablet POS usage
 
-Expected behaviour:
-- Coffee button shows only coffee products
-- Cold button shows only cold products
-- Hot button shows only hot products
-- Pastries button shows only pastry products
-- Add an All button to show all products
+---
 
-## Known Issues / Improvements Later
+### 3. App Theme
 
-- Cart panel may need scrolling when many products are added
-- Product cards currently use placeholder images
-- Login is fake and will later be replaced with Room database authentication
-- Products are temporary sample data and will later come from Room database
-- Payment screen is not implemented yet
+Completed:
+
+- Created a custom Royal Coffee POS theme
+- Added royal green and gold color styling
+- Updated theme colors in:
+
+```text
+app/src/main/java/com/royalcoffee/pos/ui/theme/Color.kt
+app/src/main/java/com/royalcoffee/pos/ui/theme/Theme.kt
