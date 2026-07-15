@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -26,16 +27,32 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.CartItem
+import com.royalcoffee.pos.model.PaymentMethod
 import com.royalcoffee.pos.model.Product
 import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
+import com.royalcoffee.pos.ui.payment.CashPaymentDialog
+import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun SalesScreen(
@@ -46,9 +63,45 @@ fun SalesScreen(
         sampleProducts()
     }
 
+    var selectedCategory by remember {
+        mutableStateOf("All")
+    }
+
+    val categories = remember {
+        listOf("All") + products.map { it.category }.distinct()
+    }
+
+    val filteredProducts = if (selectedCategory == "All") {
+        products
+    } else {
+        products.filter { it.category == selectedCategory }
+    }
+
     val cartItems = remember {
         mutableStateListOf<CartItem>()
     }
+
+    var showPaymentDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var activePaymentMethod by remember {
+        mutableStateOf<PaymentMethod?>(null)
+    }
+
+    var confirmedPaymentMethod by remember {
+        mutableStateOf<PaymentMethod?>(null)
+    }
+
+    var amountPaid by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    var changeGiven by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+
 
     val subtotal = cartItems.sumOf { it.lineTotal }
     val discount = 0
@@ -119,7 +172,12 @@ fun SalesScreen(
             )
 
             ProductArea(
-                products = products,
+                categories = categories,
+                selectedCategory = selectedCategory,
+                products = filteredProducts,
+                onCategoryClick = { category ->
+                    selectedCategory = category
+                },
                 onProductClick = { product ->
                     addProductToCart(product)
                 },
@@ -134,16 +192,73 @@ fun SalesScreen(
                 discount = discount,
                 tax = tax,
                 total = total,
+                confirmedPaymentMethod = confirmedPaymentMethod,
+                amountPaid = amountPaid,
+                changeGiven = changeGiven,
                 onIncreaseQuantity = { product ->
                     increaseQuantity(product)
                 },
                 onDecreaseQuantity = { product ->
                     decreaseQuantity(product)
                 },
+                onChargeClick = {
+                    showPaymentDialog = true
+                },
                 modifier = Modifier
                     .width(340.dp)
                     .fillMaxHeight()
             )
+        }
+    }
+
+    if (showPaymentDialog) {
+        PaymentMethodDialog(
+            total = total,
+            onPaymentMethodSelected = { method ->
+                activePaymentMethod = method
+                showPaymentDialog = false
+            },
+            onDismiss = {
+                showPaymentDialog = false
+            }
+        )
+    }
+
+    when (activePaymentMethod) {
+        PaymentMethod.CASH -> {
+            CashPaymentDialog(
+                total = total,
+                onConfirmPayment = { method, paid, change ->
+                    confirmedPaymentMethod = method
+                    amountPaid = paid
+                    changeGiven = change
+                    activePaymentMethod = null
+                },
+                onCancel = {
+                    activePaymentMethod = null
+                }
+            )
+        }
+
+        PaymentMethod.CARD,
+        PaymentMethod.MOBILE -> {
+            ConfirmPaymentDialog(
+                paymentMethod = activePaymentMethod!!,
+                total = total,
+                onConfirmPayment = { method, paid, change ->
+                    confirmedPaymentMethod = method
+                    amountPaid = paid
+                    changeGiven = change
+                    activePaymentMethod = null
+                },
+                onCancel = {
+                    activePaymentMethod = null
+                }
+            )
+        }
+
+        null -> {
+            // No payment dialog is currently open.
         }
     }
 }
@@ -166,12 +281,19 @@ private fun SideNavigation(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "RC",
-                color = RoyalGold,
-                style = MaterialTheme.typography.headlineSmall
-            )
 
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(56.dp) // Total size of the circle
+                    .border(width = 2.dp, color = Color.White, shape = CircleShape) // White border
+            ) {
+                Text(
+                    text = "RC",
+                    color = RoyalGold,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
             NavigationItem(text = "Sales")
 
             if (userRole == UserRole.ADMIN) {
@@ -183,9 +305,13 @@ private fun SideNavigation(
         }
 
         OutlinedButton(
-            onClick = onLogout
+            onClick = onLogout,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color.White
+            )
         ) {
             Text(text = "Logout")
+
         }
     }
 }
@@ -215,7 +341,10 @@ private fun NavigationItem(text: String) {
 
 @Composable
 private fun ProductArea(
+    categories: List<String>,
+    selectedCategory: String,
     products: List<Product>,
+    onCategoryClick: (String) -> Unit,
     onProductClick: (Product) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -237,10 +366,15 @@ private fun ProductArea(
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            CategoryChip("Coffee")
-            CategoryChip("Cold")
-            CategoryChip("Hot")
-            CategoryChip("Pastries")
+            categories.forEach { category ->
+                CategoryChip(
+                    text = category,
+                    isSelected = category == selectedCategory,
+                    onClick = {
+                        onCategoryClick(category)
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -263,13 +397,23 @@ private fun ProductArea(
 }
 
 @Composable
-private fun CategoryChip(text: String) {
-    OutlinedButton(
-        onClick = {
-            // Category filtering will be added later.
+private fun CategoryChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    if (isSelected) {
+        Button(
+            onClick = onClick
+        ) {
+            Text(text = text)
         }
-    ) {
-        Text(text = text)
+    } else {
+        OutlinedButton(
+            onClick = onClick
+        ) {
+            Text(text = text)
+        }
     }
 }
 
@@ -327,8 +471,12 @@ private fun TicketPanel(
     discount: Int,
     tax: Int,
     total: Int,
+    confirmedPaymentMethod: PaymentMethod?,
+    amountPaid: Int?,
+    changeGiven: Int?,
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
+    onChargeClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -373,17 +521,43 @@ private fun TicketPanel(
                 text = "Total: Rs $total",
                 style = MaterialTheme.typography.titleLarge
             )
+
+            if (confirmedPaymentMethod != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Payment confirmed: ${confirmedPaymentMethod.name}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                if (amountPaid != null) {
+                    Text(
+                        text = "Amount paid: Rs $amountPaid",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                if (changeGiven != null && changeGiven > 0) {
+                    Text(
+                        text = "Change: Rs $changeGiven",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
 
         Button(
-            onClick = {
-                // Payment screen will be added later.
-            },
-            enabled = cartItems.isNotEmpty(),
+            onClick = onChargeClick,
+            enabled = cartItems.isNotEmpty() && confirmedPaymentMethod == null,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Charge Rs $total")
+            if (confirmedPaymentMethod == null) {
+                Text(text = "Charge Rs $total")
+            } else {
+                Text(text = "Payment Confirmed")
+            }
         }
+
     }
 }
 
@@ -438,7 +612,6 @@ private fun CartItemRow(
     }
 }
 
-// sample products to test
 private fun sampleProducts(): List<Product> {
     return listOf(
         Product(
@@ -476,6 +649,12 @@ private fun sampleProducts(): List<Product> {
             name = "Muffin",
             category = "Pastries",
             price = 75
+        ),
+        Product(
+            id = 7,
+            name = "Hot Chocolate",
+            category = "Hot",
+            price = 110
         )
     )
 }

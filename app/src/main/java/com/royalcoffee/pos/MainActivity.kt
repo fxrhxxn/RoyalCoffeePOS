@@ -9,7 +9,6 @@ import com.royalcoffee.pos.ui.theme.RoyalCoffeePOSTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             RoyalCoffeePOSTheme {
                 RoyalCoffeeApp()
