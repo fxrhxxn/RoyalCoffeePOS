@@ -55,86 +55,155 @@ import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.CartItem
 import com.royalcoffee.pos.model.PaymentMethod
 import com.royalcoffee.pos.model.Product
+import com.royalcoffee.pos.model.Receipt
+import com.royalcoffee.pos.model.ReceiptItem
 import com.royalcoffee.pos.model.UserRole
 import com.royalcoffee.pos.ui.payment.CashPaymentDialog
 import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
+import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
 
 @Composable
 fun SalesScreen(
     userRole: UserRole,
     onLogout: () -> Unit
 ) {
+    /**
+     * Temporary product list.
+     *
+     * Later, when the database is added, this product list should come from
+     * the Products table instead of being hardcoded.
+     */
     val products = remember {
         sampleProducts()
     }
 
+    /**
+     * Keeps track of the currently selected product category.
+     */
     var selectedCategory by remember {
         mutableStateOf("All")
     }
 
+    /**
+     * Creates the category list from the available products.
+     *
+     * Example:
+     * All, Coffee, Pastries, Cold, Hot
+     */
     val categories = remember {
         listOf("All") + products.map { it.category }.distinct()
     }
 
+    /**
+     * Shows either all products or only products from the selected category.
+     */
     val filteredProducts = if (selectedCategory == "All") {
         products
     } else {
         products.filter { it.category == selectedCategory }
     }
 
+    /**
+     * Live cart items for the current order.
+     *
+     * CartItem is used before the order becomes a finalized receipt.
+     */
     val cartItems = remember {
         mutableStateListOf<CartItem>()
     }
 
+    /**
+     * Controls the payment method selection dialog.
+     */
     var showPaymentDialog by remember {
         mutableStateOf(false)
     }
 
+    /**
+     * Stores the currently selected payment method while its confirmation dialog is open.
+     */
     var activePaymentMethod by remember {
         mutableStateOf<PaymentMethod?>(null)
     }
 
+    /**
+     * Stores the confirmed payment method after payment is completed.
+     *
+     * Once this is not null, the ticket button changes from Charge to Generate Receipt.
+     */
     var confirmedPaymentMethod by remember {
         mutableStateOf<PaymentMethod?>(null)
     }
 
+    /**
+     * Amount received from customer.
+     *
+     * This is especially useful for cash payments.
+     */
     var amountPaid by remember {
         mutableStateOf<Int?>(null)
     }
 
+    /**
+     * Change returned to customer.
+     *
+     * Usually applies to cash payments only.
+     */
     var changeGiven by remember {
         mutableStateOf<Int?>(null)
     }
 
+    /**
+     * Controls whether the receipt preview dialog is visible.
+     */
     var showReceiptPreviewDialog by remember {
         mutableStateOf(false)
     }
 
+    /**
+     * Temporary in-memory receipt sequence number.
+     *
+     * Later, when Room database is added, the next receipt number should come
+     * from the Orders/Receipts table so that it does not reset when the app restarts.
+     */
     var nextReceiptSequenceNumber by remember {
         mutableStateOf(1)
     }
 
-    var currentReceiptNumber by remember {
-        mutableStateOf("")
+    /**
+     * Holds the currently generated receipt.
+     *
+     * This is important because the receipt should not be recreated every time
+     * the cashier closes and reopens the preview.
+     *
+     * It is cleared only when Next Order is clicked.
+     */
+    var currentReceipt by remember {
+        mutableStateOf<Receipt?>(null)
     }
 
-    var currentReceiptDateTime by remember {
-        mutableStateOf("")
-    }
-
-
+    /**
+     * Basic order calculations.
+     *
+     * For now, tax is calculated as 15% of subtotal.
+     * Later, tax rules can come from Settings or database configuration.
+     */
     val subtotal = cartItems.sumOf { it.lineTotal }
     val discount = 0
     val tax = (subtotal * 0.15).toInt()
     val total = subtotal - discount + tax
 
+    /**
+     * Adds a product to the cart.
+     *
+     * If the product already exists in the cart, its quantity is increased.
+     * Otherwise, a new cart item is created.
+     */
     fun addProductToCart(product: Product) {
         val existingItemIndex = cartItems.indexOfFirst {
             it.product.id == product.id
@@ -142,6 +211,7 @@ fun SalesScreen(
 
         if (existingItemIndex >= 0) {
             val existingItem = cartItems[existingItemIndex]
+
             cartItems[existingItemIndex] = existingItem.copy(
                 quantity = existingItem.quantity + 1
             )
@@ -155,6 +225,9 @@ fun SalesScreen(
         }
     }
 
+    /**
+     * Increases the quantity of an existing cart item.
+     */
     fun increaseQuantity(product: Product) {
         val itemIndex = cartItems.indexOfFirst {
             it.product.id == product.id
@@ -162,12 +235,18 @@ fun SalesScreen(
 
         if (itemIndex >= 0) {
             val item = cartItems[itemIndex]
+
             cartItems[itemIndex] = item.copy(
                 quantity = item.quantity + 1
             )
         }
     }
 
+    /**
+     * Decreases the quantity of an existing cart item.
+     *
+     * If quantity becomes 0, the item is removed from the cart.
+     */
     fun decreaseQuantity(product: Product) {
         val itemIndex = cartItems.indexOfFirst {
             it.product.id == product.id
@@ -186,42 +265,127 @@ fun SalesScreen(
         }
     }
 
+    /**
+     * Creates the Receipt object for the current paid order.
+     *
+     * Important:
+     * - A receipt should only be created after payment is confirmed.
+     * - The receipt should be generated only once per order.
+     * - Closing and reopening the preview should keep the same receipt number and timestamp.
+     */
     fun prepareReceiptPreview() {
-        if (currentReceiptNumber.isBlank()) {
+        val paymentMethod = confirmedPaymentMethod ?: return
+
+        if (currentReceipt == null) {
             val now = LocalDateTime.now()
 
-            currentReceiptNumber = generateReceiptNumber(
-                sequenceNumber = nextReceiptSequenceNumber,
-                year = now.year
-            )
+            /**
+             * Convert live cart items into finalized receipt items.
+             *
+             * ReceiptItem is separate from CartItem because once a receipt is created,
+             * it should represent the transaction exactly as it happened.
+             */
+            val receiptItems = cartItems.map { cartItem ->
+                ReceiptItem(
+                    productName = cartItem.product.name,
+                    quantity = cartItem.quantity,
+                    unitPrice = cartItem.product.price
+                )
+            }
 
-            currentReceiptDateTime = formatReceiptDateTime(now)
+            currentReceipt = Receipt(
+                receiptNumber = generateReceiptNumber(
+                    sequenceNumber = nextReceiptSequenceNumber,
+                    year = now.year
+                ),
+                receiptDateTime = formatReceiptDateTime(now),
+
+                /**
+                 * Temporary company information.
+                 *
+                 * Later, these values should come from the Company table.
+                 */
+                storeName = "Royal Coffee POS",
+                storeAddressLines = listOf(
+                    "Phoenix",
+                    "Mauritius"
+                ),
+                storePhone = "+230 0000 0000",
+
+                /**
+                 * Temporary cashier display name.
+                 *
+                 * Later, this should come from the logged-in user account.
+                 */
+                cashierName = when (userRole) {
+                    UserRole.ADMIN -> "Admin"
+                    UserRole.BARISTA -> "Barista"
+                },
+
+                items = receiptItems,
+                subtotal = subtotal,
+                discount = discount,
+                tax = tax,
+                total = total,
+                paymentMethod = paymentMethod,
+                amountPaid = amountPaid,
+                changeGiven = changeGiven,
+
+                /**
+                 * Temporary footer message.
+                 *
+                 * Later, Admin can update this from Settings.
+                 */
+                footerMessage = "Thank you for your purchase."
+            )
         }
 
         showReceiptPreviewDialog = true
     }
 
+    /**
+     * Clears the current order and resets payment/receipt states.
+     *
+     * This is called only when the cashier clicks Next Order.
+     */
     fun clearCurrentOrder() {
         cartItems.clear()
+
         confirmedPaymentMethod = null
         amountPaid = null
         changeGiven = null
         activePaymentMethod = null
         showPaymentDialog = false
+
         showReceiptPreviewDialog = false
-        currentReceiptNumber = ""
-        currentReceiptDateTime = ""
+        currentReceipt = null
     }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        /**
+         * BoxWithConstraints gives us access to maxWidth and maxHeight.
+         *
+         * This allows the POS screen to adapt to different tablets and screen sizes.
+         */
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
+
+                /**
+                 * Prevents content from drawing under the Android status bar,
+                 * camera cutout, or bottom navigation bar.
+                 */
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
+            /**
+             * Dynamic layout sizing.
+             *
+             * Instead of hardcoding everything, these values are calculated
+             * based on the available screen size.
+             */
             val sideNavWidth = (maxWidth * 0.08f).coerceIn(
                 minimumValue = 104.dp,
                 maximumValue = 132.dp
@@ -316,6 +480,9 @@ fun SalesScreen(
         }
     }
 
+    /**
+     * Dialog for selecting Cash, Card, or Mobile Payment.
+     */
     if (showPaymentDialog) {
         PaymentMethodDialog(
             total = total,
@@ -329,6 +496,9 @@ fun SalesScreen(
         )
     }
 
+    /**
+     * Opens the correct payment confirmation dialog based on selected method.
+     */
     when (activePaymentMethod) {
         PaymentMethod.CASH -> {
             CashPaymentDialog(
@@ -367,22 +537,27 @@ fun SalesScreen(
         }
     }
 
-    if (showReceiptPreviewDialog && confirmedPaymentMethod != null) {
+    /**
+     * Receipt preview dialog.
+     *
+     * The dialog now receives one Receipt object instead of many separate values.
+     */
+    val receiptToPreview = currentReceipt
+
+    if (showReceiptPreviewDialog && receiptToPreview != null) {
         ReceiptPreviewDialog(
-            receiptNumber = currentReceiptNumber,
-            receiptDateTime = currentReceiptDateTime,
-            cartItems = cartItems,
-            subtotal = subtotal,
-            discount = discount,
-            tax = tax,
-            total = total,
-            paymentMethod = confirmedPaymentMethod!!,
-            amountPaid = amountPaid,
-            changeGiven = changeGiven,
+            receipt = receiptToPreview,
             onClose = {
+                /**
+                 * Closing the receipt preview does not clear the order.
+                 * The cashier can reopen the same receipt again.
+                 */
                 showReceiptPreviewDialog = false
             },
             onNextOrder = {
+                /**
+                 * Move the receipt sequence forward only when the order is completed.
+                 */
                 nextReceiptSequenceNumber += 1
                 clearCurrentOrder()
             }
@@ -509,6 +684,10 @@ private fun ProductArea(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        /**
+         * LazyRow allows the category chips to scroll horizontally
+         * when screen width is limited.
+         */
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth()
@@ -526,6 +705,10 @@ private fun ProductArea(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        /**
+         * Adaptive grid automatically changes the number of columns
+         * based on available space.
+         */
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = productCardMinWidth),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -686,6 +869,10 @@ private fun TicketPanel(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        /**
+         * Before payment: show Charge button.
+         * After payment: show Generate Receipt button.
+         */
         if (confirmedPaymentMethod == null) {
             Button(
                 onClick = onChargeClick,
@@ -1053,6 +1240,11 @@ private fun PaymentSummaryCard(
     }
 }
 
+/**
+ * Temporary product data for the POS screen.
+ *
+ * Later, this will be replaced by products from Room database.
+ */
 private fun sampleProducts(): List<Product> {
     return listOf(
         Product(
@@ -1100,6 +1292,16 @@ private fun sampleProducts(): List<Product> {
     )
 }
 
+/**
+ * Generates a temporary receipt number.
+ *
+ * Example:
+ * sequenceNumber = 1
+ * year = 2026
+ * result = RC-2026-000001
+ *
+ * Later, this should be generated based on saved orders in the database.
+ */
 private fun generateReceiptNumber(
     sequenceNumber: Int,
     year: Int
@@ -1108,6 +1310,12 @@ private fun generateReceiptNumber(
     return "RC-$year-$paddedNumber"
 }
 
+/**
+ * Formats the receipt date/time.
+ *
+ * Example output:
+ * 16/07/2026 14:35
+ */
 private fun formatReceiptDateTime(
     dateTime: LocalDateTime
 ): String {
