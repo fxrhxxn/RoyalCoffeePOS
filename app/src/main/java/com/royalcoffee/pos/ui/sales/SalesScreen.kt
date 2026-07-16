@@ -58,6 +58,8 @@ import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun SalesScreen(
@@ -561,15 +563,14 @@ private fun TicketPanel(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "Ticket",
-                style = MaterialTheme.typography.headlineSmall
+            TicketHeader(
+                itemCount = cartItems.sumOf { it.quantity }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (cartItems.isEmpty()) {
-                Text(text = "No items added yet")
+                EmptyTicketCard()
             } else {
                 cartItems.forEach { item ->
                     CartItemRow(
@@ -584,40 +585,23 @@ private fun TicketPanel(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Text(text = "Subtotal: Rs $subtotal")
-            Text(text = "Discount: Rs $discount")
-            Text(text = "Tax: Rs $tax")
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Total: Rs $total",
-                style = MaterialTheme.typography.titleLarge
+            OrderSummaryCard(
+                subtotal = subtotal,
+                discount = discount,
+                tax = tax,
+                total = total
             )
 
             if (confirmedPaymentMethod != null) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Payment confirmed: ${confirmedPaymentMethod.name}",
-                    style = MaterialTheme.typography.bodyMedium
+                PaymentSummaryCard(
+                    confirmedPaymentMethod = confirmedPaymentMethod,
+                    amountPaid = amountPaid,
+                    changeGiven = changeGiven
                 )
-
-                if (amountPaid != null) {
-                    Text(
-                        text = "Amount paid: Rs $amountPaid",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                if (changeGiven != null && changeGiven > 0) {
-                    Text(
-                        text = "Change: Rs $changeGiven",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
             }
         }
 
@@ -628,13 +612,101 @@ private fun TicketPanel(
             enabled = cartItems.isNotEmpty() && confirmedPaymentMethod == null,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp)
         ) {
             if (confirmedPaymentMethod == null) {
-                Text(text = "Charge Rs $total")
+                Text(
+                    text = "Charge Rs $total",
+                    style = MaterialTheme.typography.titleSmall
+                )
             } else {
-                Text(text = "Payment Confirmed")
+                Text(
+                    text = "Payment Confirmed",
+                    style = MaterialTheme.typography.titleSmall
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun TicketHeader(
+    itemCount: Int
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Ticket",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    text = "Current Order",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = RoyalGold.copy(alpha = 0.7f)
+                )
+            ) {
+                Text(
+                    text = "$itemCount item(s)",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+        )
+    }
+}
+
+@Composable
+private fun EmptyTicketCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "No items added yet",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "Select products from the menu to start an order.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            )
         }
     }
 }
@@ -645,46 +717,249 @@ private fun CartItemRow(
     onIncreaseQuantity: () -> Unit,
     onDecreaseQuantity: () -> Unit
 ) {
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 12.dp)
+            .padding(bottom = 10.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.55f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+        )
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier.padding(14.dp)
         ) {
-            Column {
-                Text(
-                    text = cartItem.product.name,
-                    style = MaterialTheme.typography.titleSmall
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = cartItem.product.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Rs ${cartItem.product.price} each",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                    )
+                }
 
                 Text(
-                    text = "Qty ${cartItem.quantity} x Rs ${cartItem.product.price}",
-                    style = MaterialTheme.typography.bodySmall
+                    text = "Rs ${cartItem.lineTotal}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Text(
-                text = "Rs ${cartItem.lineTotal}",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Qty ${cartItem.quantity}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    QuantityButton(
+                        text = "-",
+                        onClick = onDecreaseQuantity
+                    )
+
+                    QuantityButton(
+                        text = "+",
+                        onClick = onIncreaseQuantity
+                    )
+                }
+            }
         }
+    }
+}
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+@Composable
+private fun QuantityButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.size(36.dp),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun OrderSummaryCard(
+    subtotal: Int,
+    discount: Int,
+    tax: Int,
+    total: Int
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = RoyalGold.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            TextButton(
-                onClick = onDecreaseQuantity
+            Text(
+                text = "Order Summary",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SummaryRow(
+                label = "Subtotal",
+                value = "Rs $subtotal"
+            )
+
+            SummaryRow(
+                label = "Discount",
+                value = "Rs $discount"
+            )
+
+            SummaryRow(
+                label = "Tax",
+                value = "Rs $tax"
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "-")
+                Text(
+                    text = "Total",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Rs $total",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+        )
+
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun PaymentSummaryCard(
+    confirmedPaymentMethod: PaymentMethod,
+    amountPaid: Int?,
+    changeGiven: Int?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Payment Confirmed",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SummaryRow(
+                label = "Method",
+                value = confirmedPaymentMethod.name
+            )
+
+            if (amountPaid != null) {
+                SummaryRow(
+                    label = "Amount Paid",
+                    value = "Rs $amountPaid"
+                )
             }
 
-            TextButton(
-                onClick = onIncreaseQuantity
-            ) {
-                Text(text = "+")
+            if (changeGiven != null && changeGiven > 0) {
+                SummaryRow(
+                    label = "Change",
+                    value = "Rs $changeGiven"
+                )
             }
         }
     }
