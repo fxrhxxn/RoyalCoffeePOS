@@ -8,7 +8,7 @@ val RoyalGold = Color(0xFFD4AF37)
 val RoyalGoldDark = Color(0xFFB8902F)
 
 val CoffeeBrown = Color(0xFF2B1B12)
-val SoftCream = Color(0xFFFFF8EA)
+val SoftCream = Color(0xFFD3C298)
 val LightGoldBackground = Color(0xFFFFF3C4)
 val newColor = Color(0xFF176919)
 val ErrorRed = Color(0xFFB3261E)

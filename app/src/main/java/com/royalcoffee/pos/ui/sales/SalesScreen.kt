@@ -1,21 +1,33 @@
 package com.royalcoffee.pos.ui.sales
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,24 +47,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.CartItem
 import com.royalcoffee.pos.model.PaymentMethod
 import com.royalcoffee.pos.model.Product
 import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.ui.payment.CashPaymentDialog
+import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import com.royalcoffee.pos.ui.payment.CashPaymentDialog
-import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun SalesScreen(
@@ -100,8 +105,6 @@ fun SalesScreen(
     var changeGiven by remember {
         mutableStateOf<Int?>(null)
     }
-
-
 
     val subtotal = cartItems.sumOf { it.lineTotal }
     val discount = 0
@@ -163,51 +166,99 @@ fun SalesScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize()
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            SideNavigation(
-                userRole = userRole,
-                onLogout = onLogout
+            val sideNavWidth = (maxWidth * 0.08f).coerceIn(
+                minimumValue = 104.dp,
+                maximumValue = 132.dp
             )
 
-            ProductArea(
-                categories = categories,
-                selectedCategory = selectedCategory,
-                products = filteredProducts,
-                onCategoryClick = { category ->
-                    selectedCategory = category
-                },
-                onProductClick = { product ->
-                    addProductToCart(product)
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
+            val ticketPanelWidth = (maxWidth * 0.26f).coerceIn(
+                minimumValue = 290.dp,
+                maximumValue = 390.dp
             )
 
-            TicketPanel(
-                cartItems = cartItems,
-                subtotal = subtotal,
-                discount = discount,
-                tax = tax,
-                total = total,
-                confirmedPaymentMethod = confirmedPaymentMethod,
-                amountPaid = amountPaid,
-                changeGiven = changeGiven,
-                onIncreaseQuantity = { product ->
-                    increaseQuantity(product)
-                },
-                onDecreaseQuantity = { product ->
-                    decreaseQuantity(product)
-                },
-                onChargeClick = {
-                    showPaymentDialog = true
-                },
-                modifier = Modifier
-                    .width(340.dp)
-                    .fillMaxHeight()
+            val productCardMinWidth = (maxWidth * 0.14f).coerceIn(
+                minimumValue = 150.dp,
+                maximumValue = 210.dp
             )
+
+            val productAreaPadding = (maxWidth * 0.015f).coerceIn(
+                minimumValue = 14.dp,
+                maximumValue = 24.dp
+            )
+
+            val ticketPanelPadding = (maxWidth * 0.015f).coerceIn(
+                minimumValue = 14.dp,
+                maximumValue = 24.dp
+            )
+
+            val productImageVerticalPadding = when {
+                maxHeight < 650.dp -> 22.dp
+                maxHeight < 800.dp -> 28.dp
+                else -> 32.dp
+            }
+
+            val navLogoSize = when {
+                maxHeight < 650.dp -> 46.dp
+                else -> 56.dp
+            }
+
+            Row(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                SideNavigation(
+                    userRole = userRole,
+                    onLogout = onLogout,
+                    logoSize = navLogoSize,
+                    modifier = Modifier.width(sideNavWidth)
+                )
+
+                ProductArea(
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    products = filteredProducts,
+                    productCardMinWidth = productCardMinWidth,
+                    contentPadding = productAreaPadding,
+                    productImageVerticalPadding = productImageVerticalPadding,
+                    onCategoryClick = { category ->
+                        selectedCategory = category
+                    },
+                    onProductClick = { product ->
+                        addProductToCart(product)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                )
+
+                TicketPanel(
+                    cartItems = cartItems,
+                    subtotal = subtotal,
+                    discount = discount,
+                    tax = tax,
+                    total = total,
+                    confirmedPaymentMethod = confirmedPaymentMethod,
+                    amountPaid = amountPaid,
+                    changeGiven = changeGiven,
+                    contentPadding = ticketPanelPadding,
+                    onIncreaseQuantity = { product ->
+                        increaseQuantity(product)
+                    },
+                    onDecreaseQuantity = { product ->
+                        decreaseQuantity(product)
+                    },
+                    onChargeClick = {
+                        showPaymentDialog = true
+                    },
+                    modifier = Modifier
+                        .width(ticketPanelWidth)
+                        .fillMaxHeight()
+                )
+            }
         }
     }
 
@@ -266,27 +317,32 @@ fun SalesScreen(
 @Composable
 private fun SideNavigation(
     userRole: UserRole,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    logoSize: Dp,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
-            .width(120.dp)
+        modifier = modifier
             .fillMaxHeight()
             .background(RoyalGreenDark)
-            .padding(12.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
         ) {
-
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(56.dp) // Total size of the circle
-                    .border(width = 2.dp, color = Color.White, shape = CircleShape) // White border
+                    .size(logoSize)
+                    .border(
+                        width = 2.dp,
+                        color = Color.White,
+                        shape = CircleShape
+                    )
             ) {
                 Text(
                     text = "RC",
@@ -294,6 +350,7 @@ private fun SideNavigation(
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
+
             NavigationItem(text = "Sales")
 
             if (userRole == UserRole.ADMIN) {
@@ -306,12 +363,18 @@ private fun SideNavigation(
 
         OutlinedButton(
             onClick = onLogout,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = Color.White
             )
         ) {
-            Text(text = "Logout")
-
+            Text(
+                text = "Logout",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
@@ -328,7 +391,7 @@ private fun NavigationItem(text: String) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -344,12 +407,15 @@ private fun ProductArea(
     categories: List<String>,
     selectedCategory: String,
     products: List<Product>,
+    productCardMinWidth: Dp,
+    contentPadding: Dp,
+    productImageVerticalPadding: Dp,
     onCategoryClick: (String) -> Unit,
     onProductClick: (Product) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.padding(24.dp)
+        modifier = modifier.padding(contentPadding)
     ) {
         Text(
             text = "Sales / POS",
@@ -361,12 +427,13 @@ private fun ProductArea(
             style = MaterialTheme.typography.bodyMedium
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            categories.forEach { category ->
+            lazyRowItems(categories) { category ->
                 CategoryChip(
                     text = category,
                     isSelected = category == selectedCategory,
@@ -377,16 +444,18 @@ private fun ProductArea(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
+            columns = GridCells.Adaptive(minSize = productCardMinWidth),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize()
         ) {
             items(products) { product ->
                 ProductCard(
                     product = product,
+                    imageVerticalPadding = productImageVerticalPadding,
                     onClick = {
                         onProductClick(product)
                     }
@@ -420,11 +489,12 @@ private fun CategoryChip(
 @Composable
 private fun ProductCard(
     product: Product,
+    imageVerticalPadding: Dp,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .width(180.dp)
+            .fillMaxWidth()
             .clickable {
                 onClick()
             },
@@ -443,7 +513,7 @@ private fun ProductCard(
                         color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .padding(vertical = 32.dp),
+                    .padding(vertical = imageVerticalPadding),
                 contentAlignment = Alignment.Center
             ) {
                 Text(text = "Image")
@@ -474,6 +544,7 @@ private fun TicketPanel(
     confirmedPaymentMethod: PaymentMethod?,
     amountPaid: Int?,
     changeGiven: Int?,
+    contentPadding: Dp,
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
     onChargeClick: () -> Unit,
@@ -482,10 +553,14 @@ private fun TicketPanel(
     Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface)
-            .padding(24.dp),
+            .padding(contentPadding),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
             Text(
                 text = "Ticket",
                 style = MaterialTheme.typography.headlineSmall
@@ -546,10 +621,14 @@ private fun TicketPanel(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
             onClick = onChargeClick,
             enabled = cartItems.isNotEmpty() && confirmedPaymentMethod == null,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
         ) {
             if (confirmedPaymentMethod == null) {
                 Text(text = "Charge Rs $total")
@@ -557,7 +636,6 @@ private fun TicketPanel(
                 Text(text = "Payment Confirmed")
             }
         }
-
     }
 }
 
