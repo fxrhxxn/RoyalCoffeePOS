@@ -60,6 +60,7 @@ import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun SalesScreen(
@@ -420,13 +421,16 @@ private fun ProductArea(
         modifier = modifier.padding(contentPadding)
     ) {
         Text(
-            text = "Sales / POS",
-            style = MaterialTheme.typography.headlineMedium
-        )
+            text = "Sales",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth())
 
         Text(
             text = "Select products from the menu",
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(20.dp))
