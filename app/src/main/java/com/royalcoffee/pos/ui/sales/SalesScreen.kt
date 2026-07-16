@@ -29,10 +29,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -47,6 +49,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.CartItem
@@ -58,9 +62,6 @@ import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun SalesScreen(
@@ -107,6 +108,10 @@ fun SalesScreen(
 
     var changeGiven by remember {
         mutableStateOf<Int?>(null)
+    }
+
+    var showReceiptPlaceholderDialog by remember {
+        mutableStateOf(false)
     }
 
     val subtotal = cartItems.sumOf { it.lineTotal }
@@ -257,6 +262,9 @@ fun SalesScreen(
                     onChargeClick = {
                         showPaymentDialog = true
                     },
+                    onGenerateReceiptClick = {
+                        showReceiptPlaceholderDialog = true
+                    },
                     modifier = Modifier
                         .width(ticketPanelWidth)
                         .fillMaxHeight()
@@ -314,6 +322,31 @@ fun SalesScreen(
         null -> {
             // No payment dialog is currently open.
         }
+    }
+
+    if (showReceiptPlaceholderDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showReceiptPlaceholderDialog = false
+            },
+            title = {
+                Text(text = "Receipt")
+            },
+            text = {
+                Text(
+                    text = "Receipt preview will be added in the next step."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showReceiptPlaceholderDialog = false
+                    }
+                ) {
+                    Text(text = "OK")
+                }
+            }
+        )
     }
 }
 
@@ -424,7 +457,8 @@ private fun ProductArea(
             text = "Sales",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth())
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Text(
             text = "Select products from the menu",
@@ -554,6 +588,7 @@ private fun TicketPanel(
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
     onChargeClick: () -> Unit,
+    onGenerateReceiptClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -611,22 +646,30 @@ private fun TicketPanel(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = onChargeClick,
-            enabled = cartItems.isNotEmpty() && confirmedPaymentMethod == null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            if (confirmedPaymentMethod == null) {
+        if (confirmedPaymentMethod == null) {
+            Button(
+                onClick = onChargeClick,
+                enabled = cartItems.isNotEmpty(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
                 Text(
                     text = "Charge Rs $total",
                     style = MaterialTheme.typography.titleSmall
                 )
-            } else {
+            }
+        } else {
+            Button(
+                onClick = onGenerateReceiptClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
                 Text(
-                    text = "Payment Confirmed",
+                    text = "Generate Receipt",
                     style = MaterialTheme.typography.titleSmall
                 )
             }
@@ -709,7 +752,8 @@ private fun EmptyTicketCard() {
             Text(
                 text = "Select products from the menu to start an order.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                textAlign = TextAlign.Center
             )
         }
     }
