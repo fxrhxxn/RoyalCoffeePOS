@@ -35,6 +35,8 @@ import com.royalcoffee.pos.ui.theme.RoyalGold
 
 @Composable
 fun ReceiptPreviewDialog(
+    receiptNumber: String,
+    receiptDateTime: String,
     cartItems: List<CartItem>,
     subtotal: Int,
     discount: Int,
@@ -59,6 +61,8 @@ fun ReceiptPreviewDialog(
         },
         text = {
             ReceiptContent(
+                receiptNumber = receiptNumber,
+                receiptDateTime = receiptDateTime,
                 cartItems = cartItems,
                 subtotal = subtotal,
                 discount = discount,
@@ -88,6 +92,8 @@ fun ReceiptPreviewDialog(
 
 @Composable
 private fun ReceiptContent(
+    receiptNumber: String,
+    receiptDateTime: String,
     cartItems: List<CartItem>,
     subtotal: Int,
     discount: Int,
@@ -116,7 +122,10 @@ private fun ReceiptContent(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            ReceiptHeader()
+            ReceiptHeader(
+                receiptNumber = receiptNumber,
+                receiptDateTime = receiptDateTime
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -188,7 +197,10 @@ private fun ReceiptContent(
 }
 
 @Composable
-private fun ReceiptHeader() {
+private fun ReceiptHeader(
+    receiptNumber: String,
+    receiptDateTime: String
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -222,14 +234,14 @@ private fun ReceiptHeader() {
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Receipt No: RC-2026-000001",
+            text = "Receipt No: $receiptNumber",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
 
         Text(
-            text = "Date/Time: Temporary placeholder",
+            text = "Date/Time: $receiptDateTime",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             textAlign = TextAlign.Center

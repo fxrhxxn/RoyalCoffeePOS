@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -63,6 +62,9 @@ import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 
 @Composable
 fun SalesScreen(
@@ -114,6 +116,19 @@ fun SalesScreen(
     var showReceiptPreviewDialog by remember {
         mutableStateOf(false)
     }
+
+    var nextReceiptSequenceNumber by remember {
+        mutableStateOf(1)
+    }
+
+    var currentReceiptNumber by remember {
+        mutableStateOf("")
+    }
+
+    var currentReceiptDateTime by remember {
+        mutableStateOf("")
+    }
+
 
     val subtotal = cartItems.sumOf { it.lineTotal }
     val discount = 0
@@ -171,6 +186,21 @@ fun SalesScreen(
         }
     }
 
+    fun prepareReceiptPreview() {
+        if (currentReceiptNumber.isBlank()) {
+            val now = LocalDateTime.now()
+
+            currentReceiptNumber = generateReceiptNumber(
+                sequenceNumber = nextReceiptSequenceNumber,
+                year = now.year
+            )
+
+            currentReceiptDateTime = formatReceiptDateTime(now)
+        }
+
+        showReceiptPreviewDialog = true
+    }
+
     fun clearCurrentOrder() {
         cartItems.clear()
         confirmedPaymentMethod = null
@@ -179,6 +209,8 @@ fun SalesScreen(
         activePaymentMethod = null
         showPaymentDialog = false
         showReceiptPreviewDialog = false
+        currentReceiptNumber = ""
+        currentReceiptDateTime = ""
     }
 
     Surface(
@@ -274,7 +306,7 @@ fun SalesScreen(
                         showPaymentDialog = true
                     },
                     onGenerateReceiptClick = {
-                        showReceiptPreviewDialog = true
+                        prepareReceiptPreview()
                     },
                     modifier = Modifier
                         .width(ticketPanelWidth)
@@ -337,6 +369,8 @@ fun SalesScreen(
 
     if (showReceiptPreviewDialog && confirmedPaymentMethod != null) {
         ReceiptPreviewDialog(
+            receiptNumber = currentReceiptNumber,
+            receiptDateTime = currentReceiptDateTime,
             cartItems = cartItems,
             subtotal = subtotal,
             discount = discount,
@@ -349,12 +383,12 @@ fun SalesScreen(
                 showReceiptPreviewDialog = false
             },
             onNextOrder = {
+                nextReceiptSequenceNumber += 1
                 clearCurrentOrder()
             }
         )
     }
 }
-
 
 @Composable
 private fun SideNavigation(
@@ -1064,4 +1098,19 @@ private fun sampleProducts(): List<Product> {
             price = 110
         )
     )
+}
+
+private fun generateReceiptNumber(
+    sequenceNumber: Int,
+    year: Int
+): String {
+    val paddedNumber = sequenceNumber.toString().padStart(6, '0')
+    return "RC-$year-$paddedNumber"
+}
+
+private fun formatReceiptDateTime(
+    dateTime: LocalDateTime
+): String {
+    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+    return dateTime.format(formatter)
 }
