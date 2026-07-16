@@ -62,6 +62,7 @@ import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
+import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
 
 @Composable
 fun SalesScreen(
@@ -110,7 +111,7 @@ fun SalesScreen(
         mutableStateOf<Int?>(null)
     }
 
-    var showReceiptPlaceholderDialog by remember {
+    var showReceiptPreviewDialog by remember {
         mutableStateOf(false)
     }
 
@@ -168,6 +169,16 @@ fun SalesScreen(
                 cartItems.removeAt(itemIndex)
             }
         }
+    }
+
+    fun clearCurrentOrder() {
+        cartItems.clear()
+        confirmedPaymentMethod = null
+        amountPaid = null
+        changeGiven = null
+        activePaymentMethod = null
+        showPaymentDialog = false
+        showReceiptPreviewDialog = false
     }
 
     Surface(
@@ -263,7 +274,7 @@ fun SalesScreen(
                         showPaymentDialog = true
                     },
                     onGenerateReceiptClick = {
-                        showReceiptPlaceholderDialog = true
+                        showReceiptPreviewDialog = true
                     },
                     modifier = Modifier
                         .width(ticketPanelWidth)
@@ -324,31 +335,26 @@ fun SalesScreen(
         }
     }
 
-    if (showReceiptPlaceholderDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showReceiptPlaceholderDialog = false
+    if (showReceiptPreviewDialog && confirmedPaymentMethod != null) {
+        ReceiptPreviewDialog(
+            cartItems = cartItems,
+            subtotal = subtotal,
+            discount = discount,
+            tax = tax,
+            total = total,
+            paymentMethod = confirmedPaymentMethod!!,
+            amountPaid = amountPaid,
+            changeGiven = changeGiven,
+            onClose = {
+                showReceiptPreviewDialog = false
             },
-            title = {
-                Text(text = "Receipt")
-            },
-            text = {
-                Text(
-                    text = "Receipt preview will be added in the next step."
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showReceiptPlaceholderDialog = false
-                    }
-                ) {
-                    Text(text = "OK")
-                }
+            onNextOrder = {
+                clearCurrentOrder()
             }
         )
     }
 }
+
 
 @Composable
 private fun SideNavigation(
