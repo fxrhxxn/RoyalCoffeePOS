@@ -2,17 +2,21 @@ package com.royalcoffee.pos.ui.login
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,12 +38,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.UserRole
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun LoginScreen(
@@ -79,7 +89,7 @@ fun LoginScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -89,14 +99,36 @@ fun LoginScreen(
                             MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
-                )
-                .padding(48.dp),
+                ),
             contentAlignment = Alignment.Center
         ) {
+            val outerPadding = when {
+                maxWidth < 900.dp -> 24.dp
+                maxWidth < 1100.dp -> 36.dp
+                else -> 48.dp
+            }
+
+            val availableHeight = (maxHeight - outerPadding * 2f).coerceAtLeast(360.dp)
+
+            val cardHeight = when {
+                availableHeight < 520.dp -> availableHeight
+                else -> 520.dp
+            }
+
+            val cardWidthFraction = when {
+                maxWidth < 900.dp -> 0.96f
+                maxWidth < 1200.dp -> 0.92f
+                else -> 0.86f
+            }
+
+            val useTwoPaneLayout = maxWidth >= 760.dp
+
             Card(
                 modifier = Modifier
-                    .width(920.dp)
-                    .height(520.dp),
+                    .padding(outerPadding)
+                    .fillMaxWidth(cardWidthFraction)
+                    .widthIn(max = 980.dp)
+                    .height(cardHeight),
                 shape = RoundedCornerShape(32.dp),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 12.dp
@@ -109,34 +141,66 @@ fun LoginScreen(
                     color = RoyalGold.copy(alpha = 0.35f)
                 )
             ) {
-                Row(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LoginBrandPanel(
-                        modifier = Modifier
-                            .weight(0.95f)
-                            .fillMaxHeight()
-                    )
+                if (useTwoPaneLayout) {
+                    Row(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        LoginBrandPanel(
+                            modifier = Modifier
+                                .weight(0.95f)
+                                .fillMaxHeight()
+                        )
 
-                    LoginFormPanel(
-                        username = username,
-                        pin = pin,
-                        errorMessage = errorMessage,
-                        onUsernameChange = { newValue ->
-                            username = newValue
-                            errorMessage = null
-                        },
-                        onPinChange = { newValue ->
-                            pin = newValue.filter { it.isDigit() }.take(6)
-                            errorMessage = null
-                        },
-                        onLoginClick = {
-                            attemptLogin()
-                        },
-                        modifier = Modifier
-                            .weight(1.05f)
-                            .fillMaxHeight()
-                    )
+                        LoginFormPanel(
+                            username = username,
+                            pin = pin,
+                            errorMessage = errorMessage,
+                            onUsernameChange = { newValue ->
+                                username = newValue
+                                errorMessage = null
+                            },
+                            onPinChange = { newValue ->
+                                pin = newValue.filter { it.isDigit() }.take(6)
+                                errorMessage = null
+                            },
+                            onLoginClick = {
+                                attemptLogin()
+                            },
+                            modifier = Modifier
+                                .weight(1.05f)
+                                .fillMaxHeight()
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        LoginBrandPanel(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.8f)
+                        )
+
+                        LoginFormPanel(
+                            username = username,
+                            pin = pin,
+                            errorMessage = errorMessage,
+                            onUsernameChange = { newValue ->
+                                username = newValue
+                                errorMessage = null
+                            },
+                            onPinChange = { newValue ->
+                                pin = newValue.filter { it.isDigit() }.take(6)
+                                errorMessage = null
+                            },
+                            onLoginClick = {
+                                attemptLogin()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1.2f)
+                        )
+                    }
                 }
             }
         }
@@ -190,7 +254,8 @@ private fun LoginBrandPanel(
             Text(
                 text = "Royal Coffee POS",
                 style = MaterialTheme.typography.headlineLarge,
-                color = RoyalGold
+                color = RoyalGold,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -198,7 +263,8 @@ private fun LoginBrandPanel(
             Text(
                 text = "Café Point-of-Sale system",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -214,15 +280,20 @@ private fun LoginFormPanel(
     onLoginClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     Column(
-        modifier = modifier.padding(horizontal = 56.dp),
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 32.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.Start
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Welcome",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -230,7 +301,8 @@ private fun LoginFormPanel(
         Text(
             text = "Sign in with your username and PIN to continue.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -243,7 +315,18 @@ private fun LoginFormPanel(
             },
             singleLine = true,
             isError = errorMessage != null,
-            modifier = Modifier.width(340.dp)
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = {
+                    focusManager.moveFocus(FocusDirection.Down)
+                }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 360.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -258,9 +341,22 @@ private fun LoginFormPanel(
             isError = errorMessage != null,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.NumberPassword
+                keyboardType = KeyboardType.NumberPassword,
+                imeAction = ImeAction.Done
             ),
-            modifier = Modifier.width(340.dp)
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+
+                    if (username.isNotBlank() && pin.isNotBlank()) {
+                        onLoginClick()
+                    }
+                }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 360.dp)
         )
 
         if (errorMessage != null) {
@@ -269,17 +365,23 @@ private fun LoginFormPanel(
             Text(
                 text = errorMessage,
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
             )
         }
 
         Spacer(modifier = Modifier.height(28.dp))
 
         Button(
-            onClick = onLoginClick,
+            onClick = {
+                keyboardController?.hide()
+                focusManager.clearFocus()
+                onLoginClick()
+            },
             enabled = username.isNotBlank() && pin.isNotBlank(),
             modifier = Modifier
-                .width(340.dp)
+                .fillMaxWidth()
+                .widthIn(max = 360.dp)
                 .height(48.dp)
         ) {
             Text(text = "Log in")
@@ -290,7 +392,8 @@ private fun LoginFormPanel(
         Text(
             text = "Demo users: admin / 1234 or barista / 1234",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            textAlign = TextAlign.Center
         )
     }
 }
