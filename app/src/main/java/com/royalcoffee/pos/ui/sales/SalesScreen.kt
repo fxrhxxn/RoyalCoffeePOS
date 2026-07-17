@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.sales
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,16 +49,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.model.CartItem
 import com.royalcoffee.pos.model.PaymentMethod
+import com.royalcoffee.pos.model.PrinterConfig
 import com.royalcoffee.pos.model.Product
 import com.royalcoffee.pos.model.Receipt
 import com.royalcoffee.pos.model.ReceiptItem
 import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.printer.FakeReceiptPrinter
 import com.royalcoffee.pos.ui.payment.CashPaymentDialog
 import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
@@ -73,34 +77,58 @@ fun SalesScreen(
     onLogout: () -> Unit
 ) {
     /**
+     * Context is used for showing short POS-style messages.
+     *
+     * Example:
+     * "Printer not available. Check connection."
+     */
+    val context = LocalContext.current
+
+    /**
      * Temporary product list.
      *
-     * Later, when the database is added, this product list should come from
-     * the Products table instead of being hardcoded.
+     * Later, this should come from the Products table in Room database.
      */
     val products = remember {
         sampleProducts()
     }
 
     /**
-     * Keeps track of the currently selected product category.
+     * Temporary default printer configuration.
+     *
+     * Later, this should come from the Printers table.
+     * For now, it represents a Bluetooth printer placeholder.
+     */
+    val defaultPrinter = remember {
+        PrinterConfig.placeholderBluetoothPrinter()
+    }
+
+    /**
+     * Temporary printer service.
+     *
+     * This does not connect to real hardware yet.
+     * Later, this can be replaced with BluetoothReceiptPrinter.
+     */
+    val receiptPrinter = remember {
+        FakeReceiptPrinter()
+    }
+
+    /**
+     * Currently selected category in the POS menu.
      */
     var selectedCategory by remember {
         mutableStateOf("All")
     }
 
     /**
-     * Creates the category list from the available products.
-     *
-     * Example:
-     * All, Coffee, Pastries, Cold, Hot
+     * Builds the category list from product data.
      */
     val categories = remember {
         listOf("All") + products.map { it.category }.distinct()
     }
 
     /**
-     * Shows either all products or only products from the selected category.
+     * Filters products based on selected category.
      */
     val filteredProducts = if (selectedCategory == "All") {
         products
@@ -109,9 +137,7 @@ fun SalesScreen(
     }
 
     /**
-     * Live cart items for the current order.
-     *
-     * CartItem is used before the order becomes a finalized receipt.
+     * Live cart for the current order.
      */
     val cartItems = remember {
         mutableStateListOf<CartItem>()
@@ -125,16 +151,16 @@ fun SalesScreen(
     }
 
     /**
-     * Stores the currently selected payment method while its confirmation dialog is open.
+     * Stores the selected payment method while its confirmation dialog is open.
      */
     var activePaymentMethod by remember {
         mutableStateOf<PaymentMethod?>(null)
     }
 
     /**
-     * Stores the confirmed payment method after payment is completed.
+     * Stores the payment method after payment is confirmed.
      *
-     * Once this is not null, the ticket button changes from Charge to Generate Receipt.
+     * When this is not null, the ticket button changes from Charge to Generate Receipt.
      */
     var confirmedPaymentMethod by remember {
         mutableStateOf<PaymentMethod?>(null)
@@ -143,16 +169,16 @@ fun SalesScreen(
     /**
      * Amount received from customer.
      *
-     * This is especially useful for cash payments.
+     * Mainly useful for cash payments.
      */
     var amountPaid by remember {
         mutableStateOf<Int?>(null)
     }
 
     /**
-     * Change returned to customer.
+     * Change given back to the customer.
      *
-     * Usually applies to cash payments only.
+     * Mainly useful for cash payments.
      */
     var changeGiven by remember {
         mutableStateOf<Int?>(null)
@@ -166,10 +192,10 @@ fun SalesScreen(
     }
 
     /**
-     * Temporary in-memory receipt sequence number.
+     * Temporary in-memory receipt number sequence.
      *
-     * Later, when Room database is added, the next receipt number should come
-     * from the Orders/Receipts table so that it does not reset when the app restarts.
+     * Later, this should come from the database so receipt numbers do not reset
+     * when the app restarts.
      */
     var nextReceiptSequenceNumber by remember {
         mutableStateOf(1)
@@ -178,10 +204,8 @@ fun SalesScreen(
     /**
      * Holds the currently generated receipt.
      *
-     * This is important because the receipt should not be recreated every time
-     * the cashier closes and reopens the preview.
-     *
-     * It is cleared only when Next Order is clicked.
+     * This prevents the receipt number and timestamp from changing when
+     * the user closes and reopens the receipt preview.
      */
     var currentReceipt by remember {
         mutableStateOf<Receipt?>(null)
@@ -190,8 +214,9 @@ fun SalesScreen(
     /**
      * Basic order calculations.
      *
-     * For now, tax is calculated as 15% of subtotal.
-     * Later, tax rules can come from Settings or database configuration.
+     * For now:
+     * - Discount is fixed at 0.
+     * - Tax is 15% of subtotal.
      */
     val subtotal = cartItems.sumOf { it.lineTotal }
     val discount = 0
@@ -201,8 +226,8 @@ fun SalesScreen(
     /**
      * Adds a product to the cart.
      *
-     * If the product already exists in the cart, its quantity is increased.
-     * Otherwise, a new cart item is created.
+     * If the product is already in the cart, its quantity increases.
+     * Otherwise, a new cart item is added.
      */
     fun addProductToCart(product: Product) {
         val existingItemIndex = cartItems.indexOfFirst {
@@ -226,7 +251,7 @@ fun SalesScreen(
     }
 
     /**
-     * Increases the quantity of an existing cart item.
+     * Increases the quantity of a cart item.
      */
     fun increaseQuantity(product: Product) {
         val itemIndex = cartItems.indexOfFirst {
@@ -243,9 +268,9 @@ fun SalesScreen(
     }
 
     /**
-     * Decreases the quantity of an existing cart item.
+     * Decreases the quantity of a cart item.
      *
-     * If quantity becomes 0, the item is removed from the cart.
+     * If quantity reaches 0, the item is removed.
      */
     fun decreaseQuantity(product: Product) {
         val itemIndex = cartItems.indexOfFirst {
@@ -266,12 +291,12 @@ fun SalesScreen(
     }
 
     /**
-     * Creates the Receipt object for the current paid order.
+     * Creates the receipt object for the current paid order.
      *
-     * Important:
-     * - A receipt should only be created after payment is confirmed.
-     * - The receipt should be generated only once per order.
-     * - Closing and reopening the preview should keep the same receipt number and timestamp.
+     * Important rules:
+     * - Receipt is created only after payment confirmation.
+     * - Receipt is created only once per order.
+     * - Reopening the receipt preview shows the same receipt number and date/time.
      */
     fun prepareReceiptPreview() {
         val paymentMethod = confirmedPaymentMethod ?: return
@@ -282,8 +307,8 @@ fun SalesScreen(
             /**
              * Convert live cart items into finalized receipt items.
              *
-             * ReceiptItem is separate from CartItem because once a receipt is created,
-             * it should represent the transaction exactly as it happened.
+             * ReceiptItem is separate from CartItem because a receipt should
+             * represent the final transaction exactly as it happened.
              */
             val receiptItems = cartItems.map { cartItem ->
                 ReceiptItem(
@@ -303,7 +328,7 @@ fun SalesScreen(
                 /**
                  * Temporary company information.
                  *
-                 * Later, these values should come from the Company table.
+                 * Later, these should come from the Company table.
                  */
                 storeName = "Royal Coffee POS",
                 storeAddressLines = listOf(
@@ -313,9 +338,9 @@ fun SalesScreen(
                 storePhone = "+230 0000 0000",
 
                 /**
-                 * Temporary cashier display name.
+                 * Temporary cashier name.
                  *
-                 * Later, this should come from the logged-in user account.
+                 * Later, this should come from the logged-in user record.
                  */
                 cashierName = when (userRole) {
                     UserRole.ADMIN -> "Admin"
@@ -330,12 +355,6 @@ fun SalesScreen(
                 paymentMethod = paymentMethod,
                 amountPaid = amountPaid,
                 changeGiven = changeGiven,
-
-                /**
-                 * Temporary footer message.
-                 *
-                 * Later, Admin can update this from Settings.
-                 */
                 footerMessage = "Thank you for your purchase."
             )
         }
@@ -344,9 +363,9 @@ fun SalesScreen(
     }
 
     /**
-     * Clears the current order and resets payment/receipt states.
+     * Clears the current order and prepares the POS screen for the next customer.
      *
-     * This is called only when the cashier clicks Next Order.
+     * This is called only when the user presses Next Order.
      */
     fun clearCurrentOrder() {
         cartItems.clear()
@@ -365,26 +384,16 @@ fun SalesScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        /**
-         * BoxWithConstraints gives us access to maxWidth and maxHeight.
-         *
-         * This allows the POS screen to adapt to different tablets and screen sizes.
-         */
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-
                 /**
-                 * Prevents content from drawing under the Android status bar,
-                 * camera cutout, or bottom navigation bar.
+                 * Keeps the POS UI away from Android status bar and navigation bar.
                  */
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             /**
-             * Dynamic layout sizing.
-             *
-             * Instead of hardcoding everything, these values are calculated
-             * based on the available screen size.
+             * Dynamic layout sizing for different tablet sizes.
              */
             val sideNavWidth = (maxWidth * 0.08f).coerceIn(
                 minimumValue = 104.dp,
@@ -481,7 +490,7 @@ fun SalesScreen(
     }
 
     /**
-     * Dialog for selecting Cash, Card, or Mobile Payment.
+     * Payment method selection dialog.
      */
     if (showPaymentDialog) {
         PaymentMethodDialog(
@@ -497,7 +506,7 @@ fun SalesScreen(
     }
 
     /**
-     * Opens the correct payment confirmation dialog based on selected method.
+     * Payment confirmation dialogs.
      */
     when (activePaymentMethod) {
         PaymentMethod.CASH -> {
@@ -540,7 +549,8 @@ fun SalesScreen(
     /**
      * Receipt preview dialog.
      *
-     * The dialog now receives one Receipt object instead of many separate values.
+     * The dialog receives one Receipt object and delegates printing back
+     * to this screen using onPrintReceipt.
      */
     val receiptToPreview = currentReceipt
 
@@ -549,17 +559,34 @@ fun SalesScreen(
             receipt = receiptToPreview,
             onClose = {
                 /**
-                 * Closing the receipt preview does not clear the order.
-                 * The cashier can reopen the same receipt again.
+                 * Closing the preview does not clear the order.
                  */
                 showReceiptPreviewDialog = false
             },
             onNextOrder = {
                 /**
-                 * Move the receipt sequence forward only when the order is completed.
+                 * Receipt sequence increases only when the order is finalized.
                  */
                 nextReceiptSequenceNumber += 1
                 clearCurrentOrder()
+            },
+            onPrintReceipt = { receipt ->
+                /**
+                 * Send the receipt to the printer service layer.
+                 *
+                 * FakeReceiptPrinter currently returns:
+                 * "Printer not available. Check connection."
+                 */
+                val printResult = receiptPrinter.printReceipt(
+                    receipt = receipt,
+                    printerConfig = defaultPrinter
+                )
+
+                Toast.makeText(
+                    context,
+                    printResult.message,
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         )
     }
@@ -685,8 +712,7 @@ private fun ProductArea(
         Spacer(modifier = Modifier.height(20.dp))
 
         /**
-         * LazyRow allows the category chips to scroll horizontally
-         * when screen width is limited.
+         * Categories scroll horizontally when there is not enough space.
          */
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -706,8 +732,8 @@ private fun ProductArea(
         Spacer(modifier = Modifier.height(20.dp))
 
         /**
-         * Adaptive grid automatically changes the number of columns
-         * based on available space.
+         * Adaptive grid automatically changes number of product columns
+         * depending on available width.
          */
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = productCardMinWidth),
@@ -869,10 +895,6 @@ private fun TicketPanel(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        /**
-         * Before payment: show Charge button.
-         * After payment: show Generate Receipt button.
-         */
         if (confirmedPaymentMethod == null) {
             Button(
                 onClick = onChargeClick,
@@ -1241,9 +1263,9 @@ private fun PaymentSummaryCard(
 }
 
 /**
- * Temporary product data for the POS screen.
+ * Temporary hardcoded products for development.
  *
- * Later, this will be replaced by products from Room database.
+ * Later, these products will come from the local Room database.
  */
 private fun sampleProducts(): List<Product> {
     return listOf(
@@ -1300,7 +1322,7 @@ private fun sampleProducts(): List<Product> {
  * year = 2026
  * result = RC-2026-000001
  *
- * Later, this should be generated based on saved orders in the database.
+ * Later, this should be generated from the database.
  */
 private fun generateReceiptNumber(
     sequenceNumber: Int,
@@ -1311,9 +1333,9 @@ private fun generateReceiptNumber(
 }
 
 /**
- * Formats the receipt date/time.
+ * Formats the current date/time for the receipt.
  *
- * Example output:
+ * Example:
  * 16/07/2026 14:35
  */
 private fun formatReceiptDateTime(

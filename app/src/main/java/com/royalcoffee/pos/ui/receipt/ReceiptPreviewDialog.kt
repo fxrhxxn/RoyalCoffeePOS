@@ -52,7 +52,8 @@ import com.royalcoffee.pos.model.ReceiptItem
 fun ReceiptPreviewDialog(
     receipt: Receipt,
     onClose: () -> Unit,
-    onNextOrder: () -> Unit
+    onNextOrder: () -> Unit,
+    onPrintReceipt: (Receipt) -> Unit
 ) {
     Dialog(
         onDismissRequest = {
@@ -155,6 +156,14 @@ fun ReceiptPreviewDialog(
                         ReceiptSideActionPanel(
                             onClose = onClose,
                             onNextOrder = onNextOrder,
+
+                            /**
+                             * The dialog does not decide how printing works.
+                             * It simply tells the parent screen that the user clicked Print Receipt.
+                             */
+                            onPrintReceipt = {
+                                onPrintReceipt(receipt)
+                            },
                             modifier = Modifier
                                 .width(actionPanelWidth)
                                 .fillMaxHeight()
@@ -180,6 +189,7 @@ fun ReceiptPreviewDialog(
 private fun ReceiptSideActionPanel(
     onClose: () -> Unit,
     onNextOrder: () -> Unit,
+    onPrintReceipt: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -241,13 +251,7 @@ private fun ReceiptSideActionPanel(
          * professional printer connection error.
          */
         Button(
-            onClick = {
-                Toast.makeText(
-                    context,
-                    "Printer not available. Check connection.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            },
+            onClick = onPrintReceipt,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(58.dp),
