@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -213,6 +214,16 @@ fun SalesScreen(
     }
 
     /**
+     * Controls the cancel order confirmation dialog.
+     *
+     * We ask for confirmation because cancelling an order removes all current
+     * cart, payment, and receipt data for the active order.
+     */
+    var showCancelOrderDialog by remember {
+        mutableStateOf(false)
+    }
+
+    /**
      * Basic order calculations.
      *
      * For now:
@@ -289,6 +300,27 @@ fun SalesScreen(
                 cartItems.removeAt(itemIndex)
             }
         }
+    }
+
+    /**
+     * Clears only the ticket/cart before payment.
+     *
+     * This is useful when the cashier selected the wrong products
+     * but has not charged the customer yet.
+     */
+    fun clearTicketBeforePayment() {
+        cartItems.clear()
+    }
+
+    /**
+     * Returns true when there is anything active in the current order.
+     *
+     * This helps us decide whether Cancel Order should be enabled.
+     */
+    fun hasActiveOrder(): Boolean {
+        return cartItems.isNotEmpty() ||
+                confirmedPaymentMethod != null ||
+                currentReceipt != null
     }
 
     /**
@@ -454,6 +486,10 @@ fun SalesScreen(
                     productCardMinWidth = productCardMinWidth,
                     contentPadding = productAreaPadding,
                     productImageVerticalPadding = productImageVerticalPadding,
+                    canCancelOrder = hasActiveOrder(),
+                    onCancelOrderClick = {
+                        showCancelOrderDialog = true
+                    },
                     onCategoryClick = { category ->
                         selectedCategory = category
                     },
@@ -481,14 +517,13 @@ fun SalesScreen(
                     onDecreaseQuantity = { product ->
                         decreaseQuantity(product)
                     },
+                    onClearTicketClick = {
+                        clearTicketBeforePayment()
+                    },
                     onChargeClick = {
                         showPaymentDialog = true
                     },
                     onViewReceiptClick = {
-                        /**
-                         * This allows the cashier to reopen the receipt preview
-                         * after closing it.
-                         */
                         val paymentMethod = confirmedPaymentMethod
 
                         if (paymentMethod != null) {
@@ -501,7 +536,8 @@ fun SalesScreen(
                     },
                     modifier = Modifier
                         .width(ticketPanelWidth)
-                        .fillMaxHeight() )
+                        .fillMaxHeight()
+                )
             }
         }
     }
@@ -588,6 +624,47 @@ fun SalesScreen(
      * to this screen using onPrintReceipt.
      */
     val receiptToPreview = currentReceipt
+
+    /**
+     * Cancel order confirmation dialog.
+     *
+     * This prevents the cashier from accidentally clearing an active order.
+     */
+    if (showCancelOrderDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCancelOrderDialog = false
+            },
+            title = {
+                Text(text = "Cancel Order?")
+            },
+            text = {
+                Text(
+                    text = "This will clear the current ticket and cancel the active order."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        clearCurrentOrder()
+                        showCancelOrderDialog = false
+                    }
+                ) {
+                    Text(text = "Cancel Order")
+
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showCancelOrderDialog = false
+                    }
+                ) {
+                    Text(text = "Keep Order")
+                }
+            }
+        )
+    }
 
     if (showReceiptPreviewDialog && receiptToPreview != null) {
         ReceiptPreviewDialog(
@@ -723,6 +800,8 @@ private fun ProductArea(
     productCardMinWidth: Dp,
     contentPadding: Dp,
     productImageVerticalPadding: Dp,
+    canCancelOrder: Boolean,
+    onCancelOrderClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onProductClick: (Product) -> Unit,
     modifier: Modifier = Modifier
@@ -730,19 +809,45 @@ private fun ProductArea(
     Column(
         modifier = modifier.padding(contentPadding)
     ) {
-        Text(
-            text = "Sales",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.width(140.dp))
 
-        Text(
-            text = "Select products from the menu",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Sales",
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
+                    text = "Select products from the menu",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            OutlinedButton(
+                onClick = onCancelOrderClick,
+                enabled = canCancelOrder,
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(44.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = "Cancel Order",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -871,6 +976,7 @@ private fun TicketPanel(
     contentPadding: Dp,
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
+    onClearTicketClick: () -> Unit,
     onChargeClick: () -> Unit,
     onViewReceiptClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -931,18 +1037,36 @@ private fun TicketPanel(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (confirmedPaymentMethod == null) {
-            Button(
-                onClick = onChargeClick,
-                enabled = cartItems.isNotEmpty(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = "Charge Rs $total",
-                    style = MaterialTheme.typography.titleSmall
-                )
+                OutlinedButton(
+                    onClick = onClearTicketClick,
+                    enabled = cartItems.isNotEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = "Clear Ticket",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+
+                Button(
+                    onClick = onChargeClick,
+                    enabled = cartItems.isNotEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = "Charge Rs $total",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
             }
         } else {
             Button(
@@ -953,7 +1077,7 @@ private fun TicketPanel(
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Text(
-                    text = "Generate Receipt",
+                    text = "View Receipt",
                     style = MaterialTheme.typography.titleSmall
                 )
             }
