@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -198,7 +199,7 @@ fun SalesScreen(
      * when the app restarts.
      */
     var nextReceiptSequenceNumber by remember {
-        mutableStateOf(1)
+        mutableIntStateOf(1)
     }
 
     /**
@@ -291,16 +292,18 @@ fun SalesScreen(
     }
 
     /**
-     * Creates the receipt object for the current paid order.
+     * Creates the receipt object for the current paid order and opens the receipt preview.
      *
-     * Important rules:
-     * - Receipt is created only after payment confirmation.
-     * - Receipt is created only once per order.
-     * - Reopening the receipt preview shows the same receipt number and date/time.
+     * Important:
+     * - This function receives the payment details directly.
+     * - This avoids waiting for Compose state updates before generating the receipt.
+     * - The receipt is created only once per order.
      */
-    fun prepareReceiptPreview() {
-        val paymentMethod = confirmedPaymentMethod ?: return
-
+    fun prepareReceiptPreview(
+        paymentMethod: PaymentMethod,
+        paid: Int?,
+        change: Int?
+    ) {
         if (currentReceipt == null) {
             val now = LocalDateTime.now()
 
@@ -326,11 +329,11 @@ fun SalesScreen(
                 receiptDateTime = formatReceiptDateTime(now),
 
                 /**
-                 * Temporary company information.
+                 * Company information shown on the receipt.
                  *
-                 * Later, these should come from the Company table.
+                 * Later, these values will come from the Company table.
                  */
-                storeName = "Royal Coffee POS",
+                storeName = "Royal Coffee",
                 storeAddressLines = listOf(
                     "Phoenix",
                     "Mauritius"
@@ -353,12 +356,15 @@ fun SalesScreen(
                 tax = tax,
                 total = total,
                 paymentMethod = paymentMethod,
-                amountPaid = amountPaid,
-                changeGiven = changeGiven,
+                amountPaid = paid,
+                changeGiven = change,
                 footerMessage = "Thank you for your purchase."
             )
         }
 
+        /**
+         * Open the receipt preview immediately.
+         */
         showReceiptPreviewDialog = true
     }
 
@@ -478,13 +484,24 @@ fun SalesScreen(
                     onChargeClick = {
                         showPaymentDialog = true
                     },
-                    onGenerateReceiptClick = {
-                        prepareReceiptPreview()
+                    onViewReceiptClick = {
+                        /**
+                         * This allows the cashier to reopen the receipt preview
+                         * after closing it.
+                         */
+                        val paymentMethod = confirmedPaymentMethod
+
+                        if (paymentMethod != null) {
+                            prepareReceiptPreview(
+                                paymentMethod = paymentMethod,
+                                paid = amountPaid,
+                                change = changeGiven
+                            )
+                        }
                     },
                     modifier = Modifier
                         .width(ticketPanelWidth)
-                        .fillMaxHeight()
-                )
+                        .fillMaxHeight() )
             }
         }
     }
@@ -517,6 +534,15 @@ fun SalesScreen(
                     amountPaid = paid
                     changeGiven = change
                     activePaymentMethod = null
+
+                    /*
+                    * Open the receipt preview immediately after payment confirmation
+                     */
+                    prepareReceiptPreview(
+                        paymentMethod = method,
+                        paid = paid,
+                        change = change
+                    )
                 },
                 onCancel = {
                     activePaymentMethod = null
@@ -534,6 +560,15 @@ fun SalesScreen(
                     amountPaid = paid
                     changeGiven = change
                     activePaymentMethod = null
+
+                    /*
+                    * Open the receipt preview immediately after payment confirmation
+                     */
+                    prepareReceiptPreview(
+                        paymentMethod = method,
+                        paid = paid,
+                        change = change
+                    )
                 },
                 onCancel = {
                     activePaymentMethod = null
@@ -837,7 +872,7 @@ private fun TicketPanel(
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
     onChargeClick: () -> Unit,
-    onGenerateReceiptClick: () -> Unit,
+    onViewReceiptClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -911,7 +946,7 @@ private fun TicketPanel(
             }
         } else {
             Button(
-                onClick = onGenerateReceiptClick,
+                onClick = onViewReceiptClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),

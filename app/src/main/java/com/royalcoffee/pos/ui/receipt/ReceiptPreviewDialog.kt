@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.royalcoffee.pos.model.Receipt
 import com.royalcoffee.pos.model.ReceiptItem
+import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 
 /**
  * ReceiptPreviewDialog displays a print-ready thermal receipt preview.
@@ -383,11 +384,15 @@ private fun ThermalReceiptPaper(
 private fun ThermalReceiptHeader(
     receipt: Receipt
 ) {
-    ReceiptMonoText(
-        text = receipt.storeName.uppercase(),
-        textAlign = TextAlign.Center,
+    Text(
+        text = receipt.storeName,
+        fontFamily = CinzelFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 15.sp
+        fontSize = 30.sp,
+        lineHeight = 34.sp,
+        color = Color.Black,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth()
     )
 
     Spacer(modifier = Modifier.height(4.dp))
