@@ -6,23 +6,50 @@ import com.royalcoffee.pos.model.Receipt
 /**
  * FakeReceiptPrinter is used during development when no physical printer exists.
  *
- * Important:
- * This class does not actually print.
+ * This class now uses EscPosReceiptFormatter.
  *
- * It gives the app a printer service layer now, so that later we can replace it
- * with a real Bluetooth ESC/POS printer implementation without changing the UI.
+ * Why?
+ * - The app can already prepare printer-ready ESC/POS receipt data.
+ * - We can test that receipt formatting does not crash.
+ * - Later, BluetoothReceiptPrinter can reuse the same formatter.
  */
-class FakeReceiptPrinter : ReceiptPrinter {
+class FakeReceiptPrinter(
+    private val receiptFormatter: EscPosReceiptFormatter = EscPosReceiptFormatter()
+) : ReceiptPrinter {
 
     override fun printReceipt(
         receipt: Receipt,
         printerConfig: PrinterConfig
     ): ReceiptPrintResult {
         /**
-         * In this version of the app, there is no connected printer.
+         * Prepare ESC/POS printer bytes.
          *
-         * We return a professional POS-style error message rather than saying
-         * "simulated printer" or "fake printer".
+         * Since this is a fake printer, the bytes are not sent anywhere yet.
+         * This line exists so we can confirm the formatter is connected
+         * to the print flow.
+         */
+        val printerBytes = receiptFormatter.formatReceiptBytes(
+            receipt = receipt,
+            printerConfig = printerConfig
+        )
+
+        /**
+         * This check keeps the variable intentionally used.
+         *
+         * It also guards against a formatting failure that somehow creates
+         * no printable content.
+         */
+        if (printerBytes.isEmpty()) {
+            return ReceiptPrintResult(
+                isSuccessful = false,
+                message = "Unable to prepare receipt for printing."
+            )
+        }
+
+        /**
+         * In the current version, no real printer is connected.
+         *
+         * We show a professional POS-style printer error.
          */
         if (!printerConfig.canAttemptConnection) {
             return ReceiptPrintResult(
@@ -32,10 +59,10 @@ class FakeReceiptPrinter : ReceiptPrinter {
         }
 
         /**
-         * Even if placeholder printer data is added later, this fake printer
-         * still does not connect to hardware.
+         * Even if printer configuration exists, FakeReceiptPrinter still does
+         * not connect to real hardware.
          *
-         * The real implementation will be BluetoothReceiptPrinter.
+         * A real BluetoothReceiptPrinter will be added later.
          */
         return ReceiptPrintResult(
             isSuccessful = false,
