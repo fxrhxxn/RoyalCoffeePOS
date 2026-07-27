@@ -448,15 +448,15 @@ fun SalesScreen(
                 minimumValue = 104.dp,
                 maximumValue = 132.dp
             )
-
+            // Ticket panel
             val ticketPanelWidth = (maxWidth * 0.26f).coerceIn(
                 minimumValue = 290.dp,
                 maximumValue = 390.dp
             )
-
-            val productCardMinWidth = (maxWidth * 0.14f).coerceIn(
-                minimumValue = 150.dp,
-                maximumValue = 210.dp
+            // Product Card
+            val productCardMinWidth = (maxWidth * 0.12f).coerceIn(
+                minimumValue = 130.dp,
+                maximumValue = 180.dp
             )
 
             val productAreaPadding = (maxWidth * 0.015f).coerceIn(
@@ -468,12 +468,6 @@ fun SalesScreen(
                 minimumValue = 14.dp,
                 maximumValue = 24.dp
             )
-
-            val productImageVerticalPadding = when {
-                maxHeight < 650.dp -> 22.dp
-                maxHeight < 800.dp -> 28.dp
-                else -> 32.dp
-            }
 
             val navLogoSize = when {
                 maxHeight < 650.dp -> 46.dp
@@ -496,7 +490,6 @@ fun SalesScreen(
                     products = filteredProducts,
                     productCardMinWidth = productCardMinWidth,
                     contentPadding = productAreaPadding,
-                    productImageVerticalPadding = productImageVerticalPadding,
                     canCancelOrder = hasActiveOrder(),
                     isOrderLocked = isOrderLocked,
                     onCancelOrderClick = {
@@ -812,7 +805,6 @@ private fun ProductArea(
     products: List<Product>,
     productCardMinWidth: Dp,
     contentPadding: Dp,
-    productImageVerticalPadding: Dp,
     canCancelOrder: Boolean,
     isOrderLocked: Boolean,
     onCancelOrderClick: () -> Unit,
@@ -898,7 +890,6 @@ private fun ProductArea(
             items(products) { product ->
                 ProductCard(
                     product = product,
-                    imageVerticalPadding = productImageVerticalPadding,
                     enabled = !isOrderLocked,
                     onClick = {
                         onProductClick(product)
@@ -933,7 +924,6 @@ private fun CategoryChip(
 @Composable
 private fun ProductCard(
     product: Product,
-    imageVerticalPadding: Dp,
     enabled: Boolean,
     onClick: () -> Unit
 ) {
@@ -957,31 +947,49 @@ private fun ProductCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .padding(vertical = imageVerticalPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "Image")
-            }
+            /**
+             * Product name is now the main focus of the card.
+             *
+             * Product images have been removed in Version 1 to keep the
+             * Sales screen simpler and easier to maintain.
+             */
+            Text(
+                text = product.name,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                /*color = MaterialTheme.colorScheme.onSurface,*/
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            /**
+             * Category gives the cashier context when many products are shown.
+             */
+            Text(
+                text = product.category,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = product.name,
-                style = MaterialTheme.typography.titleMedium
-            )
-
+            /**
+             * Price is shown clearly at the bottom of the card.
+             */
             Text(
                 text = "Rs ${product.price}",
-                style = MaterialTheme.typography.bodyMedium
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
