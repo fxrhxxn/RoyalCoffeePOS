@@ -72,6 +72,7 @@ import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.draw.alpha
 
 @Composable
 fun SalesScreen(
@@ -162,7 +163,9 @@ fun SalesScreen(
     /**
      * Stores the payment method after payment is confirmed.
      *
-     * When this is not null, the ticket button changes from Charge to Generate Receipt.
+     * When this is not null:
+     * - The ticket button changes from Charge to View Receipt.
+     * - The order becomes locked so products and quantities cannot be changed.
      */
     var confirmedPaymentMethod by remember {
         mutableStateOf<PaymentMethod?>(null)
@@ -234,6 +237,13 @@ fun SalesScreen(
     val discount = 0
     val tax = (subtotal * 0.15).toInt()
     val total = subtotal - discount + tax
+
+    /**
+     * Once payment is confirmed, the order should not be edited anymore.
+     *
+     * This prevents the cashier from accidentally changing a paid order.
+     */
+    val isOrderLocked = confirmedPaymentMethod != null
 
     /**
      * Adds a product to the cart.
@@ -415,6 +425,7 @@ fun SalesScreen(
         showPaymentDialog = false
 
         showReceiptPreviewDialog = false
+        showCancelOrderDialog = false
         currentReceipt = null
     }
 
@@ -487,6 +498,7 @@ fun SalesScreen(
                     contentPadding = productAreaPadding,
                     productImageVerticalPadding = productImageVerticalPadding,
                     canCancelOrder = hasActiveOrder(),
+                    isOrderLocked = isOrderLocked,
                     onCancelOrderClick = {
                         showCancelOrderDialog = true
                     },
@@ -511,6 +523,7 @@ fun SalesScreen(
                     amountPaid = amountPaid,
                     changeGiven = changeGiven,
                     contentPadding = ticketPanelPadding,
+                    isOrderLocked = isOrderLocked,
                     onIncreaseQuantity = { product ->
                         increaseQuantity(product)
                     },
@@ -801,6 +814,7 @@ private fun ProductArea(
     contentPadding: Dp,
     productImageVerticalPadding: Dp,
     canCancelOrder: Boolean,
+    isOrderLocked: Boolean,
     onCancelOrderClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onProductClick: (Product) -> Unit,
@@ -885,6 +899,7 @@ private fun ProductArea(
                 ProductCard(
                     product = product,
                     imageVerticalPadding = productImageVerticalPadding,
+                    enabled = !isOrderLocked,
                     onClick = {
                         onProductClick(product)
                     }
@@ -919,12 +934,21 @@ private fun CategoryChip(
 private fun ProductCard(
     product: Product,
     imageVerticalPadding: Dp,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
+            /**
+             * Visually dims product cards after payment confirmation.
+             *
+             * This shows the cashier that the paid order can no longer be edited.
+             */
+            .alpha(if (enabled) 1f else 0.45f)
+            .clickable(
+                enabled = enabled
+            ) {
                 onClick()
             },
         shape = RoundedCornerShape(16.dp),
@@ -974,6 +998,7 @@ private fun TicketPanel(
     amountPaid: Int?,
     changeGiven: Int?,
     contentPadding: Dp,
+    isOrderLocked: Boolean,
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
     onClearTicketClick: () -> Unit,
@@ -1004,6 +1029,7 @@ private fun TicketPanel(
                 cartItems.forEach { item ->
                     CartItemRow(
                         cartItem = item,
+                        isOrderLocked = isOrderLocked,
                         onIncreaseQuantity = {
                             onIncreaseQuantity(item.product)
                         },
@@ -1170,6 +1196,7 @@ private fun EmptyTicketCard() {
 @Composable
 private fun CartItemRow(
     cartItem: CartItem,
+    isOrderLocked: Boolean,
     onIncreaseQuantity: () -> Unit,
     onDecreaseQuantity: () -> Unit
 ) {
@@ -1239,11 +1266,13 @@ private fun CartItemRow(
                 ) {
                     QuantityButton(
                         text = "-",
+                        enabled = !isOrderLocked,
                         onClick = onDecreaseQuantity
                     )
 
                     QuantityButton(
                         text = "+",
+                        enabled = !isOrderLocked,
                         onClick = onIncreaseQuantity
                     )
                 }
@@ -1255,10 +1284,12 @@ private fun CartItemRow(
 @Composable
 private fun QuantityButton(
     text: String,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     TextButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.size(36.dp),
         shape = RoundedCornerShape(10.dp)
     ) {
