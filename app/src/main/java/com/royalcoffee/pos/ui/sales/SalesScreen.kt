@@ -76,6 +76,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontFamily
+import com.royalcoffee.pos.model.AppScreen
+import com.royalcoffee.pos.ui.components.PlaceholderScreen
 
 @Composable
 fun SalesScreen(
@@ -117,6 +119,15 @@ fun SalesScreen(
      */
     val receiptPrinter = remember {
         FakeReceiptPrinter()
+    }
+
+    /**
+     * Tracks the currently selected main screen.
+     *
+     * After login, the app starts on the Sales screen by default.
+     */
+    var currentScreen by remember {
+        mutableStateOf(AppScreen.SALES)
     }
 
     /**
@@ -482,71 +493,109 @@ fun SalesScreen(
             ) {
                 SideNavigation(
                     userRole = userRole,
+                    currentScreen = currentScreen,
+                    onScreenSelected = { selectedScreen ->
+                        currentScreen = selectedScreen
+                    },
                     onLogout = onLogout,
                     logoSize = navLogoSize,
                     modifier = Modifier.width(sideNavWidth)
                 )
 
-                ProductArea(
-                    categories = categories,
-                    selectedCategory = selectedCategory,
-                    products = filteredProducts,
-                    productCardMinWidth = productCardMinWidth,
-                    contentPadding = productAreaPadding,
-                    canCancelOrder = hasActiveOrder(),
-                    isOrderLocked = isOrderLocked,
-                    onCancelOrderClick = {
-                        showCancelOrderDialog = true
-                    },
-                    onCategoryClick = { category ->
-                        selectedCategory = category
-                    },
-                    onProductClick = { product ->
-                        addProductToCart(product)
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
+                when (currentScreen) {
+                    AppScreen.SALES -> {
+                        ProductArea(
+                            categories = categories,
+                            selectedCategory = selectedCategory,
+                            products = filteredProducts,
+                            productCardMinWidth = productCardMinWidth,
+                            contentPadding = productAreaPadding,
+                            canCancelOrder = hasActiveOrder(),
+                            isOrderLocked = isOrderLocked,
+                            onCancelOrderClick = {
+                                showCancelOrderDialog = true
+                            },
+                            onCategoryClick = { category ->
+                                selectedCategory = category
+                            },
+                            onProductClick = { product ->
+                                addProductToCart(product)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
 
-                TicketPanel(
-                    cartItems = cartItems,
-                    subtotal = subtotal,
-                    discount = discount,
-                    tax = tax,
-                    total = total,
-                    confirmedPaymentMethod = confirmedPaymentMethod,
-                    amountPaid = amountPaid,
-                    changeGiven = changeGiven,
-                    contentPadding = ticketPanelPadding,
-                    isOrderLocked = isOrderLocked,
-                    onIncreaseQuantity = { product ->
-                        increaseQuantity(product)
-                    },
-                    onDecreaseQuantity = { product ->
-                        decreaseQuantity(product)
-                    },
-                    onClearTicketClick = {
-                        clearTicketBeforePayment()
-                    },
-                    onChargeClick = {
-                        showPaymentDialog = true
-                    },
-                    onViewReceiptClick = {
-                        val paymentMethod = confirmedPaymentMethod
+                        TicketPanel(
+                            cartItems = cartItems,
+                            subtotal = subtotal,
+                            discount = discount,
+                            tax = tax,
+                            total = total,
+                            confirmedPaymentMethod = confirmedPaymentMethod,
+                            amountPaid = amountPaid,
+                            changeGiven = changeGiven,
+                            contentPadding = ticketPanelPadding,
+                            isOrderLocked = isOrderLocked,
+                            onIncreaseQuantity = { product ->
+                                increaseQuantity(product)
+                            },
+                            onDecreaseQuantity = { product ->
+                                decreaseQuantity(product)
+                            },
+                            onClearTicketClick = {
+                                clearTicketBeforePayment()
+                            },
+                            onChargeClick = {
+                                showPaymentDialog = true
+                            },
+                            onViewReceiptClick = {
+                                val paymentMethod = confirmedPaymentMethod
 
-                        if (paymentMethod != null) {
-                            prepareReceiptPreview(
-                                paymentMethod = paymentMethod,
-                                paid = amountPaid,
-                                change = changeGiven
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .width(ticketPanelWidth)
-                        .fillMaxHeight()
-                )
+                                if (paymentMethod != null) {
+                                    prepareReceiptPreview(
+                                        paymentMethod = paymentMethod,
+                                        paid = amountPaid,
+                                        change = changeGiven
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .width(ticketPanelWidth)
+                                .fillMaxHeight()
+                        )
+                    }
+
+                    AppScreen.DASHBOARD -> {
+                        PlaceholderScreen(
+                            title = "Dashboard",
+                            description = "Sales analytics and business performance summaries will be added here.",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+
+                    AppScreen.INVENTORY -> {
+                        PlaceholderScreen(
+                            title = "Inventory",
+                            description = "Product, stock, and inventory management features will be added here.",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+
+                    AppScreen.SETTINGS -> {
+                        PlaceholderScreen(
+                            title = "Settings",
+                            description = "Language and receipt footer settings will be added here.",
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+                }
             }
         }
     }
@@ -716,6 +765,8 @@ fun SalesScreen(
 @Composable
 private fun SideNavigation(
     userRole: UserRole,
+    currentScreen: AppScreen,
+    onScreenSelected: (AppScreen) -> Unit,
     onLogout: () -> Unit,
     logoSize: Dp,
     modifier: Modifier = Modifier
@@ -751,14 +802,39 @@ private fun SideNavigation(
                 )
             }
 
-            NavigationItem(text = "Sales")
+            NavigationItem(
+                text = "Sales",
+                isSelected = currentScreen == AppScreen.SALES,
+                onClick = {
+                    onScreenSelected(AppScreen.SALES)
+                }
+            )
 
             if (userRole == UserRole.ADMIN) {
-                NavigationItem(text = "Dashboard")
-                NavigationItem(text = "Inventory")
+                NavigationItem(
+                    text = "Dashboard",
+                    isSelected = currentScreen == AppScreen.DASHBOARD,
+                    onClick = {
+                        onScreenSelected(AppScreen.DASHBOARD)
+                    }
+                )
+
+                NavigationItem(
+                    text = "Inventory",
+                    isSelected = currentScreen == AppScreen.INVENTORY,
+                    onClick = {
+                        onScreenSelected(AppScreen.INVENTORY)
+                    }
+                )
             }
 
-            NavigationItem(text = "Settings")
+            NavigationItem(
+                text = "Settings",
+                isSelected = currentScreen == AppScreen.SETTINGS,
+                onClick = {
+                    onScreenSelected(AppScreen.SETTINGS)
+                }
+            )
         }
 
         OutlinedButton(
@@ -780,13 +856,38 @@ private fun SideNavigation(
 }
 
 @Composable
-private fun NavigationItem(text: String) {
+private fun NavigationItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    /**
+     * Selected item gets a gold background.
+     *
+     * This makes it clear which main screen the user is currently viewing.
+     */
+    val backgroundColor = if (isSelected) {
+        RoyalGold
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    val textColor = if (isSelected) {
+        RoyalGreenDark
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = backgroundColor
         ),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick()
+            }
     ) {
         Box(
             modifier = Modifier
@@ -797,8 +898,10 @@ private fun NavigationItem(text: String) {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = CinzelFontFamily,
-                )
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
