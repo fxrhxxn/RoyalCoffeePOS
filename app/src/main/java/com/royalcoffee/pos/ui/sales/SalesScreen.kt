@@ -78,6 +78,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontFamily
 import com.royalcoffee.pos.model.AppScreen
 import com.royalcoffee.pos.ui.components.PlaceholderScreen
+import com.royalcoffee.pos.ui.settings.SettingsScreen
 
 @Composable
 fun SalesScreen(
@@ -129,6 +130,26 @@ fun SalesScreen(
     var currentScreen by remember {
         mutableStateOf(AppScreen.SALES)
     }
+
+    /**
+     * Temporary selected language setting.
+     *
+     * Later, this will be saved in the Settings table.
+     */
+    var selectedLanguage by remember {
+        mutableStateOf("English")
+    }
+
+    /**
+     * Temporary receipt footer setting.
+     *
+     * Admin users can edit this from the Settings screen.
+     * Later, this will be saved in the Settings table.
+     */
+    var receiptFooterText by remember {
+        mutableStateOf("Thank you for your purchase.")
+    }
+
 
     /**
      * Currently selected category in the POS menu.
@@ -414,7 +435,7 @@ fun SalesScreen(
                 paymentMethod = paymentMethod,
                 amountPaid = paid,
                 changeGiven = change,
-                footerMessage = "Thank you for your purchase."
+                footerMessage = receiptFooterText
             )
         }
 
@@ -587,9 +608,16 @@ fun SalesScreen(
                     }
 
                     AppScreen.SETTINGS -> {
-                        PlaceholderScreen(
-                            title = "Settings",
-                            description = "Language and receipt footer settings will be added here.",
+                        SettingsScreen(
+                            userRole = userRole,
+                            selectedLanguage = selectedLanguage,
+                            receiptFooterText = receiptFooterText,
+                            onLanguageChange = { language ->
+                                selectedLanguage = language
+                            },
+                            onReceiptFooterChange = { footerText ->
+                                receiptFooterText = footerText
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
