@@ -49,7 +49,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 
 @Composable
 fun LoginScreen(
@@ -252,7 +254,7 @@ private fun LoginBrandPanel(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Royal Coffee POS",
+                text = "Royal Coffee",
                 style = MaterialTheme.typography.headlineLarge,
                 color = RoyalGold,
                 textAlign = TextAlign.Center
@@ -291,6 +293,8 @@ private fun LoginFormPanel(
     ) {
         Text(
             text = "Welcome",
+            fontFamily = CinzelFontFamily,
+            fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center

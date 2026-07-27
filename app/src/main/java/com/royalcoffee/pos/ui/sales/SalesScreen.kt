@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.materialIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,9 +71,11 @@ import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
 import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
+import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.font.FontFamily
 
 @Composable
 fun SalesScreen(
@@ -743,6 +746,7 @@ private fun SideNavigation(
                 Text(
                     text = "RC",
                     color = RoyalGold,
+                    fontFamily = CinzelFontFamily,
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
@@ -792,8 +796,9 @@ private fun NavigationItem(text: String) {
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodySmall
-            )
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = CinzelFontFamily,
+                )
         }
     }
 }
@@ -826,8 +831,11 @@ private fun ProductArea(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Sales",
-                    style = MaterialTheme.typography.headlineMedium,
+                    text = "sales",
+                    fontFamily = CinzelFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.displayLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -861,7 +869,9 @@ private fun ProductArea(
          * Categories scroll horizontally when there is not enough space.
          */
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(
+                space = 12.dp,
+                alignment = Alignment.CenterHorizontally),
             modifier = Modifier.fillMaxWidth()
         ) {
             lazyRowItems(categories) { category ->
@@ -961,6 +971,7 @@ private fun ProductCard(
             Text(
                 text = product.name,
                 textAlign = TextAlign.Center,
+                fontFamily = CinzelFontFamily,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 /*color = MaterialTheme.colorScheme.onSurface,*/
@@ -987,6 +998,7 @@ private fun ProductCard(
             Text(
                 text = "Rs ${product.price}",
                 textAlign = TextAlign.Center,
+                fontFamily = CinzelFontFamily,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
