@@ -79,6 +79,8 @@ import androidx.compose.ui.text.font.FontFamily
 import com.royalcoffee.pos.model.AppScreen
 import com.royalcoffee.pos.ui.components.PlaceholderScreen
 import com.royalcoffee.pos.ui.settings.SettingsScreen
+import com.royalcoffee.pos.model.InventoryProduct
+import com.royalcoffee.pos.ui.inventory.InventoryScreen
 
 @Composable
 fun SalesScreen(
@@ -100,6 +102,15 @@ fun SalesScreen(
      */
     val products = remember {
         sampleProducts()
+    }
+
+    /**
+     * Temporary inventory list.
+     *
+     * Later, this will come from the Products/Inventory tables in Room database.
+     */
+    val inventoryProducts = remember {
+        sampleInventoryProducts()
     }
 
     /**
@@ -598,9 +609,8 @@ fun SalesScreen(
                     }
 
                     AppScreen.INVENTORY -> {
-                        PlaceholderScreen(
-                            title = "Inventory",
-                            description = "Product, stock, and inventory management features will be added here.",
+                        InventoryScreen(
+                            inventoryProducts = inventoryProducts,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -1654,6 +1664,74 @@ private fun sampleProducts(): List<Product> {
         )
     )
 }
+
+
+/**
+ * Temporary hardcoded inventory data for development.
+ *
+ * Later, this will be replaced with real data from the Room database.
+ */
+private fun sampleInventoryProducts(): List<InventoryProduct> {
+    return listOf(
+        InventoryProduct(
+            productId = 1,
+            name = "Latte",
+            category = "Coffee",
+            unitPrice = 120,
+            stockQuantity = 28,
+            reorderLevel = 10
+        ),
+        InventoryProduct(
+            productId = 2,
+            name = "Espresso",
+            category = "Coffee",
+            unitPrice = 95,
+            stockQuantity = 35,
+            reorderLevel = 12
+        ),
+        InventoryProduct(
+            productId = 3,
+            name = "Croissant",
+            category = "Pastries",
+            unitPrice = 80,
+            stockQuantity = 5,
+            reorderLevel = 8
+        ),
+        InventoryProduct(
+            productId = 4,
+            name = "Mocha",
+            category = "Coffee",
+            unitPrice = 135,
+            stockQuantity = 18,
+            reorderLevel = 10
+        ),
+        InventoryProduct(
+            productId = 5,
+            name = "Iced Coffee",
+            category = "Cold",
+            unitPrice = 140,
+            stockQuantity = 22,
+            reorderLevel = 10
+        ),
+        InventoryProduct(
+            productId = 6,
+            name = "Muffin",
+            category = "Pastries",
+            unitPrice = 75,
+            stockQuantity = 3,
+            reorderLevel = 6
+        ),
+        InventoryProduct(
+            productId = 7,
+            name = "Hot Chocolate",
+            category = "Hot",
+            unitPrice = 110,
+            stockQuantity = 16,
+            reorderLevel = 8
+        )
+    )
+}
+
 
 /**
  * Generates a temporary receipt number.
