@@ -77,10 +77,13 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontFamily
 import com.royalcoffee.pos.model.AppScreen
-import com.royalcoffee.pos.ui.components.PlaceholderScreen
 import com.royalcoffee.pos.ui.settings.SettingsScreen
 import com.royalcoffee.pos.model.InventoryProduct
 import com.royalcoffee.pos.ui.inventory.InventoryScreen
+import com.royalcoffee.pos.ui.dashboard.DashboardScreen
+import com.royalcoffee.pos.ui.dashboard.DashboardSummary
+import com.royalcoffee.pos.ui.dashboard.PaymentBreakdownItem
+import com.royalcoffee.pos.ui.dashboard.TopSellingProduct
 
 @Composable
 fun SalesScreen(
@@ -111,6 +114,39 @@ fun SalesScreen(
      */
     val inventoryProducts = remember {
         sampleInventoryProducts()
+    }
+
+    /**
+     * Temporary dashboard summary.
+     *
+     * Later, these values will be calculated from Orders, Order Items,
+     * Payments, and Inventory tables.
+     */
+    val dashboardSummary = remember {
+        DashboardSummary(
+            todaySales = 2850,
+            todayOrders = 18,
+            averageOrderValue = 158,
+            lowStockCount = inventoryProducts.count { it.isLowStock }
+        )
+    }
+
+    /**
+     * Temporary top-selling products for the dashboard.
+     *
+     * Later, this will be calculated from receipt/order details.
+     */
+    val topSellingProducts = remember {
+        sampleTopSellingProducts()
+    }
+
+    /**
+     * Temporary payment breakdown for the dashboard.
+     *
+     * Later, this will be calculated from saved payment records.
+     */
+    val paymentBreakdown = remember {
+        samplePaymentBreakdown()
     }
 
     /**
@@ -599,9 +635,10 @@ fun SalesScreen(
                     }
 
                     AppScreen.DASHBOARD -> {
-                        PlaceholderScreen(
-                            title = "Dashboard",
-                            description = "Sales analytics and business performance summaries will be added here.",
+                        DashboardScreen(
+                            dashboardSummary = dashboardSummary,
+                            topSellingProducts = topSellingProducts,
+                            paymentBreakdown = paymentBreakdown,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -1728,6 +1765,56 @@ private fun sampleInventoryProducts(): List<InventoryProduct> {
             unitPrice = 110,
             stockQuantity = 16,
             reorderLevel = 8
+        )
+    )
+}
+
+/**
+ * Temporary top-selling product data for dashboard development.
+ *
+ * Later, this will be calculated from saved receipt/order details.
+ */
+private fun sampleTopSellingProducts(): List<TopSellingProduct> {
+    return listOf(
+        TopSellingProduct(
+            productName = "Latte",
+            quantitySold = 8,
+            revenue = 960
+        ),
+        TopSellingProduct(
+            productName = "Iced Coffee",
+            quantitySold = 6,
+            revenue = 840
+        ),
+        TopSellingProduct(
+            productName = "Croissant",
+            quantitySold = 5,
+            revenue = 400
+        )
+    )
+}
+
+/**
+ * Temporary payment breakdown data for dashboard development.
+ *
+ * Later, this will be calculated from saved payment records.
+ */
+private fun samplePaymentBreakdown(): List<PaymentBreakdownItem> {
+    return listOf(
+        PaymentBreakdownItem(
+            paymentMethod = "Cash",
+            orderCount = 7,
+            amount = 1120
+        ),
+        PaymentBreakdownItem(
+            paymentMethod = "Card",
+            orderCount = 6,
+            amount = 980
+        ),
+        PaymentBreakdownItem(
+            paymentMethod = "Mobile Payment",
+            orderCount = 5,
+            amount = 750
         )
     )
 }
