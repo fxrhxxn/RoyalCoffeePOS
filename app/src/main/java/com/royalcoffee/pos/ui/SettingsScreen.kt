@@ -258,7 +258,7 @@ private fun BaristaAccessInfoCard() {
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Barista accounts can change language only. Receipt footer settings are available to Admin users.",
+                text = "You are limited to the available settings. Other Settings are reserved for Admin Users",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )

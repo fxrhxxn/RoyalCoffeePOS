@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.materialIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,7 +74,6 @@ import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.text.font.FontFamily
 import com.royalcoffee.pos.model.AppScreen
 import com.royalcoffee.pos.ui.settings.SettingsScreen
 import com.royalcoffee.pos.model.InventoryProduct
@@ -84,6 +82,7 @@ import com.royalcoffee.pos.ui.dashboard.DashboardScreen
 import com.royalcoffee.pos.ui.dashboard.DashboardSummary
 import com.royalcoffee.pos.ui.dashboard.PaymentBreakdownItem
 import com.royalcoffee.pos.ui.dashboard.TopSellingProduct
+import com.royalcoffee.pos.ui.dashboard.LowStockDashboardItem
 
 @Composable
 fun SalesScreen(
@@ -117,6 +116,25 @@ fun SalesScreen(
     }
 
     /**
+     * Temporary low-stock dashboard items.
+     *
+     * Later, this will be calculated directly from the Inventory table.
+     */
+    val lowStockDashboardItems = remember {
+        inventoryProducts
+            .filter { inventoryProduct ->
+                inventoryProduct.isLowStock
+            }
+            .map { inventoryProduct ->
+                LowStockDashboardItem(
+                    productName = inventoryProduct.name,
+                    stockQuantity = inventoryProduct.stockQuantity,
+                    reorderLevel = inventoryProduct.reorderLevel
+                )
+            }
+    }
+
+    /**
      * Temporary dashboard summary.
      *
      * Later, these values will be calculated from Orders, Order Items,
@@ -127,7 +145,7 @@ fun SalesScreen(
             todaySales = 2850,
             todayOrders = 18,
             averageOrderValue = 158,
-            lowStockCount = inventoryProducts.count { it.isLowStock }
+            lowStockCount = lowStockDashboardItems.size
         )
     }
 
@@ -326,6 +344,7 @@ fun SalesScreen(
      * This prevents the cashier from accidentally changing a paid order.
      */
     val isOrderLocked = confirmedPaymentMethod != null
+
 
     /**
      * Adds a product to the cart.
@@ -639,6 +658,7 @@ fun SalesScreen(
                             dashboardSummary = dashboardSummary,
                             topSellingProducts = topSellingProducts,
                             paymentBreakdown = paymentBreakdown,
+                            lowStockItems = lowStockDashboardItems,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
