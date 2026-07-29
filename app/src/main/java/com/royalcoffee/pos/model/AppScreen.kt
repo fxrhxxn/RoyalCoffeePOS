@@ -25,6 +25,11 @@ enum class AppScreen(
     INVENTORY("Inventory"),
 
     /**
+     * Admin receipt history screen for past transactions.
+     */
+   RECEIPTS("Receipts"),
+
+    /**
      * Settings screen for language, receipt footer, and future app settings.
      */
     SETTINGS("Settings")

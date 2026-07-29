@@ -4,6 +4,7 @@ import com.royalcoffee.pos.data.local.dao.ReceiptDao
 import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.model.Receipt
+import kotlinx.coroutines.flow.Flow
 
 /**
  * ReceiptRepository acts as a clean layer between the UI and ReceiptDao.
@@ -16,6 +17,14 @@ import com.royalcoffee.pos.model.Receipt
 class ReceiptRepository(
     private val receiptDao: ReceiptDao
 ) {
+    /**
+     * Returns all saved receipt headers.
+     *
+     * This will be used by the Receipt History screen.
+     */
+    val allReceiptHeaders: Flow<List<ReceiptHeaderEntity>> =
+        receiptDao.getAllReceiptHeaders()
+
     /**
      * Saves a complete receipt to the local Room database.
      *

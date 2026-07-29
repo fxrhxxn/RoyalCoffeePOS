@@ -91,6 +91,9 @@ import com.royalcoffee.pos.ui.product.ProductViewModelFactory
 import androidx.compose.runtime.rememberCoroutineScope
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
 import kotlinx.coroutines.launch
+import com.royalcoffee.pos.ui.receipt.ReceiptHistoryScreen
+import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModel
+import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModelFactory
 
 
 @Composable
@@ -141,6 +144,22 @@ fun SalesScreen(
             receiptDao = database.receiptDao()
         )
     }
+
+    /**
+     * Create the ReceiptHistoryViewModel.
+     *
+     * This ViewModel exposes saved receipt headers to the Receipt History screen.
+     */
+    val receiptHistoryViewModel: ReceiptHistoryViewModel = viewModel(
+        factory = ReceiptHistoryViewModelFactory(
+            receiptRepository = receiptRepository
+        )
+    )
+
+    /**
+     * Saved receipts displayed in the Receipt History screen.
+     */
+    val receiptHistoryItems by receiptHistoryViewModel.receiptHistory.collectAsStateWithLifecycle()
 
     /**
      * Coroutine scope used for database operations from this Composable.
@@ -738,6 +757,15 @@ fun SalesScreen(
                         )
                     }
 
+                    AppScreen.RECEIPTS -> {
+                        ReceiptHistoryScreen(
+                            receipts = receiptHistoryItems,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+
                     AppScreen.SETTINGS -> {
                         SettingsScreen(
                             userRole = userRole,
@@ -1016,6 +1044,14 @@ private fun SideNavigation(
                     }
                 )
             }
+
+            NavigationItem(
+                text = "Receipts",
+                isSelected = currentScreen == AppScreen.RECEIPTS,
+                onClick = {
+                    onScreenSelected(AppScreen.RECEIPTS)
+                }
+            )
 
             NavigationItem(
                 text = "Settings",
