@@ -76,13 +76,19 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.alpha
 import com.royalcoffee.pos.model.AppScreen
 import com.royalcoffee.pos.ui.settings.SettingsScreen
-import com.royalcoffee.pos.model.InventoryProduct
 import com.royalcoffee.pos.ui.inventory.InventoryScreen
 import com.royalcoffee.pos.ui.dashboard.DashboardScreen
 import com.royalcoffee.pos.ui.dashboard.DashboardSummary
 import com.royalcoffee.pos.ui.dashboard.PaymentBreakdownItem
 import com.royalcoffee.pos.ui.dashboard.TopSellingProduct
 import com.royalcoffee.pos.ui.dashboard.LowStockDashboardItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
+import com.royalcoffee.pos.data.local.repository.ProductRepository
+import com.royalcoffee.pos.ui.product.ProductViewModel
+import com.royalcoffee.pos.ui.product.ProductViewModelFactory
+
 
 @Composable
 fun SalesScreen(
@@ -102,25 +108,58 @@ fun SalesScreen(
      *
      * Later, this should come from the Products table in Room database.
      */
-    val products = remember {
-        sampleProducts()
+    /**
+     * Create the Room database instance.
+     *
+     * This gives the app access to the local SQLite database through Room.
+     */
+    val database = remember(context) {
+        RoyalCoffeeDatabaseProvider.getDatabase(context)
     }
 
     /**
-     * Temporary inventory list.
+     * Create the ProductRepository.
      *
-     * Later, this will come from the Products/Inventory tables in Room database.
+     * The repository hides the DAO/database details from the UI layer.
      */
-    val inventoryProducts = remember {
-        sampleInventoryProducts()
+    val productRepository = remember(database) {
+        ProductRepository(
+            productDao = database.productDao()
+        )
     }
 
     /**
-     * Temporary low-stock dashboard items.
+     * Create the ProductViewModel.
      *
-     * Later, this will be calculated directly from the Inventory table.
+     * This ViewModel exposes Room product data to the Sales, Inventory,
+     * and Dashboard screens.
      */
-    val lowStockDashboardItems = remember {
+    val productViewModel: ProductViewModel = viewModel(
+        factory = ProductViewModelFactory(
+            productRepository = productRepository
+        )
+    )
+
+    /**
+     * Products displayed on the Sales screen.
+     *
+     * These now come from the Room database.
+     */
+    val products by productViewModel.products.collectAsStateWithLifecycle()
+
+    /**
+     * Products displayed on the Inventory screen.
+     *
+     * These now come from the Room database.
+     */
+    val inventoryProducts by productViewModel.inventoryProducts.collectAsStateWithLifecycle()
+
+    /**
+     * Low-stock products used by the Dashboard screen.
+     *
+     * These are calculated from the database-backed inventory products.
+     */
+    val lowStockDashboardItems = remember(inventoryProducts) {
         inventoryProducts
             .filter { inventoryProduct ->
                 inventoryProduct.isLowStock
@@ -137,10 +176,10 @@ fun SalesScreen(
     /**
      * Temporary dashboard summary.
      *
-     * Later, these values will be calculated from Orders, Order Items,
-     * Payments, and Inventory tables.
+     * Sales/order figures are still sample values for now.
+     * Low-stock count now comes from Room-backed inventory data.
      */
-    val dashboardSummary = remember {
+    val dashboardSummary = remember(lowStockDashboardItems.size) {
         DashboardSummary(
             todaySales = 2850,
             todayOrders = 18,
@@ -224,12 +263,14 @@ fun SalesScreen(
     }
 
     /**
-     * Builds the category list from product data.
+     * Builds the category list from Room-backed product data.
+     *
+     * The products list starts empty, then updates after Room loads/seeds data.
+     * That is why products is used as the remember key.
      */
-    val categories = remember {
+    val categories = remember(products) {
         listOf("All") + products.map { it.category }.distinct()
     }
-
     /**
      * Filters products based on selected category.
      */
@@ -1668,125 +1709,6 @@ private fun PaymentSummaryCard(
             }
         }
     }
-}
-
-/**
- * Temporary hardcoded products for development.
- *
- * Later, these products will come from the local Room database.
- */
-private fun sampleProducts(): List<Product> {
-    return listOf(
-        Product(
-            id = 1,
-            name = "Latte",
-            category = "Coffee",
-            price = 120
-        ),
-        Product(
-            id = 2,
-            name = "Espresso",
-            category = "Coffee",
-            price = 95
-        ),
-        Product(
-            id = 3,
-            name = "Croissant",
-            category = "Pastries",
-            price = 80
-        ),
-        Product(
-            id = 4,
-            name = "Mocha",
-            category = "Coffee",
-            price = 135
-        ),
-        Product(
-            id = 5,
-            name = "Iced Coffee",
-            category = "Cold",
-            price = 140
-        ),
-        Product(
-            id = 6,
-            name = "Muffin",
-            category = "Pastries",
-            price = 75
-        ),
-        Product(
-            id = 7,
-            name = "Hot Chocolate",
-            category = "Hot",
-            price = 110
-        )
-    )
-}
-
-
-/**
- * Temporary hardcoded inventory data for development.
- *
- * Later, this will be replaced with real data from the Room database.
- */
-private fun sampleInventoryProducts(): List<InventoryProduct> {
-    return listOf(
-        InventoryProduct(
-            productId = 1,
-            name = "Latte",
-            category = "Coffee",
-            unitPrice = 120,
-            stockQuantity = 28,
-            reorderLevel = 10
-        ),
-        InventoryProduct(
-            productId = 2,
-            name = "Espresso",
-            category = "Coffee",
-            unitPrice = 95,
-            stockQuantity = 35,
-            reorderLevel = 12
-        ),
-        InventoryProduct(
-            productId = 3,
-            name = "Croissant",
-            category = "Pastries",
-            unitPrice = 80,
-            stockQuantity = 5,
-            reorderLevel = 8
-        ),
-        InventoryProduct(
-            productId = 4,
-            name = "Mocha",
-            category = "Coffee",
-            unitPrice = 135,
-            stockQuantity = 18,
-            reorderLevel = 10
-        ),
-        InventoryProduct(
-            productId = 5,
-            name = "Iced Coffee",
-            category = "Cold",
-            unitPrice = 140,
-            stockQuantity = 22,
-            reorderLevel = 10
-        ),
-        InventoryProduct(
-            productId = 6,
-            name = "Muffin",
-            category = "Pastries",
-            unitPrice = 75,
-            stockQuantity = 3,
-            reorderLevel = 6
-        ),
-        InventoryProduct(
-            productId = 7,
-            name = "Hot Chocolate",
-            category = "Hot",
-            unitPrice = 110,
-            stockQuantity = 16,
-            reorderLevel = 8
-        )
-    )
 }
 
 /**

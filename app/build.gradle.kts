@@ -72,6 +72,14 @@ dependencies {
      */
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    /**
+     * ViewModel and lifecycle support for Compose screens.
+     *
+     * These allow Compose screens to safely observe database-backed state.
+     */
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
@@ -83,4 +91,6 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+
 }
