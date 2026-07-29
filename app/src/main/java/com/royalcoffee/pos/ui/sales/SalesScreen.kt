@@ -88,6 +88,9 @@ import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
 import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.ui.product.ProductViewModel
 import com.royalcoffee.pos.ui.product.ProductViewModelFactory
+import androidx.compose.runtime.rememberCoroutineScope
+import com.royalcoffee.pos.data.local.repository.ReceiptRepository
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -127,6 +130,26 @@ fun SalesScreen(
             productDao = database.productDao()
         )
     }
+
+    /**
+     * Create the ReceiptRepository.
+     *
+     * This repository will save completed receipts to the local Room database.
+     */
+    val receiptRepository = remember(database) {
+        ReceiptRepository(
+            receiptDao = database.receiptDao()
+        )
+    }
+
+    /**
+     * Coroutine scope used for database operations from this Composable.
+     *
+     * Saving a receipt is a suspend operation, so it must be called inside
+     * a coroutine.
+     */
+    val coroutineScope = rememberCoroutineScope()
+
 
     /**
      * Create the ProductViewModel.
@@ -871,11 +894,41 @@ fun SalesScreen(
             },
             onNextOrder = {
                 /**
-                 * Receipt sequence increases only when the order is finalized.
+                 * Save the completed receipt before clearing the current order.
+                 *
+                 * This makes the receipt permanent in the local Room database.
                  */
-                nextReceiptSequenceNumber += 1
-                clearCurrentOrder()
+                coroutineScope.launch {
+                    try {
+                        receiptRepository.saveReceipt(receiptToPreview)
+
+                        Toast.makeText(
+                            context,
+                            "Receipt saved successfully.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        /**
+                         * Receipt sequence increases only after the receipt is saved.
+                         */
+                        nextReceiptSequenceNumber += 1
+
+                        clearCurrentOrder()
+                    } catch (exception: Exception) {
+                        /**
+                         * If saving fails, keep the receipt open and show an error.
+                         *
+                         * This prevents accidental loss of receipt data.
+                         */
+                        Toast.makeText(
+                            context,
+                            "Unable to save receipt. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             },
+
             onPrintReceipt = { receipt ->
                 /**
                  * Send the receipt to the printer service layer.
