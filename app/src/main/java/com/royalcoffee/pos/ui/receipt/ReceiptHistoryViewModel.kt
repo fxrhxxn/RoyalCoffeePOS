@@ -1,14 +1,19 @@
 package com.royalcoffee.pos.ui.receipt
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * ReceiptHistoryViewModel exposes saved receipts from Room to the UI.
@@ -35,6 +40,52 @@ class ReceiptHistoryViewModel(
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = emptyList()
             )
+
+    /**
+     * The receipt selected by the Admin.
+     */
+    var selectedReceipt by mutableStateOf<ReceiptHistoryItem?>(null)
+        private set
+
+    /**
+     * Detail rows belonging to the selected receipt.
+     */
+    var selectedReceiptDetails by mutableStateOf<List<ReceiptDetailItem>>(emptyList())
+        private set
+
+    /**
+     * Controls whether the receipt detail dialog is visible.
+     */
+    var isReceiptDetailDialogVisible by mutableStateOf(false)
+        private set
+
+    /**
+     * Called when the Admin taps a saved receipt row.
+     *
+     * This loads the receipt detail rows from Room and opens the dialog.
+     */
+    fun openReceiptDetails(receipt: ReceiptHistoryItem) {
+        selectedReceipt = receipt
+
+        viewModelScope.launch {
+            selectedReceiptDetails = receiptRepository
+                .getReceiptDetailsOnce(receipt.receiptId)
+                .map { receiptDetailEntity ->
+                    receiptDetailEntity.toReceiptDetailItem()
+                }
+
+            isReceiptDetailDialogVisible = true
+        }
+    }
+
+    /**
+     * Closes the receipt detail dialog.
+     */
+    fun closeReceiptDetails() {
+        isReceiptDetailDialogVisible = false
+        selectedReceipt = null
+        selectedReceiptDetails = emptyList()
+    }
 }
 
 /**
@@ -48,6 +99,18 @@ private fun ReceiptHeaderEntity.toReceiptHistoryItem(): ReceiptHistoryItem {
         cashierName = cashierName,
         total = total,
         paymentMethod = paymentMethod
+    )
+}
+
+/**
+ * Converts a database ReceiptDetailEntity into a UI-friendly ReceiptDetailItem.
+ */
+private fun ReceiptDetailEntity.toReceiptDetailItem(): ReceiptDetailItem {
+    return ReceiptDetailItem(
+        productName = productName,
+        quantity = quantity,
+        unitPrice = unitPrice,
+        lineTotal = lineTotal
     )
 }
 

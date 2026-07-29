@@ -68,4 +68,17 @@ class ReceiptRepository(
             receiptDetails = receiptDetails
         )
     }
+
+    /**
+     * Returns receipt detail rows for one saved receipt.
+     *
+     * Used when Admin taps a receipt from Receipt History.
+     */
+    suspend fun getReceiptDetailsOnce(
+        receiptId: Int
+    ): List<ReceiptDetailEntity> {
+        return receiptDao.getReceiptDetailsOnce(
+            receiptId = receiptId
+        )
+    }
 }

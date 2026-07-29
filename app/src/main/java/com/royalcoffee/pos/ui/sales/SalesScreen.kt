@@ -760,6 +760,15 @@ fun SalesScreen(
                     AppScreen.RECEIPTS -> {
                         ReceiptHistoryScreen(
                             receipts = receiptHistoryItems,
+                            selectedReceipt = receiptHistoryViewModel.selectedReceipt,
+                            selectedReceiptDetails = receiptHistoryViewModel.selectedReceiptDetails,
+                            isDetailDialogVisible = receiptHistoryViewModel.isReceiptDetailDialogVisible,
+                            onReceiptClick = { receipt ->
+                                receiptHistoryViewModel.openReceiptDetails(receipt)
+                            },
+                            onCloseDetailDialog = {
+                                receiptHistoryViewModel.closeReceiptDetails()
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()

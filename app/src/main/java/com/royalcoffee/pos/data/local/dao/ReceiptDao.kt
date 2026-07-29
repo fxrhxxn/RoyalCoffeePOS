@@ -92,4 +92,21 @@ interface ReceiptDao {
     fun getReceiptDetails(
         receiptId: Int
     ): Flow<List<ReceiptDetailEntity>>
+
+    /**
+     * Returns all detail rows for one receipt as a one-time list.
+     *
+     * This is useful when the Admin taps a receipt in the history screen.
+     */
+    @Query(
+        """
+        SELECT *
+        FROM receipt_details
+        WHERE receipt_id = :receiptId
+        ORDER BY receipt_detail_id ASC
+        """
+    )
+    suspend fun getReceiptDetailsOnce(
+        receiptId: Int
+    ): List<ReceiptDetailEntity>
 }
