@@ -26,7 +26,17 @@ object RoyalCoffeeDatabaseProvider {
                 context.applicationContext,
                 RoyalCoffeeDatabase::class.java,
                 "royal_coffee_pos_database"
-            ).build()
+            )
+                /**
+                 * Development-only migration shortcut.
+                 *
+                 * Because we are still building the app and changing tables,
+                 * this allows Room to recreate the database when the version changes.
+                 *
+                 * Later, for a production app, we should replace this with real migrations.
+                 */
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .build()
 
             INSTANCE = database
             database
