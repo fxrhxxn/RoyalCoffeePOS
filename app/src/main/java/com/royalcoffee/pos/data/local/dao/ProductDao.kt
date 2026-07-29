@@ -8,7 +8,7 @@ import com.royalcoffee.pos.data.local.entity.ProductEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
- * ProductDao contains database operations for the products table.
+ * ProductDao (Data Access Object) is an interface that contains database operations for the products table.
  *
  * DAO = Data Access Object.
  *
@@ -94,4 +94,13 @@ interface ProductDao {
      */
     @Query("DELETE FROM products")
     suspend fun deleteAllProducts()
+
+    /**
+     * Returns the total number of products in the products table.
+     *
+     * This is useful when we want to check whether the database
+     * already contains products before inserting default sample data.
+     */
+    @Query("SELECT COUNT(*) FROM products")
+    suspend fun getProductCount(): Int
 }
