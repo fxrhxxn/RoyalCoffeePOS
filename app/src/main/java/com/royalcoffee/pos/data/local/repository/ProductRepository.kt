@@ -79,6 +79,15 @@ class ProductRepository(
                 stockQuantity = 35,
                 reorderLevel = 12
             ),
+
+            ProductEntity(
+                productName = "Black Coffee - small",
+                category = "Coffee",
+                unitPrice = 100,
+                stockQuantity = 20,
+                reorderLevel = 5
+            ),
+
             ProductEntity(
                 productName = "Croissant",
                 category = "Pastries",
@@ -113,7 +122,34 @@ class ProductRepository(
                 unitPrice = 110,
                 stockQuantity = 16,
                 reorderLevel = 8
-            )
+            ),
+
+            ProductEntity(
+                productName = "Cappuccino",
+                category = "Coffee",
+                unitPrice = 125,
+                stockQuantity = 20,
+                reorderLevel = 8
+            ),
+
+            ProductEntity(
+                productName = "Royal Coffee Special",
+                category = "Coffee",
+                unitPrice = 125,
+                stockQuantity = 20,
+                reorderLevel = 8
+            ),
+
+            ProductEntity(
+                productName = "Eclaire",
+                category = "Pastries",
+                unitPrice = 75,
+                stockQuantity = 20,
+                reorderLevel = 8
+            ),
+
+
+
         )
     }
 }
