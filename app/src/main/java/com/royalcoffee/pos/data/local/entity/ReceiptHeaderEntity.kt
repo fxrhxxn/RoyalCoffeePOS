@@ -2,6 +2,7 @@ package com.royalcoffee.pos.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -17,7 +18,10 @@ import androidx.room.PrimaryKey
  * - payment method
  */
 @Entity(
-    tableName = "receipt_headers"
+    tableName = "receipt_headers",
+    indices = [
+        Index(value = ["receipt_number"], unique = true)
+    ]
 )
 data class ReceiptHeaderEntity(
     /**

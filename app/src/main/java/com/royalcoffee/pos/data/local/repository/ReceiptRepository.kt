@@ -5,6 +5,7 @@ import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.model.Receipt
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDateTime
 
 /**
  * ReceiptRepository acts as a clean layer between the UI and ReceiptDao.
@@ -24,6 +25,44 @@ class ReceiptRepository(
      */
     val allReceiptHeaders: Flow<List<ReceiptHeaderEntity>> =
         receiptDao.getAllReceiptHeaders()
+
+    /**
+     * Generates the next sequential receipt number for the current year.
+     *
+     * Logic:
+     * 1. Check database for the latest receipt number starting with "RC-YYYY-".
+     * 2. If found, increment its sequence.
+     * 3. If not found, start with 1.
+     *
+     * Example:
+     * Last receipt = "RC-2026-000005"
+     * Next receipt = "RC-2026-000006"
+     */
+    suspend fun generateNextReceiptNumber(): String {
+        val now = LocalDateTime.now()
+        val year = now.year
+        val yearPrefix = "RC-$year-"
+
+        val lastReceiptNumber = receiptDao.getLastReceiptNumber(yearPrefix)
+
+        val nextSequence = if (lastReceiptNumber != null) {
+            /**
+             * Extract the number after the last hyphen.
+             * RC-2026-000005 -> 000005
+             */
+            val sequencePart = lastReceiptNumber.substringAfterLast("-")
+            sequencePart.toIntOrNull()?.plus(1) ?: 1
+        } else {
+            1
+        }
+
+        /**
+         * Pad with zeros to 6 digits.
+         */
+        val paddedNumber = nextSequence.toString().padStart(6, '0')
+
+        return "$yearPrefix$paddedNumber"
+    }
 
     /**
      * Saves a complete receipt to the local Room database.

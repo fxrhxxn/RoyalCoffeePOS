@@ -43,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,12 +87,12 @@ import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
 import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.ui.product.ProductViewModel
 import com.royalcoffee.pos.ui.product.ProductViewModelFactory
-import androidx.compose.runtime.rememberCoroutineScope
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
 import kotlinx.coroutines.launch
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryScreen
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModel
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModelFactory
+import com.royalcoffee.pos.util.ReceiptPdfGenerator
 
 
 @Composable
@@ -162,12 +161,19 @@ fun SalesScreen(
     val receiptHistoryItems by receiptHistoryViewModel.receiptHistory.collectAsStateWithLifecycle()
 
     /**
-     * Coroutine scope used for database operations from this Composable.
+     * Create the SalesViewModel.
      *
-     * Saving a receipt is a suspend operation, so it must be called inside
-     * a coroutine.
+     * This ViewModel handles the logic for persistent receipt numbers.
+     *
+     * Flow:
+     * SalesScreen -> SalesViewModel -> ReceiptRepository -> ReceiptDao -> Room
      */
-    val coroutineScope = rememberCoroutineScope()
+    val salesViewModel: SalesViewModel = viewModel(
+        factory = SalesViewModelFactory(
+            receiptRepository = receiptRepository
+        )
+    )
+
 
 
     /**
@@ -373,33 +379,6 @@ fun SalesScreen(
     }
 
     /**
-     * Controls whether the receipt preview dialog is visible.
-     */
-    var showReceiptPreviewDialog by remember {
-        mutableStateOf(false)
-    }
-
-    /**
-     * Temporary in-memory receipt number sequence.
-     *
-     * Later, this should come from the database so receipt numbers do not reset
-     * when the app restarts.
-     */
-    var nextReceiptSequenceNumber by remember {
-        mutableIntStateOf(1)
-    }
-
-    /**
-     * Holds the currently generated receipt.
-     *
-     * This prevents the receipt number and timestamp from changing when
-     * the user closes and reopens the receipt preview.
-     */
-    var currentReceipt by remember {
-        mutableStateOf<Receipt?>(null)
-    }
-
-    /**
      * Controls the cancel order confirmation dialog.
      *
      * We ask for confirmation because cancelling an order removes all current
@@ -514,84 +493,36 @@ fun SalesScreen(
     fun hasActiveOrder(): Boolean {
         return cartItems.isNotEmpty() ||
                 confirmedPaymentMethod != null ||
-                currentReceipt != null
+                salesViewModel.currentReceipt != null
     }
 
     /**
-     * Creates the receipt object for the current paid order and opens the receipt preview.
+     * Creates the receipt object for the current paid order, saves it to Room,
+     * and opens the receipt preview.
      *
-     * Important:
-     * - This function receives the payment details directly.
-     * - This avoids waiting for Compose state updates before generating the receipt.
-     * - The receipt is created only once per order.
+     * Following the required logic:
+     * Payment confirmation -> Generate number -> Save to database -> Display
      */
     fun prepareReceiptPreview(
         paymentMethod: PaymentMethod,
         paid: Int?,
         change: Int?
     ) {
-        if (currentReceipt == null) {
-            val now = LocalDateTime.now()
-
-            /**
-             * Convert live cart items into finalized receipt items.
-             *
-             * ReceiptItem is separate from CartItem because a receipt should
-             * represent the final transaction exactly as it happened.
-             */
-            val receiptItems = cartItems.map { cartItem ->
-                ReceiptItem(
-                    productName = cartItem.product.name,
-                    quantity = cartItem.quantity,
-                    unitPrice = cartItem.product.price
-                )
-            }
-
-            currentReceipt = Receipt(
-                receiptNumber = generateReceiptNumber(
-                    sequenceNumber = nextReceiptSequenceNumber,
-                    year = now.year
-                ),
-                receiptDateTime = formatReceiptDateTime(now),
-
-                /**
-                 * Company information shown on the receipt.
-                 *
-                 * Later, these values will come from the Company table.
-                 */
-                storeName = "Royal Coffee",
-                storeAddressLines = listOf(
-                    "Phoenix",
-                    "Mauritius"
-                ),
-                storePhone = "+230 0000 0000",
-
-                /**
-                 * Temporary cashier name.
-                 *
-                 * Later, this should come from the logged-in user record.
-                 */
-                cashierName = when (userRole) {
-                    UserRole.ADMIN -> "Admin"
-                    UserRole.BARISTA -> "Barista"
-                },
-
-                items = receiptItems,
-                subtotal = subtotal,
-                discount = discount,
-                tax = tax,
-                total = total,
-                paymentMethod = paymentMethod,
-                amountPaid = paid,
-                changeGiven = change,
-                footerMessage = receiptFooterText
-            )
-        }
-
-        /**
-         * Open the receipt preview immediately.
-         */
-        showReceiptPreviewDialog = true
+        salesViewModel.processCompletedOrder(
+            cartItems = cartItems,
+            subtotal = subtotal,
+            discount = discount,
+            tax = tax,
+            total = total,
+            paymentMethod = paymentMethod,
+            amountPaid = paid,
+            changeGiven = change,
+            cashierName = when (userRole) {
+                UserRole.ADMIN -> "Admin"
+                UserRole.BARISTA -> "Barista"
+            },
+            footerMessage = receiptFooterText
+        )
     }
 
     /**
@@ -608,9 +539,8 @@ fun SalesScreen(
         activePaymentMethod = null
         showPaymentDialog = false
 
-        showReceiptPreviewDialog = false
+        salesViewModel.clearReceiptState()
         showCancelOrderDialog = false
-        currentReceipt = null
     }
 
     Surface(
@@ -877,7 +807,7 @@ fun SalesScreen(
      * The dialog receives one Receipt object and delegates printing back
      * to this screen using onPrintReceipt.
      */
-    val receiptToPreview = currentReceipt
+    val receiptToPreview = salesViewModel.currentReceipt
 
     /**
      * Cancel order confirmation dialog.
@@ -920,50 +850,23 @@ fun SalesScreen(
         )
     }
 
-    if (showReceiptPreviewDialog && receiptToPreview != null) {
+    if (salesViewModel.showReceiptPreviewDialog && receiptToPreview != null) {
         ReceiptPreviewDialog(
             receipt = receiptToPreview,
             onClose = {
                 /**
                  * Closing the preview does not clear the order.
                  */
-                showReceiptPreviewDialog = false
+                salesViewModel.closeReceiptPreview()
             },
             onNextOrder = {
                 /**
-                 * Save the completed receipt before clearing the current order.
+                 * Clear the current order and prepare the POS for the next customer.
                  *
-                 * This makes the receipt permanent in the local Room database.
+                 * The receipt is already saved to Room at this point (saved during
+                 * the prepareReceiptPreview/processCompletedOrder phase).
                  */
-                coroutineScope.launch {
-                    try {
-                        receiptRepository.saveReceipt(receiptToPreview)
-
-                        Toast.makeText(
-                            context,
-                            "Receipt saved successfully.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-
-                        /**
-                         * Receipt sequence increases only after the receipt is saved.
-                         */
-                        nextReceiptSequenceNumber += 1
-
-                        clearCurrentOrder()
-                    } catch (exception: Exception) {
-                        /**
-                         * If saving fails, keep the receipt open and show an error.
-                         *
-                         * This prevents accidental loss of receipt data.
-                         */
-                        Toast.makeText(
-                            context,
-                            "Unable to save receipt. Please try again.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+                clearCurrentOrder()
             },
 
             onPrintReceipt = { receipt ->
@@ -983,6 +886,27 @@ fun SalesScreen(
                     printResult.message,
                     Toast.LENGTH_SHORT
                 ).show()
+            },
+
+            onDownloadPdf = { receipt ->
+                /**
+                 * Generates a PDF of the receipt and saves it to the device.
+                 */
+                val uri = ReceiptPdfGenerator.generateAndSavePdf(context, receipt)
+
+                if (uri != null) {
+                    Toast.makeText(
+                        context,
+                        "Receipt saved to Downloads folder.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Unable to save PDF. Please check permissions.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         )
     }
@@ -1860,33 +1784,3 @@ private fun samplePaymentBreakdown(): List<PaymentBreakdownItem> {
 }
 
 
-/**
- * Generates a temporary receipt number.
- *
- * Example:
- * sequenceNumber = 1
- * year = 2026
- * result = RC-2026-000001
- *
- * Later, this should be generated from the database.
- */
-private fun generateReceiptNumber(
-    sequenceNumber: Int,
-    year: Int
-): String {
-    val paddedNumber = sequenceNumber.toString().padStart(6, '0')
-    return "RC-$year-$paddedNumber"
-}
-
-/**
- * Formats the current date/time for the receipt.
- *
- * Example:
- * 16/07/2026 14:35
- */
-private fun formatReceiptDateTime(
-    dateTime: LocalDateTime
-): String {
-    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-    return dateTime.format(formatter)
-}

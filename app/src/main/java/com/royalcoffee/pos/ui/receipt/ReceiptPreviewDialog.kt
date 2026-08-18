@@ -54,7 +54,8 @@ fun ReceiptPreviewDialog(
     receipt: Receipt,
     onClose: () -> Unit,
     onNextOrder: () -> Unit,
-    onPrintReceipt: (Receipt) -> Unit
+    onPrintReceipt: (Receipt) -> Unit,
+    onDownloadPdf: (Receipt) -> Unit
 ) {
     Dialog(
         onDismissRequest = {
@@ -165,6 +166,9 @@ fun ReceiptPreviewDialog(
                             onPrintReceipt = {
                                 onPrintReceipt(receipt)
                             },
+                            onDownloadPdf = {
+                                onDownloadPdf(receipt)
+                            },
                             modifier = Modifier
                                 .width(actionPanelWidth)
                                 .fillMaxHeight()
@@ -191,6 +195,7 @@ private fun ReceiptSideActionPanel(
     onClose: () -> Unit,
     onNextOrder: () -> Unit,
     onPrintReceipt: () -> Unit,
+    onDownloadPdf: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -221,13 +226,7 @@ private fun ReceiptSideActionPanel(
          */
         ReceiptSecondaryActionButton(
             text = "Download Receipt",
-            onClick = {
-                Toast.makeText(
-                    context,
-                    "Receipt download is not available yet.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            onClick = onDownloadPdf
         )
 
         Spacer(modifier = Modifier.height(12.dp))

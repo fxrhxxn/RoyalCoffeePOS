@@ -109,4 +109,22 @@ interface ReceiptDao {
     suspend fun getReceiptDetailsOnce(
         receiptId: Int
     ): List<ReceiptDetailEntity>
+
+    /**
+     * Returns the latest receipt number for a specific year.
+     *
+     * Example:
+     * yearPrefix = "RC-2026-"
+     * returns "RC-2026-000005"
+     */
+    @Query(
+        """
+        SELECT receipt_number
+        FROM receipt_headers
+        WHERE receipt_number LIKE :yearPrefix || '%'
+        ORDER BY receipt_number DESC
+        LIMIT 1
+        """
+    )
+    suspend fun getLastReceiptNumber(yearPrefix: String): String?
 }
