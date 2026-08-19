@@ -1,5 +1,17 @@
 package com.royalcoffee.pos.ui.sales
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.royalcoffee.pos.R
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +22,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -27,6 +42,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +61,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -129,7 +151,9 @@ fun SalesScreen(
      */
     val productRepository = remember(database) {
         ProductRepository(
-            productDao = database.productDao()
+            database = database,
+            productDao = database.productDao(),
+            inventoryHistoryDao = database.inventoryHistoryDao()
         )
     }
 
@@ -140,7 +164,10 @@ fun SalesScreen(
      */
     val receiptRepository = remember(database) {
         ReceiptRepository(
-            receiptDao = database.receiptDao()
+            database = database,
+            receiptDao = database.receiptDao(),
+            productDao = database.productDao(),
+            inventoryHistoryDao = database.inventoryHistoryDao()
         )
     }
 
@@ -304,13 +331,6 @@ fun SalesScreen(
 
 
     /**
-     * Currently selected category in the POS menu.
-     */
-    var selectedCategory by remember {
-        mutableStateOf("All")
-    }
-
-    /**
      * Builds the category list from Room-backed product data.
      *
      * The products list starts empty, then updates after Room loads/seeds data.
@@ -319,21 +339,25 @@ fun SalesScreen(
     val categories = remember(products) {
         listOf("All") + products.map { it.category }.distinct()
     }
+
     /**
-     * Filters products based on selected category.
+     * Filters products based on search and selected category.
      */
-    val filteredProducts = if (selectedCategory == "All") {
-        products
-    } else {
-        products.filter { it.category == selectedCategory }
+    val searchText by salesViewModel.searchText.collectAsStateWithLifecycle()
+    val selectedCategory by salesViewModel.selectedCategory.collectAsStateWithLifecycle()
+
+    val filteredProducts = remember(products, searchText, selectedCategory) {
+        salesViewModel.filterProducts(products)
     }
 
     /**
-     * Live cart for the current order.
+     * Cart operations and totals are now managed by SalesViewModel.
      */
-    val cartItems = remember {
-        mutableStateListOf<CartItem>()
-    }
+    val cartItems = salesViewModel.cartItems
+    val subtotal = salesViewModel.subtotal
+    val discount = salesViewModel.discount
+    val tax = salesViewModel.tax
+    val total = salesViewModel.total
 
     /**
      * Controls the payment method selection dialog.
@@ -379,6 +403,19 @@ fun SalesScreen(
     }
 
     /**
+     * If a sales error (like insufficient stock) occurs, reset the payment
+     * state so the cashier can adjust the order.
+     */
+    val salesError = salesViewModel.salesError
+    LaunchedEffect(salesError) {
+        if (salesError != null) {
+            confirmedPaymentMethod = null
+            amountPaid = null
+            changeGiven = null
+        }
+    }
+
+    /**
      * Controls the cancel order confirmation dialog.
      *
      * We ask for confirmation because cancelling an order removes all current
@@ -389,16 +426,11 @@ fun SalesScreen(
     }
 
     /**
-     * Basic order calculations.
-     *
-     * For now:
-     * - Discount is fixed at 0.
-     * - Tax is 15% of subtotal.
+     * Controls the clear ticket confirmation dialog.
      */
-    val subtotal = cartItems.sumOf { it.lineTotal }
-    val discount = 0
-    val tax = (subtotal * 0.15).toInt()
-    val total = subtotal - discount + tax
+    var showClearTicketConfirmDialog by remember {
+        mutableStateOf(false)
+    }
 
     /**
      * Once payment is confirmed, the order should not be edited anymore.
@@ -407,74 +439,6 @@ fun SalesScreen(
      */
     val isOrderLocked = confirmedPaymentMethod != null
 
-
-    /**
-     * Adds a product to the cart.
-     *
-     * If the product is already in the cart, its quantity increases.
-     * Otherwise, a new cart item is added.
-     */
-    fun addProductToCart(product: Product) {
-        val existingItemIndex = cartItems.indexOfFirst {
-            it.product.id == product.id
-        }
-
-        if (existingItemIndex >= 0) {
-            val existingItem = cartItems[existingItemIndex]
-
-            cartItems[existingItemIndex] = existingItem.copy(
-                quantity = existingItem.quantity + 1
-            )
-        } else {
-            cartItems.add(
-                CartItem(
-                    product = product,
-                    quantity = 1
-                )
-            )
-        }
-    }
-
-    /**
-     * Increases the quantity of a cart item.
-     */
-    fun increaseQuantity(product: Product) {
-        val itemIndex = cartItems.indexOfFirst {
-            it.product.id == product.id
-        }
-
-        if (itemIndex >= 0) {
-            val item = cartItems[itemIndex]
-
-            cartItems[itemIndex] = item.copy(
-                quantity = item.quantity + 1
-            )
-        }
-    }
-
-    /**
-     * Decreases the quantity of a cart item.
-     *
-     * If quantity reaches 0, the item is removed.
-     */
-    fun decreaseQuantity(product: Product) {
-        val itemIndex = cartItems.indexOfFirst {
-            it.product.id == product.id
-        }
-
-        if (itemIndex >= 0) {
-            val item = cartItems[itemIndex]
-
-            if (item.quantity > 1) {
-                cartItems[itemIndex] = item.copy(
-                    quantity = item.quantity - 1
-                )
-            } else {
-                cartItems.removeAt(itemIndex)
-            }
-        }
-    }
-
     /**
      * Clears only the ticket/cart before payment.
      *
@@ -482,7 +446,7 @@ fun SalesScreen(
      * but has not charged the customer yet.
      */
     fun clearTicketBeforePayment() {
-        cartItems.clear()
+        salesViewModel.clearCart()
     }
 
     /**
@@ -531,7 +495,7 @@ fun SalesScreen(
      * This is called only when the user presses Next Order.
      */
     fun clearCurrentOrder() {
-        cartItems.clear()
+        salesViewModel.clearCart()
 
         confirmedPaymentMethod = null
         amountPaid = null
@@ -607,23 +571,30 @@ fun SalesScreen(
                         ProductArea(
                             categories = categories,
                             selectedCategory = selectedCategory,
+                            searchText = searchText,
                             products = filteredProducts,
                             productCardMinWidth = productCardMinWidth,
                             contentPadding = productAreaPadding,
                             canCancelOrder = hasActiveOrder(),
                             isOrderLocked = isOrderLocked,
+                            onSearchChange = { salesViewModel.updateSearchText(it) },
                             onCancelOrderClick = {
                                 showCancelOrderDialog = true
                             },
                             onCategoryClick = { category ->
-                                selectedCategory = category
+                                salesViewModel.updateCategory(category)
                             },
                             onProductClick = { product ->
-                                addProductToCart(product)
+                                salesViewModel.addProductToCart(product)
                             },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
+                        )
+
+                        VerticalDivider(
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                            thickness = 1.dp
                         )
 
                         TicketPanel(
@@ -638,13 +609,16 @@ fun SalesScreen(
                             contentPadding = ticketPanelPadding,
                             isOrderLocked = isOrderLocked,
                             onIncreaseQuantity = { product ->
-                                increaseQuantity(product)
+                                salesViewModel.increaseQuantity(product)
                             },
                             onDecreaseQuantity = { product ->
-                                decreaseQuantity(product)
+                                salesViewModel.decreaseQuantity(product)
+                            },
+                            onRemoveItem = { product ->
+                                salesViewModel.removeItem(product)
                             },
                             onClearTicketClick = {
-                                clearTicketBeforePayment()
+                                showClearTicketConfirmDialog = true
                             },
                             onChargeClick = {
                                 showPaymentDialog = true
@@ -680,7 +654,8 @@ fun SalesScreen(
 
                     AppScreen.INVENTORY -> {
                         InventoryScreen(
-                            inventoryProducts = inventoryProducts,
+                            userRole = userRole,
+                            productRepository = productRepository,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -810,6 +785,32 @@ fun SalesScreen(
     val receiptToPreview = salesViewModel.currentReceipt
 
     /**
+     * Error dialog for sales-related issues (e.g. insufficient stock).
+     */
+    if (salesError != null) {
+        AlertDialog(
+            onDismissRequest = {
+                salesViewModel.clearSalesError()
+            },
+            title = {
+                Text(text = "Order Error")
+            },
+            text = {
+                Text(text = salesError)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        salesViewModel.clearSalesError()
+                    }
+                ) {
+                    Text(text = "OK")
+                }
+            }
+        )
+    }
+
+    /**
      * Cancel order confirmation dialog.
      *
      * This prevents the cashier from accidentally clearing an active order.
@@ -845,6 +846,47 @@ fun SalesScreen(
                     }
                 ) {
                     Text(text = "Keep Order")
+                }
+            }
+        )
+    }
+
+    /**
+     * Clear ticket confirmation dialog.
+     */
+    if (showClearTicketConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showClearTicketConfirmDialog = false
+            },
+            title = {
+                Text(text = "Clear current order?")
+            },
+            text = {
+                Text(
+                    text = "All items will be removed from the current ticket."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        clearTicketBeforePayment()
+                        showClearTicketConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(text = "Clear Order")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showClearTicketConfirmDialog = false
+                    }
+                ) {
+                    Text(text = "Cancel")
                 }
             }
         )
@@ -1068,18 +1110,24 @@ private fun NavigationItem(
 private fun ProductArea(
     categories: List<String>,
     selectedCategory: String,
+    searchText: String,
     products: List<Product>,
     productCardMinWidth: Dp,
     contentPadding: Dp,
     canCancelOrder: Boolean,
     isOrderLocked: Boolean,
+    onSearchChange: (String) -> Unit,
     onCancelOrderClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onProductClick: (Product) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val gridState = rememberLazyGridState()
+
     Column(
-        modifier = modifier.padding(contentPadding)
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(contentPadding)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1092,17 +1140,17 @@ private fun ProductArea(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "sales",
+                    text = "royal coffee",
                     fontFamily = CinzelFontFamily,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.displayLarge,
+                    style = MaterialTheme.typography.displayMedium,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(
-                    text = "Select products from the menu",
+                    text = "Point of Sale",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -1126,46 +1174,131 @@ private fun ProductArea(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        /**
-         * Categories scroll horizontally when there is not enough space.
-         */
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(
-                space = 12.dp,
-                alignment = Alignment.CenterHorizontally),
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            lazyRowItems(categories) { category ->
-                CategoryChip(
-                    text = category,
-                    isSelected = category == selectedCategory,
-                    onClick = {
-                        onCategoryClick(category)
-                    }
+            /**
+             * Product search field.
+             */
+            val focusManager = LocalFocusManager.current
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = onSearchChange,
+                placeholder = { Text("Search products...") },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                ),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                 )
+            )
+
+            /**
+             * Categories scroll horizontally when there is not enough space.
+             */
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(
+                    space = 10.dp,
+                    alignment = Alignment.End
+                ),
+                modifier = Modifier.weight(1.5f)
+            ) {
+                lazyRowItems(categories) { category ->
+                    CategoryChip(
+                        text = category,
+                        isSelected = category == selectedCategory,
+                        onClick = {
+                            onCategoryClick(category)
+                        }
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        /**
-         * Adaptive grid automatically changes number of product columns
-         * depending on available width.
-         */
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = productCardMinWidth),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(products) { product ->
-                ProductCard(
-                    product = product,
-                    enabled = !isOrderLocked,
-                    onClick = {
-                        onProductClick(product)
+        Box(modifier = Modifier.weight(1f)) {
+            /**
+             * Adaptive grid automatically changes number of product columns
+             * depending on available width.
+             */
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Adaptive(minSize = productCardMinWidth),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 60.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(products) { product ->
+                    ProductCard(
+                        product = product,
+                        enabled = !isOrderLocked,
+                        onClick = {
+                            onProductClick(product)
+                        }
+                    )
+                }
+            }
+
+            // Vertical Scrollbar for Product Grid
+            val layoutInfo = gridState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val visibleItems = layoutInfo.visibleItemsInfo.size
+
+            if (totalItems > visibleItems) {
+                val firstVisibleIndex = gridState.firstVisibleItemIndex
+                val scrollFraction = firstVisibleIndex.toFloat() / (totalItems - visibleItems).coerceAtLeast(1)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(4.dp)
+                        .padding(vertical = 4.dp)
+                        .align(Alignment.CenterEnd)
+                        .background(
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                            shape = CircleShape
+                        )
+                ) {
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val trackHeight = maxHeight
+                        val thumbHeight = trackHeight * 0.2f
+                        val scrollOffset = (trackHeight - thumbHeight) * scrollFraction
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(thumbHeight)
+                                .offset(y = scrollOffset)
+                                .background(
+                                    color = RoyalGold.copy(alpha = 0.6f),
+                                    shape = CircleShape
+                                )
+                        )
                     }
-                )
+                }
             }
         }
     }
@@ -1198,17 +1331,18 @@ private fun ProductCard(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
+    val isOutOfStock = product.stockQuantity <= 0
+    val isLowStock = !isOutOfStock && product.stockQuantity <= product.reorderLevel
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             /**
-             * Visually dims product cards after payment confirmation.
-             *
-             * This shows the cashier that the paid order can no longer be edited.
+             * Visually dims product cards after payment confirmation or if out of stock.
              */
-            .alpha(if (enabled) 1f else 0.45f)
+            .alpha(if (enabled && !isOutOfStock) 1f else 0.45f)
             .clickable(
-                enabled = enabled
+                enabled = enabled && !isOutOfStock
             ) {
                 onClick()
             },
@@ -1218,52 +1352,110 @@ private fun ProductCard(
         )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             /**
-             * Product name is now the main focus of the card.
+             * Product Image Area.
              *
-             * Product images have been removed in Version 1 to keep the
-             * Sales screen simpler and easier to maintain.
+             * Fixed structural area for images.
              */
-            Text(
-                text = product.name,
-                textAlign = TextAlign.Center,
-                fontFamily = CinzelFontFamily,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                /*color = MaterialTheme.colorScheme.onSurface,*/
-                color = MaterialTheme.colorScheme.primary
-            )
+            val imageResId = getProductImage(product.name)
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imageResId != null) {
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = product.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Text(
+                        text = "☕\nNo Image",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
 
-            /**
-             * Category gives the cashier context when many products are shown.
-             */
-            Text(
-                text = product.category,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = product.name,
+                    textAlign = TextAlign.Center,
+                    fontFamily = CinzelFontFamily,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 2
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            /**
-             * Price is shown clearly at the bottom of the card.
-             */
-            Text(
-                text = "Rs ${product.price}",
-                textAlign = TextAlign.Center,
-                fontFamily = CinzelFontFamily,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+                Text(
+                    text = product.category,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Rs ${product.price}",
+                    textAlign = TextAlign.Center,
+                    fontFamily = CinzelFontFamily,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                /**
+                 * Stock Information.
+                 */
+                if (isOutOfStock) {
+                    Text(
+                        text = "OUT OF STOCK",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    color = if (isLowStock) Color(0xFFFFA000) else Color(0xFF4CAF50),
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isLowStock) "${product.stockQuantity} left" else "${product.stockQuantity} available",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isLowStock) Color(0xFFFFA000) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1282,62 +1474,118 @@ private fun TicketPanel(
     isOrderLocked: Boolean,
     onIncreaseQuantity: (Product) -> Unit,
     onDecreaseQuantity: (Product) -> Unit,
+    onRemoveItem: (Product) -> Unit,
     onClearTicketClick: () -> Unit,
     onChargeClick: () -> Unit,
     onViewReceiptClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface)
             .padding(contentPadding),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
+        Box(
+            modifier = Modifier.weight(1f)
         ) {
-            TicketHeader(
-                itemCount = cartItems.sumOf { it.quantity }
+            // Track (Always visible)
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .align(Alignment.CenterEnd)
+                    .background(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        shape = CircleShape
+                    )
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(end = 12.dp)
+            ) {
+                TicketHeader(
+                    itemCount = cartItems.sumOf { it.quantity }
+                )
 
-            if (cartItems.isEmpty()) {
-                EmptyTicketCard()
-            } else {
-                cartItems.forEach { item ->
-                    CartItemRow(
-                        cartItem = item,
-                        isOrderLocked = isOrderLocked,
-                        onIncreaseQuantity = {
-                            onIncreaseQuantity(item.product)
-                        },
-                        onDecreaseQuantity = {
-                            onDecreaseQuantity(item.product)
-                        }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (cartItems.isEmpty()) {
+                    EmptyTicketCard()
+                } else {
+                    cartItems.forEach { item ->
+                        CartItemRow(
+                            cartItem = item,
+                            isOrderLocked = isOrderLocked,
+                            onIncreaseQuantity = {
+                                onIncreaseQuantity(item.product)
+                            },
+                            onDecreaseQuantity = {
+                                onDecreaseQuantity(item.product)
+                            },
+                            onRemove = {
+                                onRemoveItem(item.product)
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OrderSummaryCard(
+                    subtotal = subtotal,
+                    discount = discount,
+                    tax = tax,
+                    total = total
+                )
+
+                if (confirmedPaymentMethod != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    PaymentSummaryCard(
+                        confirmedPaymentMethod = confirmedPaymentMethod,
+                        amountPaid = amountPaid,
+                        changeGiven = changeGiven
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Thumb (Visible when scrollable)
+            if (scrollState.maxValue > 0) {
+                val scrollFraction by remember {
+                    derivedStateOf {
+                        if (scrollState.maxValue > 0) {
+                            scrollState.value.toFloat() / scrollState.maxValue.toFloat()
+                        } else 0f
+                    }
+                }
 
-            OrderSummaryCard(
-                subtotal = subtotal,
-                discount = discount,
-                tax = tax,
-                total = total
-            )
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(4.dp)
+                        .align(Alignment.CenterEnd)
+                ) {
+                    val trackHeight = maxHeight
+                    val thumbHeight = trackHeight * 0.2f
+                    val scrollOffset = (trackHeight - thumbHeight) * scrollFraction
 
-            if (confirmedPaymentMethod != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                PaymentSummaryCard(
-                    confirmedPaymentMethod = confirmedPaymentMethod,
-                    amountPaid = amountPaid,
-                    changeGiven = changeGiven
-                )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(thumbHeight)
+                            .offset(y = scrollOffset)
+                            .background(
+                                color = RoyalGold.copy(alpha = 0.8f),
+                                shape = CircleShape
+                            )
+                    )
+                }
             }
         }
 
@@ -1479,7 +1727,8 @@ private fun CartItemRow(
     cartItem: CartItem,
     isOrderLocked: Boolean,
     onIncreaseQuantity: () -> Unit,
-    onDecreaseQuantity: () -> Unit
+    onDecreaseQuantity: () -> Unit,
+    onRemove: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -1508,7 +1757,8 @@ private fun CartItemRow(
                     Text(
                         text = cartItem.product.name,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1520,12 +1770,18 @@ private fun CartItemRow(
                     )
                 }
 
-                Text(
-                    text = "Rs ${cartItem.lineTotal}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
+                IconButton(
+                    onClick = onRemove,
+                    enabled = !isOrderLocked,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -1536,9 +1792,10 @@ private fun CartItemRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Qty ${cartItem.quantity}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    text = "Rs ${cartItem.lineTotal}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 Row(
@@ -1551,9 +1808,16 @@ private fun CartItemRow(
                         onClick = onDecreaseQuantity
                     )
 
+                    Text(
+                        text = "${cartItem.quantity}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+
                     QuantityButton(
                         text = "+",
-                        enabled = !isOrderLocked,
+                        enabled = !isOrderLocked && cartItem.quantity < cartItem.product.stockQuantity,
                         onClick = onIncreaseQuantity
                     )
                 }
@@ -1730,6 +1994,24 @@ private fun PaymentSummaryCard(
                 )
             }
         }
+    }
+}
+
+/**
+ * Maps product names to their corresponding drawable resource IDs.
+ *
+ * This uses a simple name-based mapping for the current Step 1A implementation.
+ */
+private fun getProductImage(productName: String): Int? {
+    return when (productName.lowercase()) {
+        "croissant" -> R.drawable.croissant
+        "espresso" -> R.drawable.espresso
+        "hot chocolate" -> R.drawable.hot_chocolate
+        "iced coffee" -> R.drawable.iced_coffee
+        "latte" -> R.drawable.latte
+        "mocha" -> R.drawable.mocha
+        "muffin" -> R.drawable.muffin
+        else -> null
     }
 }
 

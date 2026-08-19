@@ -1,9 +1,17 @@
 package com.royalcoffee.pos.data.local.repository
 
+import androidx.room.withTransaction
+import com.royalcoffee.pos.data.local.dao.InventoryHistoryDao
+import com.royalcoffee.pos.data.local.dao.ProductDao
 import com.royalcoffee.pos.data.local.dao.ReceiptDao
+import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabase
+import com.royalcoffee.pos.data.local.entity.InventoryHistoryEntity
+import com.royalcoffee.pos.data.local.entity.InventoryTransactionType
 import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
+import com.royalcoffee.pos.model.CartItem
 import com.royalcoffee.pos.model.Receipt
+import com.royalcoffee.pos.util.InsufficientStockException
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
@@ -16,7 +24,10 @@ import java.time.LocalDateTime
  * UI -> Repository -> DAO -> Room database
  */
 class ReceiptRepository(
-    private val receiptDao: ReceiptDao
+    private val database: RoyalCoffeeDatabase,
+    private val receiptDao: ReceiptDao,
+    private val productDao: ProductDao,
+    private val inventoryHistoryDao: InventoryHistoryDao
 ) {
     /**
      * Returns all saved receipt headers.
@@ -65,47 +76,94 @@ class ReceiptRepository(
     }
 
     /**
-     * Saves a complete receipt to the local Room database.
+     * Saves a complete receipt, deducts inventory, and records sale history
+     * in a single atomic transaction.
      *
-     * This includes:
-     * - one receipt header row
-     * - many receipt detail rows
+     * If any part of this process fails (e.g. insufficient stock),
+     * the entire transaction is rolled back.
      */
-    suspend fun saveReceipt(receipt: Receipt) {
-        val receiptHeader = ReceiptHeaderEntity(
-            receiptNumber = receipt.receiptNumber,
-            receiptDateTime = receipt.receiptDateTime,
-            cashierName = receipt.cashierName,
-            subtotal = receipt.subtotal,
-            discount = receipt.discount,
-            tax = receipt.tax,
-            total = receipt.total,
-            paymentMethod = receipt.paymentMethod.name,
-            amountPaid = receipt.amountPaid,
-            changeGiven = receipt.changeGiven,
-            footerMessage = receipt.footerMessage
-        )
+    suspend fun saveReceipt(receipt: Receipt, cartItems: List<CartItem>) {
+        database.withTransaction {
+            /**
+             * 1. Perform a final stock check and gather previous stock values
+             * for history records.
+             */
+            val stockSnapshots = cartItems.map { cartItem ->
+                val currentStock = productDao.getProductStock(cartItem.product.id) ?: 0
+                if (currentStock < cartItem.quantity) {
+                    throw InsufficientStockException(
+                        productName = cartItem.product.name,
+                        availableStock = currentStock,
+                        requestedQuantity = cartItem.quantity
+                    )
+                }
+                currentStock
+            }
 
-        /**
-         * receiptId is set to 0 temporarily.
-         *
-         * ReceiptDao.insertFullReceipt() will insert the header first,
-         * get the generated receipt ID, then attach that ID to each detail row.
-         */
-        val receiptDetails = receipt.items.map { item ->
-            ReceiptDetailEntity(
-                receiptId = 0,
-                productName = item.productName,
-                quantity = item.quantity,
-                unitPrice = item.unitPrice,
-                lineTotal = item.lineTotal
+            /**
+             * 2. Deduct stock and insert history for each item.
+             */
+            cartItems.forEachIndexed { index, cartItem ->
+                val previousStock = stockSnapshots[index]
+                val affectedRows = productDao.deductProductStock(
+                    productId = cartItem.product.id,
+                    quantity = cartItem.quantity
+                )
+
+                if (affectedRows == 0) {
+                    throw InsufficientStockException(
+                        productName = cartItem.product.name,
+                        availableStock = previousStock,
+                        requestedQuantity = cartItem.quantity
+                    )
+                }
+
+                val newStock = previousStock - cartItem.quantity
+                inventoryHistoryDao.insertHistory(
+                    InventoryHistoryEntity(
+                        productId = cartItem.product.id,
+                        productNameSnapshot = cartItem.product.name,
+                        transactionType = InventoryTransactionType.SALE,
+                        quantityChange = -cartItem.quantity,
+                        previousStock = previousStock,
+                        newStock = newStock,
+                        reason = "POS Sale: ${receipt.receiptNumber}"
+                    )
+                )
+            }
+
+            /**
+             * 3. Save receipt header and details.
+             */
+            val receiptHeader = ReceiptHeaderEntity(
+                receiptNumber = receipt.receiptNumber,
+                receiptDateTime = receipt.receiptDateTime,
+                cashierName = receipt.cashierName,
+                subtotal = receipt.subtotal,
+                discount = receipt.discount,
+                tax = receipt.tax,
+                total = receipt.total,
+                paymentMethod = receipt.paymentMethod.name,
+                amountPaid = receipt.amountPaid,
+                changeGiven = receipt.changeGiven,
+                footerMessage = receipt.footerMessage
+            )
+
+            val receiptDetails = receipt.items.map { item ->
+                ReceiptDetailEntity(
+                    receiptId = 0,
+                    productName = item.productName,
+                    quantity = item.quantity,
+                    unitPrice = item.unitPrice,
+                    lineTotal = item.lineTotal
+                )
+            }
+
+            receiptDao.insertFullReceipt(
+                receiptHeader = receiptHeader,
+                receiptDetails = receiptDetails
             )
         }
-
-        receiptDao.insertFullReceipt(
-            receiptHeader = receiptHeader,
-            receiptDetails = receiptDetails
-        )
     }
 
     /**

@@ -220,7 +220,6 @@ object ReceiptPdfGenerator {
     }
 
     private fun drawDashedLine(canvas: Canvas, startX: Float, endX: Float, y: Float, paint: Paint) {
-        val originalEffect = paint.pathEffect
         paint.typeface = Typeface.MONOSPACE
         paint.textAlign = Paint.Align.CENTER
         canvas.drawText("-".repeat(32), (startX + endX) / 2, y, paint)

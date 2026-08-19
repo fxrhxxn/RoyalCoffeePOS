@@ -77,6 +77,8 @@ object RoyalCoffeeDatabaseProvider {
                  * Later, for a production app, we should replace this with real migrations.
                  */
                 .fallbackToDestructiveMigration(dropAllTables = true)
+                .addMigrations(RoyalCoffeeDatabase.MIGRATION_3_4)
+                .fallbackToDestructiveMigration(false) // Safety rule: Do not delete database.
                 .build()
 
             INSTANCE = database

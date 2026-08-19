@@ -79,7 +79,9 @@ private fun ProductEntity.toProduct(): Product {
         id = productId,
         name = productName,
         category = category,
-        price = unitPrice
+        price = unitPrice,
+        stockQuantity = stockQuantity,
+        reorderLevel = reorderLevel
     )
 }
 
