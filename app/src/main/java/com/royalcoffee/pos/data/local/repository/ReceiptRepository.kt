@@ -1,9 +1,18 @@
 package com.royalcoffee.pos.data.local.repository
 
 import androidx.room.withTransaction
+import com.royalcoffee.pos.data.local.dao.CategorySales
+import com.royalcoffee.pos.data.local.dao.GrossProfitStats
+import com.royalcoffee.pos.data.local.dao.HourlySales
 import com.royalcoffee.pos.data.local.dao.InventoryHistoryDao
+import com.royalcoffee.pos.data.local.dao.PaymentBreakdown
+import com.royalcoffee.pos.data.local.dao.ProfitableProduct
 import com.royalcoffee.pos.data.local.dao.ProductDao
+import com.royalcoffee.pos.data.local.dao.ProfitTrendPoint
 import com.royalcoffee.pos.data.local.dao.ReceiptDao
+import com.royalcoffee.pos.data.local.dao.SalesSummary
+import com.royalcoffee.pos.data.local.dao.SalesTrendPoint
+import com.royalcoffee.pos.data.local.dao.TopProduct
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabase
 import com.royalcoffee.pos.data.local.entity.InventoryHistoryEntity
 import com.royalcoffee.pos.data.local.entity.InventoryTransactionType
@@ -138,6 +147,7 @@ class ReceiptRepository(
             val receiptHeader = ReceiptHeaderEntity(
                 receiptNumber = receipt.receiptNumber,
                 receiptDateTime = receipt.receiptDateTime,
+                timestamp = System.currentTimeMillis(),
                 cashierName = receipt.cashierName,
                 subtotal = receipt.subtotal,
                 discount = receipt.discount,
@@ -155,6 +165,7 @@ class ReceiptRepository(
                     productName = item.productName,
                     quantity = item.quantity,
                     unitPrice = item.unitPrice,
+                    costPrice = item.costPrice,
                     lineTotal = item.lineTotal
                 )
             }
@@ -178,4 +189,34 @@ class ReceiptRepository(
             receiptId = receiptId
         )
     }
+
+    /**
+     * Dashboard specific data flows.
+     */
+    fun getSalesSummary(start: Long, end: Long): Flow<SalesSummary> =
+        receiptDao.getSalesSummary(start, end)
+
+    fun getPaymentBreakdown(start: Long, end: Long): Flow<List<PaymentBreakdown>> =
+        receiptDao.getPaymentBreakdown(start, end)
+
+    fun getTopSellingProducts(start: Long, end: Long, limit: Int = 5): Flow<List<TopProduct>> =
+        receiptDao.getTopSellingProducts(start, end, limit)
+
+    fun getSalesTrend(start: Long, end: Long): Flow<List<SalesTrendPoint>> =
+        receiptDao.getSalesTrend(start, end)
+
+    fun getHourlySales(start: Long, end: Long): Flow<List<HourlySales>> =
+        receiptDao.getHourlySales(start, end)
+
+    fun getCategorySales(start: Long, end: Long): Flow<List<CategorySales>> =
+        receiptDao.getCategorySales(start, end)
+
+    fun getGrossProfitStats(start: Long, end: Long): Flow<GrossProfitStats> =
+        receiptDao.getGrossProfitStats(start, end)
+
+    fun getProfitTrend(start: Long, end: Long): Flow<List<ProfitTrendPoint>> =
+        receiptDao.getProfitTrend(start, end)
+
+    fun getMostProfitableProducts(start: Long, end: Long, limit: Int = 1): Flow<List<ProfitableProduct>> =
+        receiptDao.getMostProfitableProducts(start, end, limit)
 }

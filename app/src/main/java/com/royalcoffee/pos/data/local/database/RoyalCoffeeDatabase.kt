@@ -27,7 +27,7 @@ import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
         ReceiptDetailEntity::class,
         InventoryHistoryEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
@@ -72,6 +72,50 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_inventory_history_product_id` ON `inventory_history` (`product_id`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_inventory_history_timestamp` ON `inventory_history` (`timestamp`)")
+            }
+        }
+
+        /**
+         * Migration from version 4 to 5:
+         * 1. Adds 'timestamp' column to 'receipt_headers'.
+         * 2. Populates it from existing 'receipt_date_time' strings (dd/MM/yyyy HH:mm).
+         * 3. Adds index on 'timestamp'.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Add the column
+                db.execSQL("ALTER TABLE `receipt_headers` ADD COLUMN `timestamp` INTEGER NOT NULL DEFAULT 0")
+
+                // 2. Derive timestamp from receipt_date_time (dd/MM/yyyy HH:mm)
+                // SQLite strftime('%s', 'YYYY-MM-DD HH:MM:SS') returns epoch seconds
+                db.execSQL(
+                    """
+                    UPDATE `receipt_headers`
+                    SET `timestamp` = strftime('%s', 
+                        substr(receipt_date_time, 7, 4) || '-' || 
+                        substr(receipt_date_time, 4, 2) || '-' || 
+                        substr(receipt_date_time, 1, 2) || ' ' || 
+                        substr(receipt_date_time, 12, 2) || ':' || 
+                        substr(receipt_date_time, 15, 2) || ':00'
+                    ) * 1000
+                    WHERE receipt_date_time IS NOT NULL AND length(receipt_date_time) >= 16
+                    """.trimIndent()
+                )
+
+                // 3. Add index
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_receipt_headers_timestamp` ON `receipt_headers` (`timestamp`)")
+            }
+        }
+
+        /**
+         * Migration from version 5 to 6:
+         * 1. Adds 'cost_price' to 'products' (Default 0 = Unknown).
+         * 2. Adds 'cost_price' to 'receipt_details' (Nullable = Unknown).
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `products` ADD COLUMN `cost_price` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `receipt_details` ADD COLUMN `cost_price` INTEGER")
             }
         }
     }

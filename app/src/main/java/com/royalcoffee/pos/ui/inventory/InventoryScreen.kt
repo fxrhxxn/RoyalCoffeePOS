@@ -217,9 +217,10 @@ fun InventoryScreen(
 
     if (showAddDialog) {
         ProductFormDialog(
+            userRole = userRole,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, cat, price, stock, reorder ->
-                viewModel.addProduct(name, cat, price, stock, reorder)
+            onConfirm = { name, cat, price, cost, stock, reorder ->
+                viewModel.addProduct(name, cat, price, cost, stock, reorder)
                 showAddDialog = false
             }
         )
@@ -227,10 +228,11 @@ fun InventoryScreen(
 
     if (editingProduct != null) {
         ProductFormDialog(
+            userRole = userRole,
             product = editingProduct,
             onDismiss = { editingProduct = null },
-            onConfirm = { name, cat, price, _, reorder ->
-                viewModel.updateProduct(editingProduct!!.productId, name, cat, price, reorder, true)
+            onConfirm = { name, cat, price, cost, _, reorder ->
+                viewModel.updateProduct(editingProduct!!.productId, name, cat, price, cost, reorder, true)
                 editingProduct = null
             }
         )
@@ -391,13 +393,15 @@ fun ProductActionMenu(
 
 @Composable
 fun ProductFormDialog(
+    userRole: UserRole,
     product: InventoryProduct? = null,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, cat: String, price: Int, stock: Int, reorder: Int) -> Unit
+    onConfirm: (name: String, cat: String, price: Int, cost: Int, stock: Int, reorder: Int) -> Unit
 ) {
     var name by remember { mutableStateOf(product?.name ?: "") }
     var category by remember { mutableStateOf(product?.category ?: "") }
     var price by remember { mutableStateOf(product?.unitPrice?.toString() ?: "") }
+    var cost by remember { mutableStateOf(product?.costPrice?.toString() ?: "0") }
     var stock by remember { mutableStateOf(product?.stockQuantity?.toString() ?: "0") }
     var reorder by remember { mutableStateOf(product?.reorderLevel?.toString() ?: "5") }
 
@@ -408,7 +412,19 @@ fun ProductFormDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (Rs)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Selling Price (Rs)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                
+                if (userRole == UserRole.ADMIN) {
+                    OutlinedTextField(
+                        value = cost,
+                        onValueChange = { cost = it },
+                        label = { Text("Cost Price (Rs)") },
+                        supportingText = { Text("For Gross Profit calculation") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 if (product == null) {
                     OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Initial Stock") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 }
@@ -417,8 +433,8 @@ fun ProductFormDialog(
         },
         confirmButton = {
             Button(
-                enabled = name.isNotBlank() && price.toIntOrNull() != null,
-                onClick = { onConfirm(name, category, price.toIntOrNull() ?: 0, stock.toIntOrNull() ?: 0, reorder.toIntOrNull() ?: 0) }
+                enabled = name.isNotBlank() && price.toIntOrNull() != null && cost.toIntOrNull() != null,
+                onClick = { onConfirm(name, category, price.toIntOrNull() ?: 0, cost.toIntOrNull() ?: 0, stock.toIntOrNull() ?: 0, reorder.toIntOrNull() ?: 5) }
             ) {
                 Text("Save")
             }

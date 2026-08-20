@@ -78,6 +78,8 @@ object RoyalCoffeeDatabaseProvider {
                  */
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_3_4)
+                .addMigrations(RoyalCoffeeDatabase.MIGRATION_4_5)
+                .addMigrations(RoyalCoffeeDatabase.MIGRATION_5_6)
                 .fallbackToDestructiveMigration(false) // Safety rule: Do not delete database.
                 .build()
 

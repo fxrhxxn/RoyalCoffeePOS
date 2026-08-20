@@ -221,7 +221,8 @@ class SalesViewModel(
                     ReceiptItem(
                         productName = cartItem.product.name,
                         quantity = cartItem.quantity,
-                        unitPrice = cartItem.product.price
+                        unitPrice = cartItem.product.price,
+                        costPrice = cartItem.product.costPrice
                     )
                 }
 

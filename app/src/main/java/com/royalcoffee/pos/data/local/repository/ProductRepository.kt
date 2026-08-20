@@ -160,6 +160,7 @@ class ProductRepository(
                 productName = "Latte",
                 category = "Coffee",
                 unitPrice = 120,
+                costPrice = 45,
                 stockQuantity = 28,
                 reorderLevel = 10
             ),
@@ -167,6 +168,7 @@ class ProductRepository(
                 productName = "Espresso",
                 category = "Coffee",
                 unitPrice = 95,
+                costPrice = 30,
                 stockQuantity = 35,
                 reorderLevel = 12
             ),
@@ -174,6 +176,7 @@ class ProductRepository(
                 productName = "Croissant",
                 category = "Pastries",
                 unitPrice = 80,
+                costPrice = 35,
                 stockQuantity = 5,
                 reorderLevel = 8
             ),
@@ -181,6 +184,7 @@ class ProductRepository(
                 productName = "Mocha",
                 category = "Coffee",
                 unitPrice = 135,
+                costPrice = 55,
                 stockQuantity = 18,
                 reorderLevel = 10
             ),
@@ -188,6 +192,7 @@ class ProductRepository(
                 productName = "Iced Coffee",
                 category = "Cold",
                 unitPrice = 140,
+                costPrice = 50,
                 stockQuantity = 22,
                 reorderLevel = 10
             ),
@@ -195,6 +200,7 @@ class ProductRepository(
                 productName = "Muffin",
                 category = "Pastries",
                 unitPrice = 75,
+                costPrice = 25,
                 stockQuantity = 3,
                 reorderLevel = 6
             ),
@@ -202,6 +208,7 @@ class ProductRepository(
                 productName = "Hot Chocolate",
                 category = "Hot",
                 unitPrice = 110,
+                costPrice = 40,
                 stockQuantity = 16,
                 reorderLevel = 8
             )

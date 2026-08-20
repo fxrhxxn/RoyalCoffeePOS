@@ -46,13 +46,16 @@ data class ProductEntity(
 
     /**
      * Selling price in Mauritian Rupees.
-     *
-     * We store money as Int for now because your prices are whole numbers.
-     * Example:
-     * 120 = Rs 120
      */
     @ColumnInfo(name = "unit_price")
     val unitPrice: Int,
+
+    /**
+     * Cost price to produce or purchase the product.
+     * 0 = Unknown / Not yet entered.
+     */
+    @ColumnInfo(name = "cost_price")
+    val costPrice: Int = 0,
 
     /**
      * Current stock quantity.

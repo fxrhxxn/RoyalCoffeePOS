@@ -1,154 +1,81 @@
 package com.royalcoffee.pos.ui.sales
 
-import androidx.compose.foundation.Image
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import com.royalcoffee.pos.R
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextFieldDefaults
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items as lazyRowItems
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.royalcoffee.pos.model.CartItem
-import com.royalcoffee.pos.model.PaymentMethod
-import com.royalcoffee.pos.model.PrinterConfig
-import com.royalcoffee.pos.model.Product
-import com.royalcoffee.pos.model.Receipt
-import com.royalcoffee.pos.model.ReceiptItem
-import com.royalcoffee.pos.model.UserRole
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.royalcoffee.pos.R
+import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
+import com.royalcoffee.pos.data.local.repository.ProductRepository
+import com.royalcoffee.pos.data.local.repository.ReceiptRepository
+import com.royalcoffee.pos.model.*
 import com.royalcoffee.pos.printer.FakeReceiptPrinter
+import com.royalcoffee.pos.ui.dashboard.DashboardScreen
+import com.royalcoffee.pos.ui.dashboard.DashboardViewModel
+import com.royalcoffee.pos.ui.dashboard.DashboardViewModelFactory
+import com.royalcoffee.pos.ui.inventory.InventoryScreen
 import com.royalcoffee.pos.ui.payment.CashPaymentDialog
 import com.royalcoffee.pos.ui.payment.ConfirmPaymentDialog
 import com.royalcoffee.pos.ui.payment.PaymentMethodDialog
-import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
-import com.royalcoffee.pos.ui.theme.RoyalGold
-import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import com.royalcoffee.pos.ui.theme.CinzelFontFamily
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import androidx.compose.ui.draw.alpha
-import com.royalcoffee.pos.model.AppScreen
-import com.royalcoffee.pos.ui.settings.SettingsScreen
-import com.royalcoffee.pos.ui.inventory.InventoryScreen
-import com.royalcoffee.pos.ui.dashboard.DashboardScreen
-import com.royalcoffee.pos.ui.dashboard.DashboardSummary
-import com.royalcoffee.pos.ui.dashboard.PaymentBreakdownItem
-import com.royalcoffee.pos.ui.dashboard.TopSellingProduct
-import com.royalcoffee.pos.ui.dashboard.LowStockDashboardItem
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
-import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.ui.product.ProductViewModel
 import com.royalcoffee.pos.ui.product.ProductViewModelFactory
-import com.royalcoffee.pos.data.local.repository.ReceiptRepository
-import kotlinx.coroutines.launch
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryScreen
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModel
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModelFactory
+import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
+import com.royalcoffee.pos.ui.settings.SettingsScreen
+import com.royalcoffee.pos.ui.theme.CinzelFontFamily
+import com.royalcoffee.pos.ui.theme.RoyalGold
+import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 import com.royalcoffee.pos.util.ReceiptPdfGenerator
-
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SalesScreen(
     userRole: UserRole,
     onLogout: () -> Unit
 ) {
-    /**
-     * Context is used for showing short POS-style messages.
-     *
-     * Example:
-     * "Printer not available. Check connection."
-     */
     val context = LocalContext.current
-
-    /**
-     * Temporary product list.
-     *
-     * Later, this should come from the Products table in Room database.
-     */
-    /**
-     * Create the Room database instance.
-     *
-     * This gives the app access to the local SQLite database through Room.
-     */
+    
     val database = remember(context) {
         RoyalCoffeeDatabaseProvider.getDatabase(context)
     }
 
-    /**
-     * Create the ProductRepository.
-     *
-     * The repository hides the DAO/database details from the UI layer.
-     */
     val productRepository = remember(database) {
         ProductRepository(
             database = database,
@@ -157,11 +84,6 @@ fun SalesScreen(
         )
     }
 
-    /**
-     * Create the ReceiptRepository.
-     *
-     * This repository will save completed receipts to the local Room database.
-     */
     val receiptRepository = remember(database) {
         ReceiptRepository(
             database = database,
@@ -171,241 +93,56 @@ fun SalesScreen(
         )
     }
 
-    /**
-     * Create the ReceiptHistoryViewModel.
-     *
-     * This ViewModel exposes saved receipt headers to the Receipt History screen.
-     */
     val receiptHistoryViewModel: ReceiptHistoryViewModel = viewModel(
-        factory = ReceiptHistoryViewModelFactory(
-            receiptRepository = receiptRepository
-        )
+        factory = ReceiptHistoryViewModelFactory(receiptRepository = receiptRepository)
     )
-
-    /**
-     * Saved receipts displayed in the Receipt History screen.
-     */
     val receiptHistoryItems by receiptHistoryViewModel.receiptHistory.collectAsStateWithLifecycle()
 
-    /**
-     * Create the SalesViewModel.
-     *
-     * This ViewModel handles the logic for persistent receipt numbers.
-     *
-     * Flow:
-     * SalesScreen -> SalesViewModel -> ReceiptRepository -> ReceiptDao -> Room
-     */
     val salesViewModel: SalesViewModel = viewModel(
-        factory = SalesViewModelFactory(
-            receiptRepository = receiptRepository
-        )
+        factory = SalesViewModelFactory(receiptRepository = receiptRepository)
     )
 
-
-
-    /**
-     * Create the ProductViewModel.
-     *
-     * This ViewModel exposes Room product data to the Sales, Inventory,
-     * and Dashboard screens.
-     */
     val productViewModel: ProductViewModel = viewModel(
-        factory = ProductViewModelFactory(
+        factory = ProductViewModelFactory(productRepository = productRepository)
+    )
+    val products by productViewModel.products.collectAsStateWithLifecycle()
+
+    val dashboardViewModel: DashboardViewModel = viewModel(
+        factory = DashboardViewModelFactory(
+            receiptRepository = receiptRepository,
             productRepository = productRepository
         )
     )
 
-    /**
-     * Products displayed on the Sales screen.
-     *
-     * These now come from the Room database.
-     */
-    val products by productViewModel.products.collectAsStateWithLifecycle()
+    val defaultPrinter = remember { PrinterConfig.placeholderBluetoothPrinter() }
+    val receiptPrinter = remember { FakeReceiptPrinter() }
 
-    /**
-     * Products displayed on the Inventory screen.
-     *
-     * These now come from the Room database.
-     */
-    val inventoryProducts by productViewModel.inventoryProducts.collectAsStateWithLifecycle()
+    var currentScreen by remember { mutableStateOf(AppScreen.SALES) }
+    var selectedLanguage by remember { mutableStateOf("English") }
+    var receiptFooterText by remember { mutableStateOf("Thank you for your purchase.") }
 
-    /**
-     * Low-stock products used by the Dashboard screen.
-     *
-     * These are calculated from the database-backed inventory products.
-     */
-    val lowStockDashboardItems = remember(inventoryProducts) {
-        inventoryProducts
-            .filter { inventoryProduct ->
-                inventoryProduct.isLowStock
-            }
-            .map { inventoryProduct ->
-                LowStockDashboardItem(
-                    productName = inventoryProduct.name,
-                    stockQuantity = inventoryProduct.stockQuantity,
-                    reorderLevel = inventoryProduct.reorderLevel
-                )
-            }
-    }
-
-    /**
-     * Temporary dashboard summary.
-     *
-     * Sales/order figures are still sample values for now.
-     * Low-stock count now comes from Room-backed inventory data.
-     */
-    val dashboardSummary = remember(lowStockDashboardItems.size) {
-        DashboardSummary(
-            todaySales = 2850,
-            todayOrders = 18,
-            averageOrderValue = 158,
-            lowStockCount = lowStockDashboardItems.size
-        )
-    }
-
-    /**
-     * Temporary top-selling products for the dashboard.
-     *
-     * Later, this will be calculated from receipt/order details.
-     */
-    val topSellingProducts = remember {
-        sampleTopSellingProducts()
-    }
-
-    /**
-     * Temporary payment breakdown for the dashboard.
-     *
-     * Later, this will be calculated from saved payment records.
-     */
-    val paymentBreakdown = remember {
-        samplePaymentBreakdown()
-    }
-
-    /**
-     * Temporary default printer configuration.
-     *
-     * Later, this should come from the Printers table.
-     * For now, it represents a Bluetooth printer placeholder.
-     */
-    val defaultPrinter = remember {
-        PrinterConfig.placeholderBluetoothPrinter()
-    }
-
-    /**
-     * Temporary printer service.
-     *
-     * This does not connect to real hardware yet.
-     * Later, this can be replaced with BluetoothReceiptPrinter.
-     */
-    val receiptPrinter = remember {
-        FakeReceiptPrinter()
-    }
-
-    /**
-     * Tracks the currently selected main screen.
-     *
-     * After login, the app starts on the Sales screen by default.
-     */
-    var currentScreen by remember {
-        mutableStateOf(AppScreen.SALES)
-    }
-
-    /**
-     * Temporary selected language setting.
-     *
-     * Later, this will be saved in the Settings table.
-     */
-    var selectedLanguage by remember {
-        mutableStateOf("English")
-    }
-
-    /**
-     * Temporary receipt footer setting.
-     *
-     * Admin users can edit this from the Settings screen.
-     * Later, this will be saved in the Settings table.
-     */
-    var receiptFooterText by remember {
-        mutableStateOf("Thank you for your purchase.")
-    }
-
-
-    /**
-     * Builds the category list from Room-backed product data.
-     *
-     * The products list starts empty, then updates after Room loads/seeds data.
-     * That is why products is used as the remember key.
-     */
     val categories = remember(products) {
         listOf("All") + products.map { it.category }.distinct()
     }
 
-    /**
-     * Filters products based on search and selected category.
-     */
     val searchText by salesViewModel.searchText.collectAsStateWithLifecycle()
     val selectedCategory by salesViewModel.selectedCategory.collectAsStateWithLifecycle()
-
     val filteredProducts = remember(products, searchText, selectedCategory) {
         salesViewModel.filterProducts(products)
     }
 
-    /**
-     * Cart operations and totals are now managed by SalesViewModel.
-     */
     val cartItems = salesViewModel.cartItems
     val subtotal = salesViewModel.subtotal
     val discount = salesViewModel.discount
     val tax = salesViewModel.tax
     val total = salesViewModel.total
 
-    /**
-     * Controls the payment method selection dialog.
-     */
-    var showPaymentDialog by remember {
-        mutableStateOf(false)
-    }
+    var showPaymentDialog by remember { mutableStateOf(false) }
+    var activePaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
+    var confirmedPaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
+    var amountPaid by remember { mutableStateOf<Int?>(null) }
+    var changeGiven by remember { mutableStateOf<Int?>(null) }
 
-    /**
-     * Stores the selected payment method while its confirmation dialog is open.
-     */
-    var activePaymentMethod by remember {
-        mutableStateOf<PaymentMethod?>(null)
-    }
-
-    /**
-     * Stores the payment method after payment is confirmed.
-     *
-     * When this is not null:
-     * - The ticket button changes from Charge to View Receipt.
-     * - The order becomes locked so products and quantities cannot be changed.
-     */
-    var confirmedPaymentMethod by remember {
-        mutableStateOf<PaymentMethod?>(null)
-    }
-
-    /**
-     * Amount received from customer.
-     *
-     * Mainly useful for cash payments.
-     */
-    var amountPaid by remember {
-        mutableStateOf<Int?>(null)
-    }
-
-    /**
-     * Change given back to the customer.
-     *
-     * Mainly useful for cash payments.
-     */
-    var changeGiven by remember {
-        mutableStateOf<Int?>(null)
-    }
-
-    /**
-     * If a sales error (like insufficient stock) occurs, reset the payment
-     * state so the cashier can adjust the order.
-     */
     val salesError = salesViewModel.salesError
     LaunchedEffect(salesError) {
         if (salesError != null) {
@@ -415,63 +152,19 @@ fun SalesScreen(
         }
     }
 
-    /**
-     * Controls the cancel order confirmation dialog.
-     *
-     * We ask for confirmation because cancelling an order removes all current
-     * cart, payment, and receipt data for the active order.
-     */
-    var showCancelOrderDialog by remember {
-        mutableStateOf(false)
-    }
-
-    /**
-     * Controls the clear ticket confirmation dialog.
-     */
-    var showClearTicketConfirmDialog by remember {
-        mutableStateOf(false)
-    }
-
-    /**
-     * Once payment is confirmed, the order should not be edited anymore.
-     *
-     * This prevents the cashier from accidentally changing a paid order.
-     */
+    var showCancelOrderDialog by remember { mutableStateOf(false) }
+    var showClearTicketConfirmDialog by remember { mutableStateOf(false) }
     val isOrderLocked = confirmedPaymentMethod != null
 
-    /**
-     * Clears only the ticket/cart before payment.
-     *
-     * This is useful when the cashier selected the wrong products
-     * but has not charged the customer yet.
-     */
     fun clearTicketBeforePayment() {
         salesViewModel.clearCart()
     }
 
-    /**
-     * Returns true when there is anything active in the current order.
-     *
-     * This helps us decide whether Cancel Order should be enabled.
-     */
     fun hasActiveOrder(): Boolean {
-        return cartItems.isNotEmpty() ||
-                confirmedPaymentMethod != null ||
-                salesViewModel.currentReceipt != null
+        return cartItems.isNotEmpty() || confirmedPaymentMethod != null || salesViewModel.currentReceipt != null
     }
 
-    /**
-     * Creates the receipt object for the current paid order, saves it to Room,
-     * and opens the receipt preview.
-     *
-     * Following the required logic:
-     * Payment confirmation -> Generate number -> Save to database -> Display
-     */
-    fun prepareReceiptPreview(
-        paymentMethod: PaymentMethod,
-        paid: Int?,
-        change: Int?
-    ) {
+    fun prepareReceiptPreview(paymentMethod: PaymentMethod, paid: Int?, change: Int?) {
         salesViewModel.processCompletedOrder(
             cartItems = cartItems,
             subtotal = subtotal,
@@ -481,28 +174,18 @@ fun SalesScreen(
             paymentMethod = paymentMethod,
             amountPaid = paid,
             changeGiven = change,
-            cashierName = when (userRole) {
-                UserRole.ADMIN -> "Admin"
-                UserRole.BARISTA -> "Barista"
-            },
+            cashierName = if (userRole == UserRole.ADMIN) "Admin" else "Barista",
             footerMessage = receiptFooterText
         )
     }
 
-    /**
-     * Clears the current order and prepares the POS screen for the next customer.
-     *
-     * This is called only when the user presses Next Order.
-     */
     fun clearCurrentOrder() {
         salesViewModel.clearCart()
-
         confirmedPaymentMethod = null
         amountPaid = null
         changeGiven = null
         activePaymentMethod = null
         showPaymentDialog = false
-
         salesViewModel.clearReceiptState()
         showCancelOrderDialog = false
     }
@@ -514,53 +197,20 @@ fun SalesScreen(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                /**
-                 * Keeps the POS UI away from Android status bar and navigation bar.
-                 */
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            /**
-             * Dynamic layout sizing for different tablet sizes.
-             */
-            val sideNavWidth = (maxWidth * 0.08f).coerceIn(
-                minimumValue = 104.dp,
-                maximumValue = 132.dp
-            )
-            // Ticket panel
-            val ticketPanelWidth = (maxWidth * 0.26f).coerceIn(
-                minimumValue = 290.dp,
-                maximumValue = 390.dp
-            )
-            // Product Card
-            val productCardMinWidth = (maxWidth * 0.12f).coerceIn(
-                minimumValue = 130.dp,
-                maximumValue = 180.dp
-            )
+            val sideNavWidth = (maxWidth * 0.08f).coerceIn(104.dp, 132.dp)
+            val ticketPanelWidth = (maxWidth * 0.26f).coerceIn(290.dp, 390.dp)
+            val productCardMinWidth = (maxWidth * 0.12f).coerceIn(130.dp, 180.dp)
+            val productAreaPadding = (maxWidth * 0.015f).coerceIn(14.dp, 24.dp)
+            val ticketPanelPadding = (maxWidth * 0.015f).coerceIn(14.dp, 24.dp)
+            val navLogoSize = if (maxHeight < 650.dp) 46.dp else 56.dp
 
-            val productAreaPadding = (maxWidth * 0.015f).coerceIn(
-                minimumValue = 14.dp,
-                maximumValue = 24.dp
-            )
-
-            val ticketPanelPadding = (maxWidth * 0.015f).coerceIn(
-                minimumValue = 14.dp,
-                maximumValue = 24.dp
-            )
-
-            val navLogoSize = when {
-                maxHeight < 650.dp -> 46.dp
-                else -> 56.dp
-            }
-
-            Row(
-                modifier = Modifier.fillMaxSize()
-            ) {
+            Row(modifier = Modifier.fillMaxSize()) {
                 SideNavigation(
                     userRole = userRole,
                     currentScreen = currentScreen,
-                    onScreenSelected = { selectedScreen ->
-                        currentScreen = selectedScreen
-                    },
+                    onScreenSelected = { currentScreen = it },
                     onLogout = onLogout,
                     logoSize = navLogoSize,
                     modifier = Modifier.width(sideNavWidth)
@@ -578,18 +228,10 @@ fun SalesScreen(
                             canCancelOrder = hasActiveOrder(),
                             isOrderLocked = isOrderLocked,
                             onSearchChange = { salesViewModel.updateSearchText(it) },
-                            onCancelOrderClick = {
-                                showCancelOrderDialog = true
-                            },
-                            onCategoryClick = { category ->
-                                salesViewModel.updateCategory(category)
-                            },
-                            onProductClick = { product ->
-                                salesViewModel.addProductToCart(product)
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
+                            onCancelOrderClick = { showCancelOrderDialog = true },
+                            onCategoryClick = { salesViewModel.updateCategory(it) },
+                            onProductClick = { salesViewModel.addProductToCart(it) },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
 
                         VerticalDivider(
@@ -608,92 +250,51 @@ fun SalesScreen(
                             changeGiven = changeGiven,
                             contentPadding = ticketPanelPadding,
                             isOrderLocked = isOrderLocked,
-                            onIncreaseQuantity = { product ->
-                                salesViewModel.increaseQuantity(product)
-                            },
-                            onDecreaseQuantity = { product ->
-                                salesViewModel.decreaseQuantity(product)
-                            },
-                            onRemoveItem = { product ->
-                                salesViewModel.removeItem(product)
-                            },
-                            onClearTicketClick = {
-                                showClearTicketConfirmDialog = true
-                            },
-                            onChargeClick = {
-                                showPaymentDialog = true
-                            },
+                            onIncreaseQuantity = { salesViewModel.increaseQuantity(it) },
+                            onDecreaseQuantity = { salesViewModel.decreaseQuantity(it) },
+                            onRemoveItem = { salesViewModel.removeItem(it) },
+                            onClearTicketClick = { showClearTicketConfirmDialog = true },
+                            onChargeClick = { showPaymentDialog = true },
                             onViewReceiptClick = {
-                                val paymentMethod = confirmedPaymentMethod
-
-                                if (paymentMethod != null) {
-                                    prepareReceiptPreview(
-                                        paymentMethod = paymentMethod,
-                                        paid = amountPaid,
-                                        change = changeGiven
-                                    )
+                                confirmedPaymentMethod?.let {
+                                    prepareReceiptPreview(it, amountPaid, changeGiven)
                                 }
                             },
-                            modifier = Modifier
-                                .width(ticketPanelWidth)
-                                .fillMaxHeight()
+                            modifier = Modifier.width(ticketPanelWidth).fillMaxHeight()
                         )
                     }
-
                     AppScreen.DASHBOARD -> {
                         DashboardScreen(
-                            dashboardSummary = dashboardSummary,
-                            topSellingProducts = topSellingProducts,
-                            paymentBreakdown = paymentBreakdown,
-                            lowStockItems = lowStockDashboardItems,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
+                            viewModel = dashboardViewModel,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
-
                     AppScreen.INVENTORY -> {
                         InventoryScreen(
                             userRole = userRole,
                             productRepository = productRepository,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
-
                     AppScreen.RECEIPTS -> {
                         ReceiptHistoryScreen(
                             receipts = receiptHistoryItems,
                             selectedReceipt = receiptHistoryViewModel.selectedReceipt,
                             selectedReceiptDetails = receiptHistoryViewModel.selectedReceiptDetails,
                             isDetailDialogVisible = receiptHistoryViewModel.isReceiptDetailDialogVisible,
-                            onReceiptClick = { receipt ->
-                                receiptHistoryViewModel.openReceiptDetails(receipt)
-                            },
-                            onCloseDetailDialog = {
-                                receiptHistoryViewModel.closeReceiptDetails()
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
+                            onReceiptClick = { receiptHistoryViewModel.openReceiptDetails(it) },
+                            onCloseDetailDialog = { receiptHistoryViewModel.closeReceiptDetails() },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
-
                     AppScreen.SETTINGS -> {
                         SettingsScreen(
                             userRole = userRole,
                             selectedLanguage = selectedLanguage,
                             receiptFooterText = receiptFooterText,
-                            onLanguageChange = { language ->
-                                selectedLanguage = language
-                            },
-                            onReceiptFooterChange = { footerText ->
-                                receiptFooterText = footerText
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
+                            onLanguageChange = { selectedLanguage = it },
+                            onReceiptFooterChange = { receiptFooterText = it },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
                 }
@@ -701,9 +302,6 @@ fun SalesScreen(
         }
     }
 
-    /**
-     * Payment method selection dialog.
-     */
     if (showPaymentDialog) {
         PaymentMethodDialog(
             total = total,
@@ -711,244 +309,99 @@ fun SalesScreen(
                 activePaymentMethod = method
                 showPaymentDialog = false
             },
-            onDismiss = {
-                showPaymentDialog = false
-            }
+            onDismiss = { showPaymentDialog = false }
         )
     }
 
-    /**
-     * Payment confirmation dialogs.
-     */
-    when (activePaymentMethod) {
+    when (val method = activePaymentMethod) {
         PaymentMethod.CASH -> {
             CashPaymentDialog(
                 total = total,
-                onConfirmPayment = { method, paid, change ->
-                    confirmedPaymentMethod = method
-                    amountPaid = paid
-                    changeGiven = change
+                onConfirmPayment = { m, p, c ->
+                    confirmedPaymentMethod = m
+                    amountPaid = p
+                    changeGiven = c
                     activePaymentMethod = null
-
-                    /*
-                    * Open the receipt preview immediately after payment confirmation
-                     */
-                    prepareReceiptPreview(
-                        paymentMethod = method,
-                        paid = paid,
-                        change = change
-                    )
+                    prepareReceiptPreview(m, p, c)
                 },
-                onCancel = {
-                    activePaymentMethod = null
-                }
+                onCancel = { activePaymentMethod = null }
             )
         }
-
-        PaymentMethod.CARD,
-        PaymentMethod.MOBILE -> {
+        PaymentMethod.CARD, PaymentMethod.MOBILE -> {
             ConfirmPaymentDialog(
-                paymentMethod = activePaymentMethod!!,
+                paymentMethod = method,
                 total = total,
-                onConfirmPayment = { method, paid, change ->
-                    confirmedPaymentMethod = method
-                    amountPaid = paid
-                    changeGiven = change
+                onConfirmPayment = { m, p, c ->
+                    confirmedPaymentMethod = m
+                    amountPaid = p
+                    changeGiven = c
                     activePaymentMethod = null
-
-                    /*
-                    * Open the receipt preview immediately after payment confirmation
-                     */
-                    prepareReceiptPreview(
-                        paymentMethod = method,
-                        paid = paid,
-                        change = change
-                    )
+                    prepareReceiptPreview(m, p, c)
                 },
-                onCancel = {
-                    activePaymentMethod = null
-                }
+                onCancel = { activePaymentMethod = null }
             )
         }
-
-        null -> {
-            // No payment dialog is currently open.
-        }
+        null -> {}
     }
 
-    /**
-     * Receipt preview dialog.
-     *
-     * The dialog receives one Receipt object and delegates printing back
-     * to this screen using onPrintReceipt.
-     */
-    val receiptToPreview = salesViewModel.currentReceipt
-
-    /**
-     * Error dialog for sales-related issues (e.g. insufficient stock).
-     */
     if (salesError != null) {
         AlertDialog(
-            onDismissRequest = {
-                salesViewModel.clearSalesError()
-            },
-            title = {
-                Text(text = "Order Error")
-            },
-            text = {
-                Text(text = salesError)
-            },
+            onDismissRequest = { salesViewModel.clearSalesError() },
+            title = { Text("Order Error") },
+            text = { Text(salesError) },
             confirmButton = {
-                Button(
-                    onClick = {
-                        salesViewModel.clearSalesError()
-                    }
-                ) {
-                    Text(text = "OK")
-                }
+                Button(onClick = { salesViewModel.clearSalesError() }) { Text("OK") }
             }
         )
     }
 
-    /**
-     * Cancel order confirmation dialog.
-     *
-     * This prevents the cashier from accidentally clearing an active order.
-     */
     if (showCancelOrderDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showCancelOrderDialog = false
-            },
-            title = {
-                Text(text = "Cancel Order?")
-            },
-            text = {
-                Text(
-                    text = "This will clear the current ticket and cancel the active order."
-                )
-            },
+            onDismissRequest = { showCancelOrderDialog = false },
+            title = { Text("Cancel Order?") },
+            text = { Text("This will clear the current ticket and cancel the active order.") },
             confirmButton = {
-                Button(
-                    onClick = {
-                        clearCurrentOrder()
-                        showCancelOrderDialog = false
-                    }
-                ) {
-                    Text(text = "Cancel Order")
-
-                }
+                Button(onClick = { clearCurrentOrder() }) { Text("Cancel Order") }
             },
             dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        showCancelOrderDialog = false
-                    }
-                ) {
-                    Text(text = "Keep Order")
-                }
+                OutlinedButton(onClick = { showCancelOrderDialog = false }) { Text("Keep Order") }
             }
         )
     }
 
-    /**
-     * Clear ticket confirmation dialog.
-     */
     if (showClearTicketConfirmDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showClearTicketConfirmDialog = false
-            },
-            title = {
-                Text(text = "Clear current order?")
-            },
-            text = {
-                Text(
-                    text = "All items will be removed from the current ticket."
-                )
-            },
+            onDismissRequest = { showClearTicketConfirmDialog = false },
+            title = { Text("Clear current order?") },
+            text = { Text("All items will be removed from the current ticket.") },
             confirmButton = {
                 Button(
                     onClick = {
                         clearTicketBeforePayment()
                         showClearTicketConfirmDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text(text = "Clear Order")
-                }
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Clear Order") }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showClearTicketConfirmDialog = false
-                    }
-                ) {
-                    Text(text = "Cancel")
-                }
+                TextButton(onClick = { showClearTicketConfirmDialog = false }) { Text("Cancel") }
             }
         )
     }
 
-    if (salesViewModel.showReceiptPreviewDialog && receiptToPreview != null) {
+    if (salesViewModel.showReceiptPreviewDialog && salesViewModel.currentReceipt != null) {
         ReceiptPreviewDialog(
-            receipt = receiptToPreview,
-            onClose = {
-                /**
-                 * Closing the preview does not clear the order.
-                 */
-                salesViewModel.closeReceiptPreview()
-            },
-            onNextOrder = {
-                /**
-                 * Clear the current order and prepare the POS for the next customer.
-                 *
-                 * The receipt is already saved to Room at this point (saved during
-                 * the prepareReceiptPreview/processCompletedOrder phase).
-                 */
-                clearCurrentOrder()
-            },
-
+            receipt = salesViewModel.currentReceipt!!,
+            onClose = { salesViewModel.closeReceiptPreview() },
+            onNextOrder = { clearCurrentOrder() },
             onPrintReceipt = { receipt ->
-                /**
-                 * Send the receipt to the printer service layer.
-                 *
-                 * FakeReceiptPrinter currently returns:
-                 * "Printer not available. Check connection."
-                 */
-                val printResult = receiptPrinter.printReceipt(
-                    receipt = receipt,
-                    printerConfig = defaultPrinter
-                )
-
-                Toast.makeText(
-                    context,
-                    printResult.message,
-                    Toast.LENGTH_SHORT
-                ).show()
+                val res = receiptPrinter.printReceipt(receipt, defaultPrinter)
+                Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             },
-
             onDownloadPdf = { receipt ->
-                /**
-                 * Generates a PDF of the receipt and saves it to the device.
-                 */
                 val uri = ReceiptPdfGenerator.generateAndSavePdf(context, receipt)
-
-                if (uri != null) {
-                    Toast.makeText(
-                        context,
-                        "Receipt saved to Downloads folder.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Unable to save PDF. Please check permissions.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                val msg = if (uri != null) "Receipt saved to Downloads folder." else "Unable to save PDF."
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             }
         )
     }
@@ -964,10 +417,7 @@ private fun SideNavigation(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .background(RoyalGreenDark)
-            .padding(horizontal = 10.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxHeight().background(RoyalGreenDark).padding(horizontal = 10.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -978,130 +428,41 @@ private fun SideNavigation(
         ) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(logoSize)
-                    .border(
-                        width = 2.dp,
-                        color = Color.White,
-                        shape = CircleShape
-                    )
+                modifier = Modifier.size(logoSize).border(2.dp, Color.White, CircleShape)
             ) {
-                Text(
-                    text = "RC",
-                    color = RoyalGold,
-                    fontFamily = CinzelFontFamily,
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                Text("RC", color = RoyalGold, fontFamily = CinzelFontFamily, style = MaterialTheme.typography.headlineSmall)
             }
-
-            NavigationItem(
-                text = "Sales",
-                isSelected = currentScreen == AppScreen.SALES,
-                onClick = {
-                    onScreenSelected(AppScreen.SALES)
-                }
-            )
-
+            NavigationItem("Sales", currentScreen == AppScreen.SALES) { onScreenSelected(AppScreen.SALES) }
             if (userRole == UserRole.ADMIN) {
-                NavigationItem(
-                    text = "Dashboard",
-                    isSelected = currentScreen == AppScreen.DASHBOARD,
-                    onClick = {
-                        onScreenSelected(AppScreen.DASHBOARD)
-                    }
-                )
-
-                NavigationItem(
-                    text = "Inventory",
-                    isSelected = currentScreen == AppScreen.INVENTORY,
-                    onClick = {
-                        onScreenSelected(AppScreen.INVENTORY)
-                    }
-                )
+                NavigationItem("Dashboard", currentScreen == AppScreen.DASHBOARD) { onScreenSelected(AppScreen.DASHBOARD) }
+                NavigationItem("Inventory", currentScreen == AppScreen.INVENTORY) { onScreenSelected(AppScreen.INVENTORY) }
             }
-
-            NavigationItem(
-                text = "Receipts",
-                isSelected = currentScreen == AppScreen.RECEIPTS,
-                onClick = {
-                    onScreenSelected(AppScreen.RECEIPTS)
-                }
-            )
-
-            NavigationItem(
-                text = "Settings",
-                isSelected = currentScreen == AppScreen.SETTINGS,
-                onClick = {
-                    onScreenSelected(AppScreen.SETTINGS)
-                }
-            )
+            NavigationItem("Receipts", currentScreen == AppScreen.RECEIPTS) { onScreenSelected(AppScreen.RECEIPTS) }
+            NavigationItem("Settings", currentScreen == AppScreen.SETTINGS) { onScreenSelected(AppScreen.SETTINGS) }
         }
-
         OutlinedButton(
             onClick = onLogout,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
+            modifier = Modifier.fillMaxWidth().height(44.dp),
             contentPadding = PaddingValues(horizontal = 4.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color.White
-            )
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
         ) {
-            Text(
-                text = "Logout",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text("Logout", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
-private fun NavigationItem(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    /**
-     * Selected item gets a gold background.
-     *
-     * This makes it clear which main screen the user is currently viewing.
-     */
-    val backgroundColor = if (isSelected) {
-        RoyalGold
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
-    val textColor = if (isSelected) {
-        RoyalGreenDark
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
+private fun NavigationItem(text: String, isSelected: Boolean, onClick: () -> Unit) {
+    val backgroundColor = if (isSelected) RoyalGold else MaterialTheme.colorScheme.surface
+    val textColor = if (isSelected) RoyalGreenDark else MaterialTheme.colorScheme.onSurface
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                onClick()
-            }
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = textColor,
-                textAlign = TextAlign.Center
-            )
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
+            Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = textColor, textAlign = TextAlign.Center)
         }
     }
 }
@@ -1123,181 +484,54 @@ private fun ProductArea(
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
-
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .padding(contentPadding)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Column(modifier = modifier.fillMaxHeight().padding(contentPadding)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Spacer(modifier = Modifier.width(140.dp))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "royal coffee",
-                    fontFamily = CinzelFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text(
-                    text = "Point of Sale",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("royal coffee", fontFamily = CinzelFontFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text("Point of Sale", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
-
-            OutlinedButton(
-                onClick = onCancelOrderClick,
-                enabled = canCancelOrder,
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(44.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Text(
-                    text = "Cancel Order",
-                    style = MaterialTheme.typography.bodySmall
-                )
+            OutlinedButton(onClick = onCancelOrderClick, enabled = canCancelOrder, modifier = Modifier.width(140.dp).height(44.dp), shape = RoundedCornerShape(14.dp)) {
+                Text("Cancel Order", style = MaterialTheme.typography.bodySmall)
             }
         }
-
         Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            /**
-             * Product search field.
-             */
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             val focusManager = LocalFocusManager.current
             OutlinedTextField(
                 value = searchText,
                 onValueChange = onSearchChange,
                 placeholder = { Text("Search products...") },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                    )
-                },
+                modifier = Modifier.weight(1f).height(56.dp),
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary.copy(0.6f)) },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
-                ),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                )
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                colors = TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface)
             )
-
-            /**
-             * Categories scroll horizontally when there is not enough space.
-             */
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(
-                    space = 10.dp,
-                    alignment = Alignment.End
-                ),
-                modifier = Modifier.weight(1.5f)
-            ) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End), modifier = Modifier.weight(1.5f)) {
                 lazyRowItems(categories) { category ->
-                    CategoryChip(
-                        text = category,
-                        isSelected = category == selectedCategory,
-                        onClick = {
-                            onCategoryClick(category)
-                        }
-                    )
+                    if (category == selectedCategory) {
+                        Button(onClick = { onCategoryClick(category) }) { Text(category) }
+                    } else {
+                        OutlinedButton(onClick = { onCategoryClick(category) }) { Text(category) }
+                    }
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(20.dp))
-
         Box(modifier = Modifier.weight(1f)) {
-            /**
-             * Adaptive grid automatically changes number of product columns
-             * depending on available width.
-             */
             LazyVerticalGrid(
                 state = gridState,
-                columns = GridCells.Adaptive(minSize = productCardMinWidth),
+                columns = GridCells.Adaptive(productCardMinWidth),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(bottom = 60.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(products) { product ->
-                    ProductCard(
-                        product = product,
-                        enabled = !isOrderLocked,
-                        onClick = {
-                            onProductClick(product)
-                        }
-                    )
-                }
-            }
-
-            // Vertical Scrollbar for Product Grid
-            val layoutInfo = gridState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val visibleItems = layoutInfo.visibleItemsInfo.size
-
-            if (totalItems > visibleItems) {
-                val firstVisibleIndex = gridState.firstVisibleItemIndex
-                val scrollFraction = firstVisibleIndex.toFloat() / (totalItems - visibleItems).coerceAtLeast(1)
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .padding(vertical = 4.dp)
-                        .align(Alignment.CenterEnd)
-                        .background(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-                            shape = CircleShape
-                        )
-                ) {
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val trackHeight = maxHeight
-                        val thumbHeight = trackHeight * 0.2f
-                        val scrollOffset = (trackHeight - thumbHeight) * scrollFraction
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(thumbHeight)
-                                .offset(y = scrollOffset)
-                                .background(
-                                    color = RoyalGold.copy(alpha = 0.6f),
-                                    shape = CircleShape
-                                )
-                        )
-                    }
+                    ProductCard(product, !isOrderLocked) { onProductClick(product) }
                 }
             }
         }
@@ -1305,154 +539,37 @@ private fun ProductArea(
 }
 
 @Composable
-private fun CategoryChip(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    if (isSelected) {
-        Button(
-            onClick = onClick
-        ) {
-            Text(text = text)
-        }
-    } else {
-        OutlinedButton(
-            onClick = onClick
-        ) {
-            Text(text = text)
-        }
-    }
-}
-
-@Composable
-private fun ProductCard(
-    product: Product,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
+private fun ProductCard(product: Product, enabled: Boolean, onClick: () -> Unit) {
     val isOutOfStock = product.stockQuantity <= 0
     val isLowStock = !isOutOfStock && product.stockQuantity <= product.reorderLevel
-
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            /**
-             * Visually dims product cards after payment confirmation or if out of stock.
-             */
-            .alpha(if (enabled && !isOutOfStock) 1f else 0.45f)
-            .clickable(
-                enabled = enabled && !isOutOfStock
-            ) {
-                onClick()
-            },
+        modifier = Modifier.fillMaxWidth().alpha(if (enabled && !isOutOfStock) 1f else 0.45f).clickable(enabled && !isOutOfStock) { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            /**
-             * Product Image Area.
-             *
-             * Fixed structural area for images.
-             */
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             val imageResId = getProductImage(product.name)
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp)
-                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxWidth().height(130.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.05f)), contentAlignment = Alignment.Center) {
                 if (imageResId != null) {
-                    Image(
-                        painter = painterResource(id = imageResId),
-                        contentDescription = product.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
+                    Image(painterResource(imageResId), product.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 } else {
-                    Text(
-                        text = "☕\nNo Image",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                        textAlign = TextAlign.Center
-                    )
+                    Text("☕\nNo Image", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(0.2f), textAlign = TextAlign.Center)
                 }
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = product.name,
-                    textAlign = TextAlign.Center,
-                    fontFamily = CinzelFontFamily,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 2
-                )
-
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(product.name, textAlign = TextAlign.Center, fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 2)
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = product.category,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-
+                Text(product.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(0.5f))
                 Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Rs ${product.price}",
-                    textAlign = TextAlign.Center,
-                    fontFamily = CinzelFontFamily,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
+                Text("Rs ${product.price}", fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(8.dp))
-
-                /**
-                 * Stock Information.
-                 */
                 if (isOutOfStock) {
-                    Text(
-                        text = "OUT OF STOCK",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Text("OUT OF STOCK", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                 } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(
-                                    color = if (isLowStock) Color(0xFFFFA000) else Color(0xFF4CAF50),
-                                    shape = CircleShape
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isLowStock) "${product.stockQuantity} left" else "${product.stockQuantity} available",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isLowStock) Color(0xFFFFA000) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(8.dp).background(if (isLowStock) Color(0xFFFFA000) else Color(0xFF4CAF50), CircleShape))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (isLowStock) "${product.stockQuantity} left" else "${product.stockQuantity} available", style = MaterialTheme.typography.labelSmall, color = if (isLowStock) Color(0xFFFFA000) else MaterialTheme.colorScheme.onSurface.copy(0.6f))
                     }
                 }
             }
@@ -1481,345 +598,104 @@ private fun TicketPanel(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-
-    Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(contentPadding),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Box(
-            modifier = Modifier.weight(1f)
-        ) {
-            // Track (Always visible)
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(4.dp)
-                    .align(Alignment.CenterEnd)
-                    .background(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                        shape = CircleShape
-                    )
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(end = 12.dp)
-            ) {
-                TicketHeader(
-                    itemCount = cartItems.sumOf { it.quantity }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.surface).padding(contentPadding), verticalArrangement = Arrangement.SpaceBetween) {
+        Box(Modifier.weight(1f)) {
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
+                TicketHeader(cartItems.sumOf { it.quantity })
+                Spacer(Modifier.height(16.dp))
                 if (cartItems.isEmpty()) {
                     EmptyTicketCard()
                 } else {
                     cartItems.forEach { item ->
-                        CartItemRow(
-                            cartItem = item,
-                            isOrderLocked = isOrderLocked,
-                            onIncreaseQuantity = {
-                                onIncreaseQuantity(item.product)
-                            },
-                            onDecreaseQuantity = {
-                                onDecreaseQuantity(item.product)
-                            },
-                            onRemove = {
-                                onRemoveItem(item.product)
-                            }
-                        )
+                        CartItemRow(item, isOrderLocked, { onIncreaseQuantity(item.product) }, { onDecreaseQuantity(item.product) }, { onRemoveItem(item.product) })
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OrderSummaryCard(
-                    subtotal = subtotal,
-                    discount = discount,
-                    tax = tax,
-                    total = total
-                )
-
-                if (confirmedPaymentMethod != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    PaymentSummaryCard(
-                        confirmedPaymentMethod = confirmedPaymentMethod,
-                        amountPaid = amountPaid,
-                        changeGiven = changeGiven
-                    )
-                }
-            }
-
-            // Thumb (Visible when scrollable)
-            if (scrollState.maxValue > 0) {
-                val scrollFraction by remember {
-                    derivedStateOf {
-                        if (scrollState.maxValue > 0) {
-                            scrollState.value.toFloat() / scrollState.maxValue.toFloat()
-                        } else 0f
-                    }
-                }
-
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .align(Alignment.CenterEnd)
-                ) {
-                    val trackHeight = maxHeight
-                    val thumbHeight = trackHeight * 0.2f
-                    val scrollOffset = (trackHeight - thumbHeight) * scrollFraction
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(thumbHeight)
-                            .offset(y = scrollOffset)
-                            .background(
-                                color = RoyalGold.copy(alpha = 0.8f),
-                                shape = CircleShape
-                            )
-                    )
+                Spacer(Modifier.height(16.dp))
+                OrderSummaryCard(subtotal, discount, tax, total)
+                confirmedPaymentMethod?.let {
+                    Spacer(Modifier.height(16.dp))
+                    PaymentSummaryCard(it, amountPaid, changeGiven)
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+        Spacer(Modifier.height(16.dp))
         if (confirmedPaymentMethod == null) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(
                     onClick = onClearTicketClick,
                     enabled = cartItems.isNotEmpty(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text(
-                        text = "Clear Ticket",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
-
+                ) { Text("Clear Ticket") }
+                
                 Button(
                     onClick = onChargeClick,
                     enabled = cartItems.isNotEmpty(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text(
-                        text = "Charge Rs $total",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
+                ) { Text("Charge Rs $total") }
             }
         } else {
-            Button(
-                onClick = onViewReceiptClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Text(
-                    text = "View Receipt",
-                    style = MaterialTheme.typography.titleSmall
-                )
-            }
+            Button(onViewReceiptClick, Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) { Text("View Receipt") }
         }
     }
 }
 
 @Composable
-private fun TicketHeader(
-    itemCount: Int
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "Ticket",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Text(
-                    text = "Current Order",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                )
-            }
-
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
-                border = androidx.compose.foundation.BorderStroke(
-                    width = 1.dp,
-                    color = RoyalGold.copy(alpha = 0.7f)
-                )
-            ) {
-                Text(
-                    text = "$itemCount item(s)",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+private fun TicketHeader(itemCount: Int) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Column {
+            Text("Ticket", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            Text("Current Order", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.65f))
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-        )
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondary.copy(0.25f), border = androidx.compose.foundation.BorderStroke(1.dp, RoyalGold.copy(0.7f))) {
+            Text("$itemCount item(s)", Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
 @Composable
 private fun EmptyTicketCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "No items added yet",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Select products from the menu to start an order.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                textAlign = TextAlign.Center
-            )
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(0.55f))) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("No items added yet", style = MaterialTheme.typography.titleSmall)
+            Text("Select products from the menu to start an order.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable
-private fun CartItemRow(
-    cartItem: CartItem,
-    isOrderLocked: Boolean,
-    onIncreaseQuantity: () -> Unit,
-    onDecreaseQuantity: () -> Unit,
-    onRemove: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 10.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.55f)
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = cartItem.product.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Rs ${cartItem.product.price} each",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                    )
+private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDec: () -> Unit, onRem: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), RoundedCornerShape(16.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.background.copy(0.55f)), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.08f))) {
+        Column(Modifier.padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text(item.product.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    Text("Rs ${item.product.price} each", style = MaterialTheme.typography.bodySmall)
                 }
-
                 IconButton(
-                    onClick = onRemove,
-                    enabled = !isOrderLocked,
+                    onClick = { onRem() },
+                    enabled = !locked,
                     modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                ) { Icon(Icons.Default.Delete, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error.copy(0.7f)) }
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Rs ${cartItem.lineTotal}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    QuantityButton(
-                        text = "-",
-                        enabled = !isOrderLocked,
-                        onClick = onDecreaseQuantity
-                    )
-
-                    Text(
-                        text = "${cartItem.quantity}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-
-                    QuantityButton(
-                        text = "+",
-                        enabled = !isOrderLocked && cartItem.quantity < cartItem.product.stockQuantity,
-                        onClick = onIncreaseQuantity
-                    )
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("Rs ${item.lineTotal}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = { onDec() },
+                        enabled = !locked,
+                        shape = RoundedCornerShape(10.dp)
+                    ) { Text("-", style = MaterialTheme.typography.titleMedium) }
+                    
+                    Text("${item.quantity}", fontWeight = FontWeight.Bold)
+                    
+                    TextButton(
+                        onClick = { onInc() },
+                        enabled = !locked && item.quantity < item.product.stockQuantity,
+                        shape = RoundedCornerShape(10.dp)
+                    ) { Text("+", style = MaterialTheme.typography.titleMedium) }
                 }
             }
         }
@@ -1827,181 +703,42 @@ private fun CartItemRow(
 }
 
 @Composable
-private fun QuantityButton(
-    text: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    TextButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.size(36.dp),
-        shape = RoundedCornerShape(10.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
-private fun OrderSummaryCard(
-    subtotal: Int,
-    discount: Int,
-    tax: Int,
-    total: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = RoyalGold.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Order Summary",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            SummaryRow(
-                label = "Subtotal",
-                value = "Rs $subtotal"
-            )
-
-            SummaryRow(
-                label = "Discount",
-                value = "Rs $discount"
-            )
-
-            SummaryRow(
-                label = "Tax",
-                value = "Rs $tax"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Total",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = "Rs $total",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
+private fun OrderSummaryCard(subtotal: Int, discount: Int, tax: Int, total: Int) {
+    Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(0.65f)), border = androidx.compose.foundation.BorderStroke(1.dp, RoyalGold.copy(0.35f))) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Order Summary", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            SummaryRow("Subtotal", "Rs $subtotal")
+            SummaryRow("Discount", "Rs $discount")
+            SummaryRow("Tax", "Rs $tax")
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.12f))
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Rs $total", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun SummaryRow(
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
-        )
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
+private fun SummaryRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(0.72f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-private fun PaymentSummaryCard(
-    confirmedPaymentMethod: PaymentMethod,
-    amountPaid: Int?,
-    changeGiven: Int?
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Payment Confirmed",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SummaryRow(
-                label = "Method",
-                value = confirmedPaymentMethod.name
-            )
-
-            if (amountPaid != null) {
-                SummaryRow(
-                    label = "Amount Paid",
-                    value = "Rs $amountPaid"
-                )
-            }
-
-            if (changeGiven != null && changeGiven > 0) {
-                SummaryRow(
-                    label = "Change",
-                    value = "Rs $changeGiven"
-                )
-            }
+private fun PaymentSummaryCard(method: PaymentMethod, paid: Int?, change: Int?) {
+    Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.primary.copy(0.10f)), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.35f))) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Payment Confirmed", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            SummaryRow("Method", method.name)
+            paid?.let { SummaryRow("Amount Paid", "Rs $it") }
+            change?.let { if (it > 0) SummaryRow("Change", "Rs $it") }
         }
     }
 }
 
-/**
- * Maps product names to their corresponding drawable resource IDs.
- *
- * This uses a simple name-based mapping for the current Step 1A implementation.
- */
 private fun getProductImage(productName: String): Int? {
     return when (productName.lowercase()) {
         "croissant" -> R.drawable.croissant
@@ -2014,55 +751,3 @@ private fun getProductImage(productName: String): Int? {
         else -> null
     }
 }
-
-/**
- * Temporary top-selling product data for dashboard development.
- *
- * Later, this will be calculated from saved receipt/order details.
- */
-private fun sampleTopSellingProducts(): List<TopSellingProduct> {
-    return listOf(
-        TopSellingProduct(
-            productName = "Latte",
-            quantitySold = 8,
-            revenue = 960
-        ),
-        TopSellingProduct(
-            productName = "Iced Coffee",
-            quantitySold = 6,
-            revenue = 840
-        ),
-        TopSellingProduct(
-            productName = "Croissant",
-            quantitySold = 5,
-            revenue = 400
-        )
-    )
-}
-
-/**
- * Temporary payment breakdown data for dashboard development.
- *
- * Later, this will be calculated from saved payment records.
- */
-private fun samplePaymentBreakdown(): List<PaymentBreakdownItem> {
-    return listOf(
-        PaymentBreakdownItem(
-            paymentMethod = "Cash",
-            orderCount = 7,
-            amount = 1120
-        ),
-        PaymentBreakdownItem(
-            paymentMethod = "Card",
-            orderCount = 6,
-            amount = 980
-        ),
-        PaymentBreakdownItem(
-            paymentMethod = "Mobile Payment",
-            orderCount = 5,
-            amount = 750
-        )
-    )
-}
-
-

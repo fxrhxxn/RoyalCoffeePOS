@@ -10,6 +10,88 @@ import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
+ * Data model for dashboard sales summary.
+ */
+data class SalesSummary(
+    val totalSales: Int,
+    val orderCount: Int
+)
+
+/**
+ * Data model for dashboard payment breakdown.
+ */
+data class PaymentBreakdown(
+    val paymentMethod: String,
+    val totalAmount: Int,
+    val orderCount: Int
+)
+
+/**
+ * Data model for dashboard top selling products.
+ */
+data class TopProduct(
+    val productName: String,
+    val totalQuantity: Int
+)
+
+/**
+ * Data model for most profitable product.
+ */
+data class ProfitableProduct(
+    val productName: String,
+    val totalGrossProfit: Int
+)
+
+/**
+ * Data model for sales trend line chart.
+ */
+data class SalesTrendPoint(
+    val dateLabel: String,
+    val totalSales: Int,
+    val orderCount: Int
+)
+
+/**
+ * Data model for hourly sales breakdown.
+ */
+data class HourlySales(
+    val hourLabel: String, // e.g. "09:00"
+    val totalSales: Int,
+    val orderCount: Int
+)
+
+/**
+ * Data model for category-based performance.
+ */
+data class CategorySales(
+    val category: String,
+    val totalRevenue: Int,
+    val knownCostRevenue: Int,
+    val totalCOGS: Int,
+    val quantitySold: Int
+)
+
+/**
+ * Data model for profit statistics.
+ */
+data class GrossProfitStats(
+    val totalRevenue: Int,
+    val knownCostRevenue: Int,
+    val totalCOGS: Int,
+    val knownCostCount: Int,
+    val totalSalesCount: Int
+)
+
+/**
+ * Data model for daily profit trend.
+ */
+data class ProfitTrendPoint(
+    val dateLabel: String,
+    val totalRevenue: Int,
+    val totalGrossProfit: Int
+)
+
+/**
  * ReceiptDao contains database operations for saved receipts.
  *
  * This DAO allows the app to:
@@ -127,4 +209,150 @@ interface ReceiptDao {
         """
     )
     suspend fun getLastReceiptNumber(yearPrefix: String): String?
+
+    /**
+     * Returns a summary of sales for a specific date range.
+     */
+    @Query(
+        """
+        SELECT IFNULL(SUM(total), 0) as totalSales, COUNT(receipt_id) as orderCount 
+        FROM receipt_headers 
+        WHERE timestamp >= :start AND timestamp <= :end
+        """
+    )
+    fun getSalesSummary(start: Long, end: Long): Flow<SalesSummary>
+
+    /**
+     * Returns sales grouped by payment method for a specific date range.
+     */
+    @Query(
+        """
+        SELECT payment_method as paymentMethod, SUM(total) as totalAmount, COUNT(receipt_id) as orderCount 
+        FROM receipt_headers 
+        WHERE timestamp >= :start AND timestamp <= :end 
+        GROUP BY payment_method
+        """
+    )
+    fun getPaymentBreakdown(start: Long, end: Long): Flow<List<PaymentBreakdown>>
+
+    /**
+     * Returns top selling products for a specific date range.
+     */
+    @Query(
+        """
+        SELECT product_name as productName, SUM(quantity) as totalQuantity 
+        FROM receipt_details 
+        JOIN receipt_headers ON receipt_details.receipt_id = receipt_headers.receipt_id 
+        WHERE timestamp >= :start AND timestamp <= :end 
+        GROUP BY product_name 
+        ORDER BY totalQuantity DESC 
+        LIMIT :limit
+        """
+    )
+    fun getTopSellingProducts(start: Long, end: Long, limit: Int): Flow<List<TopProduct>>
+
+    /**
+     * Returns sales trend points grouped by day.
+     */
+    @Query(
+        """
+        SELECT strftime('%d/%m', timestamp / 1000, 'unixepoch') as dateLabel, 
+               SUM(total) as totalSales, 
+               COUNT(receipt_id) as orderCount 
+        FROM receipt_headers 
+        WHERE timestamp >= :start AND timestamp <= :end 
+        GROUP BY dateLabel 
+        ORDER BY MIN(timestamp) ASC
+        """
+    )
+    fun getSalesTrend(start: Long, end: Long): Flow<List<SalesTrendPoint>>
+
+    /**
+     * Returns sales grouped by hour for a specific period.
+     */
+    @Query(
+        """
+        SELECT strftime('%H:00', timestamp / 1000, 'unixepoch') as hourLabel, 
+               SUM(total) as totalSales, 
+               COUNT(receipt_id) as orderCount 
+        FROM receipt_headers 
+        WHERE timestamp >= :start AND timestamp <= :end 
+        GROUP BY hourLabel 
+        ORDER BY hourLabel ASC
+        """
+    )
+    fun getHourlySales(start: Long, end: Long): Flow<List<HourlySales>>
+
+    /**
+     * Returns sales grouped by product category.
+     */
+    @Query(
+        """
+        SELECT products.category as category, 
+               SUM(receipt_details.line_total) as totalRevenue, 
+               SUM(CASE WHEN receipt_details.cost_price IS NOT NULL THEN receipt_details.line_total ELSE 0 END) as knownCostRevenue,
+               SUM(CASE WHEN receipt_details.cost_price IS NOT NULL THEN receipt_details.quantity * receipt_details.cost_price ELSE 0 END) as totalCOGS,
+               SUM(receipt_details.quantity) as quantitySold 
+        FROM receipt_details 
+        JOIN receipt_headers ON receipt_details.receipt_id = receipt_headers.receipt_id 
+        JOIN products ON receipt_details.product_name = products.product_name 
+        WHERE receipt_headers.timestamp >= :start AND receipt_headers.timestamp <= :end 
+        GROUP BY category 
+        ORDER BY totalRevenue DESC
+        """
+    )
+    fun getCategorySales(start: Long, end: Long): Flow<List<CategorySales>>
+
+    /**
+     * Returns the most profitable products.
+     */
+    @Query(
+        """
+        SELECT product_name as productName, 
+               SUM(quantity * (unit_price - IFNULL(cost_price, unit_price))) as totalGrossProfit
+        FROM receipt_details
+        JOIN receipt_headers ON receipt_details.receipt_id = receipt_headers.receipt_id
+        WHERE receipt_headers.timestamp >= :start AND receipt_headers.timestamp <= :end
+        GROUP BY productName
+        ORDER BY totalGrossProfit DESC
+        LIMIT :limit
+        """
+    )
+    fun getMostProfitableProducts(start: Long, end: Long, limit: Int): Flow<List<ProfitableProduct>>
+
+    /**
+     * Returns Gross Profit statistics.
+     */
+    @Query(
+        """
+        SELECT 
+            SUM(DISTINCT h.total) as totalRevenue,
+            SUM(CASE WHEN d.cost_price IS NOT NULL THEN d.line_total ELSE 0 END) as knownCostRevenue,
+            SUM(d.quantity * d.cost_price) as totalCOGS,
+            COUNT(DISTINCT CASE WHEN d.cost_price IS NOT NULL THEN h.receipt_id END) as knownCostCount,
+            COUNT(DISTINCT h.receipt_id) as totalSalesCount
+        FROM receipt_headers h
+        LEFT JOIN receipt_details d ON h.receipt_id = d.receipt_id
+        WHERE h.timestamp >= :start AND h.timestamp <= :end
+        """
+    )
+    fun getGrossProfitStats(start: Long, end: Long): Flow<GrossProfitStats>
+
+    /**
+     * Returns dual trend points for Revenue and Gross Profit.
+     */
+    @Query(
+        """
+        SELECT 
+            strftime('%d/%m', h.timestamp / 1000, 'unixepoch') as dateLabel,
+            SUM(DISTINCT h.total) as totalRevenue,
+            SUM(d.quantity * (d.unit_price - IFNULL(d.cost_price, d.unit_price))) as totalGrossProfit
+        FROM receipt_headers h
+        JOIN receipt_details d ON h.receipt_id = d.receipt_id
+        WHERE h.timestamp >= :start AND h.timestamp <= :end
+        GROUP BY dateLabel
+        ORDER BY MIN(h.timestamp) ASC
+        """
+    )
+    fun getProfitTrend(start: Long, end: Long): Flow<List<ProfitTrendPoint>>
 }
