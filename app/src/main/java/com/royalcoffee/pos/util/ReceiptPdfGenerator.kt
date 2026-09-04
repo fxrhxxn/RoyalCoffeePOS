@@ -7,10 +7,12 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.core.content.res.ResourcesCompat
 import com.royalcoffee.pos.R
 import com.royalcoffee.pos.model.Receipt
@@ -172,33 +174,47 @@ object ReceiptPdfGenerator {
 
         pdfDocument.finishPage(page)
 
-        val fileName = "RoyalCoffee_Receipt_${receipt.receiptNumber}.pdf"
+        val fileName = "Receipt_${receipt.receiptNumber}.pdf"
         var uri: Uri? = null
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download")
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
-                val resolver = context.contentResolver
+                
                 uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                
                 uri?.let {
                     resolver.openOutputStream(it)?.use { outputStream ->
                         pdfDocument.writeTo(outputStream)
+                        outputStream.flush()
                     }
+                    
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(it, contentValues, null, null)
                 }
             } else {
                 // Legacy approach for API 26-28
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                if (!downloadsDir.exists()) {
+                    downloadsDir.mkdirs()
+                }
                 
                 val file = File(downloadsDir, fileName)
                 FileOutputStream(file).use { outputStream ->
                     pdfDocument.writeTo(outputStream)
+                    outputStream.flush()
                 }
                 uri = Uri.fromFile(file)
+
+                // Trigger media scanner to make the file visible in file managers immediately
+                MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
             }
         } catch (e: Exception) {
             e.printStackTrace()

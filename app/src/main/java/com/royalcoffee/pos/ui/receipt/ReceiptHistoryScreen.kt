@@ -46,6 +46,7 @@ fun ReceiptHistoryScreen(
     isDetailDialogVisible: Boolean,
     onReceiptClick: (ReceiptHistoryItem) -> Unit,
     onCloseDetailDialog: () -> Unit,
+    onDownloadReceipt: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -96,7 +97,10 @@ fun ReceiptHistoryScreen(
         ReceiptDetailDialog(
             receipt = selectedReceipt,
             details = selectedReceiptDetails,
-            onDismiss = onCloseDetailDialog
+            onDismiss = onCloseDetailDialog,
+            onDownload = {
+                onDownloadReceipt(selectedReceipt.receiptId)
+            }
         )
     }
 }
@@ -257,16 +261,30 @@ private fun ReceiptHistoryRow(
 private fun ReceiptDetailDialog(
     receipt: ReceiptHistoryItem,
     details: List<ReceiptDetailItem>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDownload: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = receipt.receiptNumber,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = receipt.receiptNumber,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Button(
+                    onClick = onDownload,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Download PDF")
+                }
+            }
         },
         text = {
             Column(

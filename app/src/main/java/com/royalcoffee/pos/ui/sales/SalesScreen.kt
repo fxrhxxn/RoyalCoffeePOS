@@ -1,7 +1,6 @@
 package com.royalcoffee.pos.ui.sales
 
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,10 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -57,11 +54,13 @@ import com.royalcoffee.pos.ui.receipt.ReceiptHistoryScreen
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModel
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModelFactory
 import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
+import com.royalcoffee.pos.util.ReceiptPdfGenerator
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import com.royalcoffee.pos.ui.settings.SettingsScreen
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import com.royalcoffee.pos.util.ReceiptPdfGenerator
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -71,6 +70,7 @@ fun SalesScreen(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     
     val database = remember(context) {
         RoyalCoffeeDatabaseProvider.getDatabase(context)
@@ -284,6 +284,18 @@ fun SalesScreen(
                             isDetailDialogVisible = receiptHistoryViewModel.isReceiptDetailDialogVisible,
                             onReceiptClick = { receiptHistoryViewModel.openReceiptDetails(it) },
                             onCloseDetailDialog = { receiptHistoryViewModel.closeReceiptDetails() },
+                            onDownloadReceipt = { receiptId ->
+                                scope.launch {
+                                    val fullReceipt = receiptRepository.getFullReceipt(receiptId)
+                                    if (fullReceipt != null) {
+                                        val uri = ReceiptPdfGenerator.generateAndSavePdf(context, fullReceipt)
+                                        val msg = if (uri != null) "Saved: Receipt_${fullReceipt.receiptNumber}.pdf" else "Unable to save PDF."
+                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                    } else {
+                                        Toast.makeText(context, "Error: Receipt data not found.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
@@ -400,7 +412,7 @@ fun SalesScreen(
             },
             onDownloadPdf = { receipt ->
                 val uri = ReceiptPdfGenerator.generateAndSavePdf(context, receipt)
-                val msg = if (uri != null) "Receipt saved to Downloads folder." else "Unable to save PDF."
+                val msg = if (uri != null) "Saved: Receipt_${receipt.receiptNumber}.pdf" else "Unable to save PDF."
                 Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             }
         )
@@ -548,14 +560,6 @@ private fun ProductCard(product: Product, enabled: Boolean, onClick: () -> Unit)
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            val imageResId = getProductImage(product.name)
-            Box(modifier = Modifier.fillMaxWidth().height(130.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.05f)), contentAlignment = Alignment.Center) {
-                if (imageResId != null) {
-                    Image(painterResource(imageResId), product.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                } else {
-                    Text("☕\nNo Image", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(0.2f), textAlign = TextAlign.Center)
-                }
-            }
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(product.name, textAlign = TextAlign.Center, fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 2)
                 Spacer(modifier = Modifier.height(4.dp))
@@ -739,15 +743,4 @@ private fun PaymentSummaryCard(method: PaymentMethod, paid: Int?, change: Int?) 
     }
 }
 
-private fun getProductImage(productName: String): Int? {
-    return when (productName.lowercase()) {
-        "croissant" -> R.drawable.croissant
-        "espresso" -> R.drawable.espresso
-        "hot chocolate" -> R.drawable.hot_chocolate
-        "iced coffee" -> R.drawable.iced_coffee
-        "latte" -> R.drawable.latte
-        "mocha" -> R.drawable.mocha
-        "muffin" -> R.drawable.muffin
-        else -> null
-    }
-}
+

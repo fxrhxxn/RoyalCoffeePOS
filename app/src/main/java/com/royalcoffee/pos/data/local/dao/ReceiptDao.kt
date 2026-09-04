@@ -161,6 +161,12 @@ interface ReceiptDao {
     fun getAllReceiptHeaders(): Flow<List<ReceiptHeaderEntity>>
 
     /**
+     * Returns a specific receipt header by its ID.
+     */
+    @Query("SELECT * FROM receipt_headers WHERE receipt_id = :receiptId")
+    suspend fun getReceiptHeaderById(receiptId: Int): ReceiptHeaderEntity?
+
+    /**
      * Returns all detail rows for one receipt.
      */
     @Query(

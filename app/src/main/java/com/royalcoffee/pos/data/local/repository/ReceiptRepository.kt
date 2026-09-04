@@ -19,7 +19,9 @@ import com.royalcoffee.pos.data.local.entity.InventoryTransactionType
 import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.model.CartItem
+import com.royalcoffee.pos.model.PaymentMethod
 import com.royalcoffee.pos.model.Receipt
+import com.royalcoffee.pos.model.ReceiptItem
 import com.royalcoffee.pos.util.InsufficientStockException
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
@@ -187,6 +189,39 @@ class ReceiptRepository(
     ): List<ReceiptDetailEntity> {
         return receiptDao.getReceiptDetailsOnce(
             receiptId = receiptId
+        )
+    }
+
+    /**
+     * Returns a full Receipt model for a specific header ID.
+     */
+    suspend fun getFullReceipt(receiptId: Int): Receipt? {
+        val header = receiptDao.getReceiptHeaderById(receiptId) ?: return null
+        val details = receiptDao.getReceiptDetailsOnce(receiptId)
+
+        return Receipt(
+            receiptNumber = header.receiptNumber,
+            receiptDateTime = header.receiptDateTime,
+            storeName = "Royal Coffee",
+            storeAddressLines = listOf("Phoenix", "Mauritius"),
+            storePhone = "+230 0000 0000",
+            cashierName = header.cashierName,
+            items = details.map { detail ->
+                ReceiptItem(
+                    productName = detail.productName,
+                    quantity = detail.quantity,
+                    unitPrice = detail.unitPrice,
+                    costPrice = detail.costPrice
+                )
+            },
+            subtotal = header.subtotal,
+            discount = header.discount,
+            tax = header.tax,
+            total = header.total,
+            paymentMethod = PaymentMethod.valueOf(header.paymentMethod),
+            amountPaid = header.amountPaid,
+            changeGiven = header.changeGiven,
+            footerMessage = header.footerMessage
         )
     }
 
