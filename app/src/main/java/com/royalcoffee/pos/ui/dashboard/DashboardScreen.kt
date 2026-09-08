@@ -57,7 +57,10 @@ fun DashboardScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                DashboardHeader()
+                DashboardHeader(
+                    selectedRange = state.selectedRange,
+                    onRangeSelected = { viewModel.updateRange(it) }
+                )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -68,7 +71,10 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun DashboardHeader() {
+private fun DashboardHeader(
+    selectedRange: DashboardRange,
+    onRangeSelected: (DashboardRange) -> Unit
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "Business Dashboard",
@@ -84,11 +90,50 @@ private fun DashboardHeader() {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             textAlign = TextAlign.Center
         )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        RangeSelector(
+            selectedRange = selectedRange,
+            onRangeSelected = onRangeSelected
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RangeSelector(
+    selectedRange: DashboardRange,
+    onRangeSelected: (DashboardRange) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        DashboardRange.values().forEach { range ->
+            FilterChip(
+                selected = selectedRange == range,
+                onClick = { onRangeSelected(range) },
+                label = { Text(range.label) },
+                modifier = Modifier.padding(horizontal = 4.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = RoyalGold,
+                    selectedLabelColor = Color.White
+                )
+            )
+        }
     }
 }
 
 @Composable
 private fun DashboardContent(state: DashboardState) {
+    val compLabel = when (state.selectedRange) {
+        DashboardRange.TODAY -> "vs yesterday"
+        DashboardRange.YESTERDAY -> "vs day before"
+        DashboardRange.WEEK -> "vs last week"
+        DashboardRange.MONTH -> "vs last month"
+    }
+
     Column(
         modifier = Modifier.widthIn(max = 1200.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -109,31 +154,35 @@ private fun DashboardContent(state: DashboardState) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             MetricCardWithTrend(
-                title = "Today's Revenue",
-                value = "Rs ${state.todaySales}",
-                trend = state.salesTrendPercentage,
-                isPositive = state.isTrendPositive,
+                title = "Total Revenue",
+                value = "Rs ${state.totalRevenue}",
+                trend = state.revenueTrendPercentage,
+                isPositive = state.isRevenueTrendPositive,
+                comparisonLabel = compLabel,
                 modifier = Modifier.weight(1f)
             )
             MetricCardWithTrend(
                 title = "Gross Profit",
-                value = "Rs ${state.todayGrossProfit}",
-                trend = "${state.todayMargin}% Margin",
-                isPositive = true,
+                value = "Rs ${state.grossProfit}",
+                trend = state.profitTrendPercentage,
+                isPositive = state.isProfitTrendPositive,
+                comparisonLabel = compLabel,
                 modifier = Modifier.weight(1f)
             )
             MetricCardWithTrend(
                 title = "Orders",
-                value = state.todayOrders.toString(),
-                trend = "Total",
-                isPositive = true,
+                value = state.totalOrders.toString(),
+                trend = state.ordersTrendPercentage,
+                isPositive = state.isOrdersTrendPositive,
+                comparisonLabel = compLabel,
                 modifier = Modifier.weight(1f)
             )
             MetricCardWithTrend(
                 title = "Avg Order",
                 value = "Rs ${state.avgOrderValue}",
-                trend = "Per ticket",
+                trend = "${state.margin}% Margin",
                 isPositive = true,
+                comparisonLabel = "Total Efficiency",
                 modifier = Modifier.weight(1f)
             )
         }
@@ -155,11 +204,11 @@ private fun DashboardContent(state: DashboardState) {
             }
 
             ChartCard(
-                title = "Today's Busiest Hours",
+                title = "Period Performance",
                 modifier = Modifier.weight(1f)
             ) {
                 if (state.hourlySales.isEmpty()) {
-                    EmptyStateMessage("No hourly data yet")
+                    EmptyStateMessage("No data for this period")
                 } else {
                     DashboardBarChart(
                         labels = state.hourlySales.map { it.hourLabel },

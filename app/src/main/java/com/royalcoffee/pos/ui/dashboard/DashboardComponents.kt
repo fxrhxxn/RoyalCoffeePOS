@@ -37,6 +37,7 @@ fun MetricCardWithTrend(
     value: String,
     trend: String,
     isPositive: Boolean,
+    comparisonLabel: String = "vs last period",
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -78,7 +79,7 @@ fun MetricCardWithTrend(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "vs yesterday",
+                    text = comparisonLabel,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )

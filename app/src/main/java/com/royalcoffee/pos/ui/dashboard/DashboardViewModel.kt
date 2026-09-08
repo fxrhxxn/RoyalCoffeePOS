@@ -15,21 +15,33 @@ import com.royalcoffee.pos.data.local.dao.TopProduct
 import com.royalcoffee.pos.data.local.entity.ProductEntity
 import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
 /**
+ * Supported date ranges for the dashboard analysis.
+ */
+enum class DashboardRange(val label: String) {
+    TODAY("Today"),
+    YESTERDAY("Yesterday"),
+    WEEK("Last 7 Days"),
+    MONTH("Last 30 Days")
+}
+
+/**
  * UI State for the Dashboard screen.
  */
 data class DashboardState(
     val isLoading: Boolean = false,
-    val todaySales: Int = 0,
-    val todayOrders: Int = 0,
+    val selectedRange: DashboardRange = DashboardRange.TODAY,
+    val totalRevenue: Int = 0,
+    val totalOrders: Int = 0,
     val avgOrderValue: Int = 0,
-    val todayGrossProfit: Int = 0,
-    val todayMargin: Int = 0,
+    val grossProfit: Int = 0,
+    val margin: Int = 0,
     val profitDataCompleteness: String = "",
     val topProduct: String = "N/A",
     val salesTrend: List<SalesTrendPoint> = emptyList(),
@@ -43,98 +55,125 @@ data class DashboardState(
     val mostProfitableProduct: String = "N/A",
     val lowStockItems: List<ProductEntity> = emptyList(),
     val outOfStockItems: List<ProductEntity> = emptyList(),
-    val salesTrendPercentage: String = "No comparison available",
-    val isTrendPositive: Boolean = true,
+    
+    // Comparative Trend Data
+    val revenueTrendPercentage: String = "No comparison",
+    val isRevenueTrendPositive: Boolean = true,
+    val ordersTrendPercentage: String = "No comparison",
+    val isOrdersTrendPositive: Boolean = true,
+    val profitTrendPercentage: String = "No comparison",
+    val isProfitTrendPositive: Boolean = true,
+    
     val error: String? = null
 )
 
 /**
  * DashboardViewModel manages all data fetching and business logic for the Dashboard.
  *
- * It observes real-time database flows from repositories and calculates
- * metrics like today's sales, trends, and inventory alerts.
+ * It observes real-time database flows and allows dynamic switching between
+ * different analysis periods (Today, Week, Month).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModel(
     private val receiptRepository: ReceiptRepository,
     private val productRepository: ProductRepository
 ) : ViewModel() {
 
+    private val _selectedRange = MutableStateFlow(DashboardRange.TODAY)
+    val selectedRange = _selectedRange.asStateFlow()
+
     private val _state = MutableStateFlow(DashboardState(isLoading = true))
     val state = _state.asStateFlow()
 
     init {
-        loadDashboardData()
+        // Observe range changes and trigger data reload
+        _selectedRange
+            .onEach { _state.value = _state.value.copy(isLoading = true, selectedRange = it) }
+            .flatMapLatest { range ->
+                getDashboardDataFlow(range)
+            }
+            .onEach { newState ->
+                _state.value = newState
+            }
+            .catch { e ->
+                _state.value = _state.value.copy(isLoading = false, error = e.localizedMessage)
+            }
+            .launchIn(viewModelScope)
     }
 
     /**
-     * Combines multiple database flows to build the dashboard state.
-     *
-     * We use today's start/end timestamps for current metrics and
-     * a 7-day window for the trend chart.
+     * Updates the active dashboard range.
      */
-    private fun loadDashboardData() {
-        val now = LocalDate.now()
-        val zoneId = ZoneId.systemDefault()
+    fun updateRange(range: DashboardRange) {
+        _selectedRange.value = range
+    }
 
-        val todayStart = now.atStartOfDay(zoneId).toInstant().toEpochMilli()
-        val todayEnd = now.atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+    /**
+     * Builds the combined data flow for a specific range.
+     */
+    private fun getDashboardDataFlow(range: DashboardRange): Flow<DashboardState> {
+        val (currentStart, currentEnd) = getRangeTimestamps(range)
+        val (prevStart, prevEnd) = getComparisonRangeTimestamps(range)
 
-        val yesterdayStart = now.minusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
-        val yesterdayEnd = now.minusDays(1).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+        // For trend charts, we always show at least the current period.
+        // If range is TODAY or YESTERDAY, we show a 7-day window anyway for context.
+        val trendStart = if (range == DashboardRange.MONTH) currentStart else {
+            val now = LocalDate.now()
+            now.minusDays(6).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }
 
-        val weekStart = now.minusDays(6).atStartOfDay(zoneId).toInstant().toEpochMilli()
-
-        combine(
-            receiptRepository.getSalesSummary(todayStart, todayEnd),
-            receiptRepository.getSalesSummary(yesterdayStart, yesterdayEnd),
-            receiptRepository.getSalesTrend(weekStart, todayEnd),
-            receiptRepository.getPaymentBreakdown(todayStart, todayEnd),
-            receiptRepository.getTopSellingProducts(todayStart, todayEnd, 5),
+        return combine(
+            receiptRepository.getSalesSummary(currentStart, currentEnd),
+            receiptRepository.getSalesSummary(prevStart, prevEnd),
+            receiptRepository.getSalesTrend(trendStart, currentEnd),
+            receiptRepository.getPaymentBreakdown(currentStart, currentEnd),
+            receiptRepository.getTopSellingProducts(currentStart, currentEnd, 5),
             productRepository.allProducts,
-            receiptRepository.getHourlySales(todayStart, todayEnd),
-            receiptRepository.getCategorySales(todayStart, todayEnd),
-            receiptRepository.getGrossProfitStats(todayStart, todayEnd),
-            receiptRepository.getProfitTrend(weekStart, todayEnd),
-            receiptRepository.getMostProfitableProducts(todayStart, todayEnd, 1)
+            receiptRepository.getHourlySales(currentStart, currentEnd),
+            receiptRepository.getCategorySales(currentStart, currentEnd),
+            receiptRepository.getGrossProfitStats(currentStart, currentEnd),
+            receiptRepository.getGrossProfitStats(prevStart, prevEnd),
+            receiptRepository.getProfitTrend(trendStart, currentEnd),
+            receiptRepository.getMostProfitableProducts(currentStart, currentEnd, 1)
         ) { args: Array<Any?> ->
-            val todaySum = args[0] as SalesSummary
-            val yesterdaySum = args[1] as SalesSummary
+            val currentSum = args[0] as SalesSummary
+            val prevSum = args[1] as SalesSummary
             val trend = args[2] as List<SalesTrendPoint>
             val payments = args[3] as List<PaymentBreakdown>
             val topProds = args[4] as List<TopProduct>
             val allProds = args[5] as List<ProductEntity>
             val hourly = args[6] as List<HourlySales>
             val categories = args[7] as List<CategorySales>
-            val profitStats = args[8] as GrossProfitStats
-            val pTrend = args[9] as List<ProfitTrendPoint>
-            val mostProfProd = args[10] as List<ProfitableProduct>
+            val currentProfit = args[8] as GrossProfitStats
+            val prevProfit = args[9] as GrossProfitStats
+            val pTrend = args[10] as List<ProfitTrendPoint>
+            val mostProfProd = args[11] as List<ProfitableProduct>
 
             val lowStock = allProds.filter { it.stockQuantity <= it.reorderLevel && it.stockQuantity > 0 && it.isActive }
             val outOfStock = allProds.filter { it.stockQuantity <= 0 && it.isActive }
 
-            val trendInfo = calculateTrend(todaySum.totalSales, yesterdaySum.totalSales)
-            val avg = if (todaySum.orderCount > 0) todaySum.totalSales / todaySum.orderCount else 0
+            val revTrend = calculateTrend(currentSum.totalSales, prevSum.totalSales)
+            val ordTrend = calculateTrend(currentSum.orderCount, prevSum.orderCount)
+            
+            val currentGP = currentProfit.knownCostRevenue - currentProfit.totalCOGS
+            val prevGP = prevProfit.knownCostRevenue - prevProfit.totalCOGS
+            val gpTrend = calculateTrend(currentGP, prevGP)
 
-            val grossProfit = profitStats.knownCostRevenue - profitStats.totalCOGS
-            val margin = if (profitStats.knownCostRevenue > 0) (grossProfit.toDouble() / profitStats.knownCostRevenue * 100).toInt() else 0
-            val completeness = "Profit data available for ${profitStats.knownCostCount} / ${profitStats.totalSalesCount} sales"
+            val avg = if (currentSum.orderCount > 0) currentSum.totalSales / currentSum.orderCount else 0
+            val margin = if (currentProfit.knownCostRevenue > 0) (currentGP.toDouble() / currentProfit.knownCostRevenue * 100).toInt() else 0
+            val completeness = "Profit data available for ${currentProfit.knownCostCount} / ${currentProfit.totalSalesCount} sales"
 
-            // Profitability Insights
             val mostProfCat = categories.maxByOrNull { it.knownCostRevenue - it.totalCOGS }?.category ?: "N/A"
             val highMarginCat = categories.filter { it.knownCostRevenue > 0 }.maxByOrNull { (it.knownCostRevenue - it.totalCOGS).toDouble() / it.knownCostRevenue }?.category ?: "N/A"
-            
-            // For Most Profitable Product, we need another query ideally, but let's approximate from topProds if we had costs there.
-            // For now, let's keep it simple or add a query if needed.
-            // Actually topProds doesn't have cost. Let's just use topProds[0] as a placeholder or add a query.
-            // I'll skip most profitable product for a second or use top selling as proxy for now.
 
             DashboardState(
                 isLoading = false,
-                todaySales = todaySum.totalSales,
-                todayOrders = todaySum.orderCount,
+                selectedRange = range,
+                totalRevenue = currentSum.totalSales,
+                totalOrders = currentSum.orderCount,
                 avgOrderValue = avg,
-                todayGrossProfit = grossProfit,
-                todayMargin = margin,
+                grossProfit = currentGP,
+                margin = margin,
                 profitDataCompleteness = completeness,
                 topProduct = topProds.firstOrNull()?.productName ?: "N/A",
                 salesTrend = trend,
@@ -148,29 +187,82 @@ class DashboardViewModel(
                 mostProfitableProduct = mostProfProd.firstOrNull()?.productName ?: "N/A",
                 lowStockItems = lowStock,
                 outOfStockItems = outOfStock,
-                salesTrendPercentage = trendInfo.first,
-                isTrendPositive = trendInfo.second
+                revenueTrendPercentage = revTrend.first,
+                isRevenueTrendPositive = revTrend.second,
+                ordersTrendPercentage = ordTrend.first,
+                isOrdersTrendPositive = ordTrend.second,
+                profitTrendPercentage = gpTrend.first,
+                isProfitTrendPositive = gpTrend.second
             )
-        }.catch { e ->
-            _state.value = _state.value.copy(isLoading = false, error = e.localizedMessage)
-        }.onEach { newState ->
-            _state.value = newState
-        }.launchIn(viewModelScope)
+        }
     }
 
-    /**
-     * Calculates the percentage change between today and yesterday.
-     */
-    private fun calculateTrend(today: Int, yesterday: Int): Pair<String, Boolean> {
-        if (yesterday == 0) {
-            return if (today > 0) "↑ New Sales" to true else "No comparison available" to true
+    private fun calculateTrend(current: Int, previous: Int): Pair<String, Boolean> {
+        if (previous == 0) {
+            return if (current > 0) "↑ New" to true else "No comparison" to true
         }
 
-        val change = ((today - yesterday).toDouble() / yesterday.toDouble()) * 100
+        val change = ((current - previous).toDouble() / previous.toDouble()) * 100
         val sign = if (change >= 0) "↑" else "↓"
         val formatted = "${sign} ${Math.abs(change).toInt()}%"
 
         return formatted to (change >= 0)
+    }
+
+    private fun getRangeTimestamps(range: DashboardRange): Pair<Long, Long> {
+        val now = LocalDate.now()
+        val zoneId = ZoneId.systemDefault()
+        
+        return when (range) {
+            DashboardRange.TODAY -> {
+                val start = now.atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+            DashboardRange.YESTERDAY -> {
+                val start = now.minusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.minusDays(1).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+            DashboardRange.WEEK -> {
+                val start = now.minusDays(6).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+            DashboardRange.MONTH -> {
+                val start = now.minusDays(29).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+        }
+    }
+
+    private fun getComparisonRangeTimestamps(range: DashboardRange): Pair<Long, Long> {
+        val now = LocalDate.now()
+        val zoneId = ZoneId.systemDefault()
+        
+        return when (range) {
+            DashboardRange.TODAY -> {
+                val start = now.minusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.minusDays(1).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+            DashboardRange.YESTERDAY -> {
+                val start = now.minusDays(2).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.minusDays(2).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+            DashboardRange.WEEK -> {
+                val start = now.minusDays(13).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.minusDays(7).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+            DashboardRange.MONTH -> {
+                val start = now.minusDays(59).atStartOfDay(zoneId).toInstant().toEpochMilli()
+                val end = now.minusDays(30).atTime(LocalTime.MAX).atZone(zoneId).toInstant().toEpochMilli()
+                start to end
+            }
+        }
     }
 }
 

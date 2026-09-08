@@ -107,7 +107,7 @@ interface ReceiptDao {
      *
      * That receipt ID is then used by the receipt detail rows.
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertReceiptHeader(
         receiptHeader: ReceiptHeaderEntity
     ): Long
@@ -115,7 +115,7 @@ interface ReceiptDao {
     /**
      * Inserts all detail rows for a receipt.
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertReceiptDetails(
         receiptDetails: List<ReceiptDetailEntity>
     )
@@ -332,7 +332,7 @@ interface ReceiptDao {
     @Query(
         """
         SELECT 
-            SUM(DISTINCT h.total) as totalRevenue,
+            IFNULL((SELECT SUM(total) FROM receipt_headers WHERE timestamp >= :start AND timestamp <= :end), 0) as totalRevenue,
             SUM(CASE WHEN d.cost_price IS NOT NULL THEN d.line_total ELSE 0 END) as knownCostRevenue,
             SUM(d.quantity * d.cost_price) as totalCOGS,
             COUNT(DISTINCT CASE WHEN d.cost_price IS NOT NULL THEN h.receipt_id END) as knownCostCount,
@@ -350,14 +350,23 @@ interface ReceiptDao {
     @Query(
         """
         SELECT 
-            strftime('%d/%m', h.timestamp / 1000, 'unixepoch') as dateLabel,
-            SUM(DISTINCT h.total) as totalRevenue,
-            SUM(d.quantity * (d.unit_price - IFNULL(d.cost_price, d.unit_price))) as totalGrossProfit
-        FROM receipt_headers h
-        JOIN receipt_details d ON h.receipt_id = d.receipt_id
-        WHERE h.timestamp >= :start AND h.timestamp <= :end
+            dateLabel,
+            SUM(receiptTotal) as totalRevenue,
+            SUM(receiptGrossProfit) as totalGrossProfit
+        FROM (
+            SELECT 
+                strftime('%d/%m', h.timestamp / 1000, 'unixepoch') as dateLabel,
+                h.receipt_id,
+                MAX(h.total) as receiptTotal,
+                SUM(d.quantity * (d.unit_price - IFNULL(d.cost_price, d.unit_price))) as receiptGrossProfit,
+                MIN(h.timestamp) as minTimestamp
+            FROM receipt_headers h
+            JOIN receipt_details d ON h.receipt_id = d.receipt_id
+            WHERE h.timestamp >= :start AND h.timestamp <= :end
+            GROUP BY h.receipt_id
+        )
         GROUP BY dateLabel
-        ORDER BY MIN(h.timestamp) ASC
+        ORDER BY MIN(minTimestamp) ASC
         """
     )
     fun getProfitTrend(start: Long, end: Long): Flow<List<ProfitTrendPoint>>
