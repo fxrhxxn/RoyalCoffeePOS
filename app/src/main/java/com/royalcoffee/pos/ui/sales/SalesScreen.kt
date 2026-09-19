@@ -41,6 +41,8 @@ import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
 import com.royalcoffee.pos.model.*
 import com.royalcoffee.pos.printer.FakeReceiptPrinter
+import com.royalcoffee.pos.ui.SettingsViewModel
+import com.royalcoffee.pos.ui.SettingsViewModelFactory
 import com.royalcoffee.pos.ui.dashboard.DashboardScreen
 import com.royalcoffee.pos.ui.dashboard.DashboardViewModel
 import com.royalcoffee.pos.ui.dashboard.DashboardViewModelFactory
@@ -84,6 +86,14 @@ fun SalesScreen(
         )
     }
 
+    val userRepository = remember(database) {
+        com.royalcoffee.pos.data.local.repository.UserRepository(database.userDao())
+    }
+
+    val businessRepository = remember(database) {
+        com.royalcoffee.pos.data.local.repository.BusinessRepository(database.businessDao())
+    }
+
     val receiptRepository = remember(database) {
         ReceiptRepository(
             database = database,
@@ -111,6 +121,13 @@ fun SalesScreen(
         factory = DashboardViewModelFactory(
             receiptRepository = receiptRepository,
             productRepository = productRepository
+        )
+    )
+
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModelFactory(
+            userRepository = userRepository,
+            businessRepository = businessRepository
         )
     )
 
@@ -282,6 +299,8 @@ fun SalesScreen(
                             selectedReceipt = receiptHistoryViewModel.selectedReceipt,
                             selectedReceiptDetails = receiptHistoryViewModel.selectedReceiptDetails,
                             isDetailDialogVisible = receiptHistoryViewModel.isReceiptDetailDialogVisible,
+                            currentFilter = receiptHistoryViewModel.currentFilter,
+                            customDate = receiptHistoryViewModel.customDate,
                             onReceiptClick = { receiptHistoryViewModel.openReceiptDetails(it) },
                             onCloseDetailDialog = { receiptHistoryViewModel.closeReceiptDetails() },
                             onDownloadReceipt = { receiptId ->
@@ -296,12 +315,15 @@ fun SalesScreen(
                                     }
                                 }
                             },
+                            onFilterChange = { receiptHistoryViewModel.updateFilter(it) },
+                            onCustomDateChange = { receiptHistoryViewModel.updateCustomDate(it) },
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
                     AppScreen.SETTINGS -> {
                         SettingsScreen(
                             userRole = userRole,
+                            viewModel = settingsViewModel,
                             selectedLanguage = selectedLanguage,
                             receiptFooterText = receiptFooterText,
                             onLanguageChange = { selectedLanguage = it },

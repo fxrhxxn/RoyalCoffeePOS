@@ -161,6 +161,19 @@ interface ReceiptDao {
     fun getAllReceiptHeaders(): Flow<List<ReceiptHeaderEntity>>
 
     /**
+     * Returns receipt headers within a specific timestamp range.
+     */
+    @Query(
+        """
+        SELECT *
+        FROM receipt_headers
+        WHERE timestamp >= :start AND timestamp <= :end
+        ORDER BY receipt_id DESC
+        """
+    )
+    fun getReceiptHeadersByDateRange(start: Long, end: Long): Flow<List<ReceiptHeaderEntity>>
+
+    /**
      * Returns a specific receipt header by its ID.
      */
     @Query("SELECT * FROM receipt_headers WHERE receipt_id = :receiptId")

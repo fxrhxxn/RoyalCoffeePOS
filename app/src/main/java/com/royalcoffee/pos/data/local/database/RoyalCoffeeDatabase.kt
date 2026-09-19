@@ -4,13 +4,17 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.royalcoffee.pos.data.local.dao.BusinessDao
 import com.royalcoffee.pos.data.local.dao.InventoryHistoryDao
 import com.royalcoffee.pos.data.local.dao.ProductDao
 import com.royalcoffee.pos.data.local.dao.ReceiptDao
+import com.royalcoffee.pos.data.local.dao.UserDao
+import com.royalcoffee.pos.data.local.entity.BusinessEntity
 import com.royalcoffee.pos.data.local.entity.InventoryHistoryEntity
 import com.royalcoffee.pos.data.local.entity.ProductEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
+import com.royalcoffee.pos.data.local.entity.UserEntity
 
 /**
  * RoyalCoffeeDatabase is the main Room database for the app.
@@ -25,9 +29,11 @@ import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
         ProductEntity::class,
         ReceiptHeaderEntity::class,
         ReceiptDetailEntity::class,
-        InventoryHistoryEntity::class
+        InventoryHistoryEntity::class,
+        UserEntity::class,
+        BusinessEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
@@ -46,6 +52,16 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
      * Gives access to inventory history operations.
      */
     abstract fun inventoryHistoryDao(): InventoryHistoryDao
+
+    /**
+     * Gives access to user operations.
+     */
+    abstract fun userDao(): UserDao
+
+    /**
+     * Gives access to business info operations.
+     */
+    abstract fun businessDao(): BusinessDao
 
     companion object {
         /**

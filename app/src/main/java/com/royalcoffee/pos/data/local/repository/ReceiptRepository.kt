@@ -49,6 +49,12 @@ class ReceiptRepository(
         receiptDao.getAllReceiptHeaders()
 
     /**
+     * Returns receipt headers for a specific date range.
+     */
+    fun getReceiptHeadersByDateRange(start: Long, end: Long): Flow<List<ReceiptHeaderEntity>> =
+        receiptDao.getReceiptHeadersByDateRange(start, end)
+
+    /**
      * Generates the next sequential receipt number for the current year.
      *
      * Logic:

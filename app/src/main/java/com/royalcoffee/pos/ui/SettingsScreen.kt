@@ -1,54 +1,39 @@
 package com.royalcoffee.pos.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.royalcoffee.pos.data.local.entity.BusinessEntity
+import com.royalcoffee.pos.data.local.entity.UserEntity
 import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.ui.SettingsViewModel
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 
-/**
- * SettingsScreen allows users to change simple app settings.
- *
- * Version 1 scope:
- * - Barista can change language only.
- * - Admin can change language and receipt footer text.
- *
- * Important:
- * These settings are temporary in-memory values for now.
- * Later, they will be saved in the local Room database.
- */
 @Composable
 fun SettingsScreen(
     userRole: UserRole,
+    viewModel: SettingsViewModel,
     selectedLanguage: String,
     receiptFooterText: String,
     onLanguageChange: (String) -> Unit,
     onReceiptFooterChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val users by viewModel.allUsers.collectAsStateWithLifecycle()
+    val businessInfo by viewModel.businessInfo.collectAsStateWithLifecycle()
+    var showAddUserDialog by remember { mutableStateOf(false) }
+
     Surface(
         modifier = modifier.fillMaxHeight(),
         color = MaterialTheme.colorScheme.background
@@ -69,18 +54,10 @@ fun SettingsScreen(
                 textAlign = TextAlign.Center
             )
 
-            Text(
-                text = "Manage app preferences for Royal Coffee POS.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
             Spacer(modifier = Modifier.height(28.dp))
 
             Column(
-                modifier = Modifier.widthIn(max = 720.dp),
+                modifier = Modifier.widthIn(max = 800.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 LanguageSettingsCard(
@@ -89,6 +66,17 @@ fun SettingsScreen(
                 )
 
                 if (userRole == UserRole.ADMIN) {
+                    BusinessProfileCard(
+                        businessInfo = businessInfo,
+                        onUpdate = { viewModel.updateBusinessInfo(it) }
+                    )
+
+                    StaffManagementCard(
+                        users = users,
+                        onAddUserClick = { showAddUserDialog = true },
+                        onDeleteUser = { viewModel.deleteUser(it) }
+                    )
+
                     ReceiptFooterSettingsCard(
                         receiptFooterText = receiptFooterText,
                         onReceiptFooterChange = onReceiptFooterChange
@@ -96,6 +84,110 @@ fun SettingsScreen(
                 } else {
                     BaristaAccessInfoCard()
                 }
+            }
+        }
+    }
+
+    if (showAddUserDialog) {
+        AddUserDialog(
+            onDismiss = { showAddUserDialog = false },
+            onConfirm = { name, username, pin, role ->
+                viewModel.createUser(name, username, pin, role)
+                showAddUserDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun StaffManagementCard(
+    users: List<UserEntity>,
+    onAddUserClick: () -> Unit,
+    onDeleteUser: (UserEntity) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(22.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                Arrangement.SpaceBetween,
+                Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Staff Management",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Button(onClick = onAddUserClick) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add Staff")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            users.forEach { user ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    Arrangement.SpaceBetween,
+                    Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(user.fullName, fontWeight = FontWeight.Bold)
+                        Text("${user.username} • ${user.role}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (user.role != UserRole.ADMIN || users.count { it.role == UserRole.ADMIN } > 1) {
+                        IconButton(onClick = { onDeleteUser(user) }) {
+                            Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+private fun BusinessProfileCard(
+    businessInfo: BusinessEntity?,
+    onUpdate: (BusinessEntity) -> Unit
+) {
+    var name by remember(businessInfo) { mutableStateOf(businessInfo?.businessName ?: "") }
+    var address by remember(businessInfo) { mutableStateOf(businessInfo?.address ?: "") }
+    var vat by remember(businessInfo) { mutableStateOf(businessInfo?.vat ?: "") }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(22.dp)) {
+            Text(
+                text = "Business Profile",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Business Name") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = vat, onValueChange = { vat = it }, label = { Text("VAT Number") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    businessInfo?.let {
+                        onUpdate(it.copy(businessName = name, address = address, vat = vat))
+                    }
+                },
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Update Info")
             }
         }
     }
@@ -109,123 +201,36 @@ private fun LanguageSettingsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier.padding(22.dp)
-        ) {
-            Text(
-                text = "Language",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Text(
-                text = "Choose the display language for the POS interface.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
+        Column(modifier = Modifier.padding(22.dp)) {
+            Text(text = "Language", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(18.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LanguageButton(
-                    text = "English",
-                    isSelected = selectedLanguage == "English",
-                    onClick = {
-                        onLanguageChange("English")
-                    }
-                )
-
-                LanguageButton(
-                    text = "French",
-                    isSelected = selectedLanguage == "French",
-                    onClick = {
-                        onLanguageChange("French")
-                    }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LanguageButton("English", selectedLanguage == "English") { onLanguageChange("English") }
+                LanguageButton("French", selectedLanguage == "French") { onLanguageChange("French") }
             }
         }
     }
 }
 
 @Composable
-private fun LanguageButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    if (isSelected) {
-        Button(
-            onClick = onClick
-        ) {
-            Text(text = text)
-        }
-    } else {
-        OutlinedButton(
-            onClick = onClick
-        ) {
-            Text(text = text)
-        }
-    }
+private fun LanguageButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
+    if (isSelected) Button(onClick) { Text(text) }
+    else OutlinedButton(onClick) { Text(text) }
 }
 
 @Composable
-private fun ReceiptFooterSettingsCard(
-    receiptFooterText: String,
-    onReceiptFooterChange: (String) -> Unit
-) {
+private fun ReceiptFooterSettingsCard(receiptFooterText: String, onReceiptFooterChange: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier.padding(22.dp)
-        ) {
-            Text(
-                text = "Receipt Footer",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Text(
-                text = "This message appears at the bottom of customer receipts.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
+        Column(modifier = Modifier.padding(22.dp)) {
+            Text(text = "Receipt Footer", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(18.dp))
-
-            OutlinedTextField(
-                value = receiptFooterText,
-                onValueChange = onReceiptFooterChange,
-                label = {
-                    Text(text = "Footer message")
-                },
-                singleLine = false,
-                minLines = 2,
-                maxLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Example: Thank you for your purchase.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-            )
+            OutlinedTextField(value = receiptFooterText, onValueChange = onReceiptFooterChange, label = { Text("Footer message") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
     }
 }
@@ -235,33 +240,45 @@ private fun BaristaAccessInfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
     ) {
-        Column(
-            modifier = Modifier.padding(22.dp)
-        ) {
-            Text(
-                text = "Limited Access",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-            )
-
+        Column(modifier = Modifier.padding(22.dp)) {
+            Text(text = "Limited Access", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "You are limited to the available settings. Other Settings are reserved for Admin Users",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
+            Text(text = "You are limited to the available settings. Other Settings are reserved for Admin Users", style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+
+@Composable
+private fun AddUserDialog(onDismiss: () -> Unit, onConfirm: (String, String, String, UserRole) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf(UserRole.BARISTA) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add New Staff") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Full Name") })
+                OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") })
+                OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("PIN") })
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = role == UserRole.BARISTA, onClick = { role = UserRole.BARISTA })
+                    Text("Barista")
+                    Spacer(Modifier.width(16.dp))
+                    RadioButton(selected = role == UserRole.ADMIN, onClick = { role = UserRole.ADMIN })
+                    Text("Admin")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(name, username, pin, role) }, enabled = name.isNotBlank() && username.isNotBlank() && pin.length >= 4) {
+                Text("Add")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }

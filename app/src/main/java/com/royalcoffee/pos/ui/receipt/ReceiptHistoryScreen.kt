@@ -10,19 +10,36 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +47,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * ReceiptHistoryScreen displays saved receipts from the Room database.
@@ -37,18 +58,26 @@ import com.royalcoffee.pos.ui.theme.RoyalGold
  * Version 2:
  * - Shows receipt headers.
  * - Allows Admin to tap a receipt and view product details.
+ * - Added date filtering.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiptHistoryScreen(
     receipts: List<ReceiptHistoryItem>,
     selectedReceipt: ReceiptHistoryItem?,
     selectedReceiptDetails: List<ReceiptDetailItem>,
     isDetailDialogVisible: Boolean,
+    currentFilter: ReceiptDateFilter,
+    customDate: LocalDate,
     onReceiptClick: (ReceiptHistoryItem) -> Unit,
     onCloseDetailDialog: () -> Unit,
     onDownloadReceipt: (Int) -> Unit,
+    onFilterChange: (ReceiptDateFilter) -> Unit,
+    onCustomDateChange: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
     Surface(
         modifier = modifier.fillMaxHeight(),
         color = MaterialTheme.colorScheme.background
@@ -76,13 +105,30 @@ fun ReceiptHistoryScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Filter Chips
+            ReceiptFilterBar(
+                currentFilter = currentFilter,
+                customDate = customDate,
+                onFilterClick = { filter ->
+                    if (filter == ReceiptDateFilter.CUSTOM) {
+                        showDatePicker = true
+                    } else {
+                        onFilterChange(filter)
+                    }
+                }
+            )
+
             Spacer(modifier = Modifier.height(28.dp))
 
             Column(
                 modifier = Modifier.widthIn(max = 960.dp)
             ) {
                 if (receipts.isEmpty()) {
-                    EmptyReceiptHistoryCard()
+                    EmptyReceiptHistoryCard(
+                        isFiltered = currentFilter != ReceiptDateFilter.ALL
+                    )
                 } else {
                     ReceiptHistoryListCard(
                         receipts = receipts,
@@ -90,6 +136,42 @@ fun ReceiptHistoryScreen(
                     )
                 }
             }
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = customDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        val confirmEnabled = remember {
+            derivedStateOf { datePickerState.selectedDateMillis != null }
+        }
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                            onCustomDateChange(selectedDate)
+                        }
+                        showDatePicker = false
+                    },
+                    enabled = confirmEnabled.value
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -105,8 +187,66 @@ fun ReceiptHistoryScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EmptyReceiptHistoryCard() {
+private fun ReceiptFilterBar(
+    currentFilter: ReceiptDateFilter,
+    customDate: LocalDate,
+    onFilterClick: (ReceiptDateFilter) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(horizontal = 16.dp)
+    ) {
+        items(ReceiptDateFilter.values()) { filter ->
+            val isSelected = currentFilter == filter
+            val label = if (filter == ReceiptDateFilter.CUSTOM && isSelected) {
+                "Date: ${customDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}"
+            } else {
+                filter.label
+            }
+
+            FilterChip(
+                selected = isSelected,
+                onClick = { onFilterClick(filter) },
+                label = { Text(label) },
+                leadingIcon = if (isSelected) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Done,
+                            contentDescription = null,
+                            modifier = Modifier.height(18.dp)
+                        )
+                    }
+                } else if (filter == ReceiptDateFilter.CUSTOM) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            modifier = Modifier.height(18.dp)
+                        )
+                    }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyReceiptHistoryCard(
+    isFiltered: Boolean
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -125,7 +265,7 @@ private fun EmptyReceiptHistoryCard() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "No saved receipts yet",
+                text = if (isFiltered) "No receipts found for this date" else "No saved receipts yet",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -135,7 +275,10 @@ private fun EmptyReceiptHistoryCard() {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Complete an order and tap Next Order to save a receipt.",
+                text = if (isFiltered) 
+                    "Try selecting a different date range or filter." 
+                else 
+                    "Complete an order and tap Next Order to save a receipt.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center

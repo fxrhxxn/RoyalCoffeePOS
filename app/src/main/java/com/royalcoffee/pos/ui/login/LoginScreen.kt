@@ -25,12 +25,15 @@ import androidx.compose.material.icons.outlined.LocalCafe
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,8 +58,11 @@ import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 
 @Composable
 fun LoginScreen(
+    viewModel: LoginViewModel,
     onLoginSuccess: (UserRole) -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     var username by remember {
         mutableStateOf("")
     }
@@ -69,22 +75,20 @@ fun LoginScreen(
         mutableStateOf<String?>(null)
     }
 
-    fun attemptLogin() {
-        val cleanUsername = username.trim().lowercase()
+    LaunchedEffect(Unit) {
+        viewModel.resetState()
+    }
 
-        when {
-            cleanUsername == "admin" && pin == "1234" -> {
-                onLoginSuccess(UserRole.ADMIN)
-            }
-
-            cleanUsername == "barista" && pin == "1234" -> {
-                onLoginSuccess(UserRole.BARISTA)
-            }
-
-            else -> {
-                errorMessage = "Invalid username or PIN"
-            }
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is LoginUiState.Success -> onLoginSuccess((uiState as LoginUiState.Success).role)
+            is LoginUiState.Error -> errorMessage = (uiState as LoginUiState.Error).message
+            else -> {}
         }
+    }
+
+    fun attemptLogin() {
+        viewModel.login(username, pin)
     }
 
     Surface(
@@ -157,6 +161,7 @@ fun LoginScreen(
                             username = username,
                             pin = pin,
                             errorMessage = errorMessage,
+                            uiState = uiState,
                             onUsernameChange = { newValue ->
                                 username = newValue
                                 errorMessage = null
@@ -187,6 +192,7 @@ fun LoginScreen(
                             username = username,
                             pin = pin,
                             errorMessage = errorMessage,
+                            uiState = uiState,
                             onUsernameChange = { newValue ->
                                 username = newValue
                                 errorMessage = null
@@ -277,6 +283,7 @@ private fun LoginFormPanel(
     username: String,
     pin: String,
     errorMessage: String?,
+    uiState: LoginUiState,
     onUsernameChange: (String) -> Unit,
     onPinChange: (String) -> Unit,
     onLoginClick: () -> Unit,
@@ -303,7 +310,7 @@ private fun LoginFormPanel(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Sign in with your username and PIN to continue.",
+            text = "Enter your staff username and PIN to log in.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
             textAlign = TextAlign.Center
@@ -382,23 +389,22 @@ private fun LoginFormPanel(
                 focusManager.clearFocus()
                 onLoginClick()
             },
-            enabled = username.isNotBlank() && pin.isNotBlank(),
+            enabled = username.isNotBlank() && pin.isNotBlank() && uiState !is LoginUiState.Loading,
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 360.dp)
                 .height(48.dp)
         ) {
-            Text(text = "Log in")
+            if (uiState is LoginUiState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(text = "Log in")
+            }
         }
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Text(
-            text = "Demo users: admin / 1234 or barista / 1234",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-            textAlign = TextAlign.Center
-        )
     }
 }
 
