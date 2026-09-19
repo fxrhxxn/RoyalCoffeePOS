@@ -66,7 +66,7 @@ fun RegistrationScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Initial Setup",
+                        "Welcome to the Registration Page",
                         fontFamily = CinzelFontFamily,
                         fontWeight = FontWeight.Bold
                     )

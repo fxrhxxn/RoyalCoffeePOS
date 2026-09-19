@@ -28,6 +28,7 @@ import java.io.FileOutputStream
 object ReceiptPdfGenerator {
 
     /**
+     *
      * Generates a PDF for the given receipt and saves it to the public Downloads folder.
      * 
      * @return The Uri of the saved file if successful, null otherwise.
