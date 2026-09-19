@@ -61,12 +61,16 @@ data class ReceiptDetailEntity(
 
     /**
      * Unit price at the time of sale.
-     *
-     * We store this here so old receipts remain accurate even if
-     * the product price changes later.
      */
     @ColumnInfo(name = "unit_price")
     val unitPrice: Int,
+
+    /**
+     * Snapshot of the cost price at the time of sale.
+     * Null = Unknown historical cost.
+     */
+    @ColumnInfo(name = "cost_price")
+    val costPrice: Int? = null,
 
     /**
      * Total for this receipt line.

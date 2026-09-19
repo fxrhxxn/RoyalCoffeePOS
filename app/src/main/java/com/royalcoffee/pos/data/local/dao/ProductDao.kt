@@ -70,6 +70,29 @@ interface ProductDao {
     fun getLowStockProducts(): Flow<List<ProductEntity>>
 
     /**
+     * Returns the current stock quantity for a specific product.
+     */
+    @Query("SELECT stock_quantity FROM products WHERE product_id = :productId")
+    suspend fun getProductStock(productId: Int): Int?
+
+    /**
+     * Deducts a specific quantity from the product's stock only if sufficient stock exists.
+     *
+     * Returns the number of rows affected.
+     * If 1, deduction was successful.
+     * If 0, stock was insufficient or product not found.
+     */
+    @Query(
+        """
+        UPDATE products 
+        SET stock_quantity = stock_quantity - :quantity 
+        WHERE product_id = :productId 
+        AND stock_quantity >= :quantity
+        """
+    )
+    suspend fun deductProductStock(productId: Int, quantity: Int): Int
+
+    /**
      * Inserts one product.
      *
      * If a product with the same primary key already exists,
@@ -79,6 +102,24 @@ interface ProductDao {
     suspend fun insertProduct(product: ProductEntity)
 
     /**
+     * Inserts one product and returns its ID.
+     */
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertProductAndGetId(product: ProductEntity): Long
+
+    /**
+     * Fetches a specific product by ID.
+     */
+    @Query("SELECT * FROM products WHERE product_id = :productId")
+    suspend fun getProductById(productId: Int): ProductEntity?
+
+    /**
+     * Updates only the stock quantity.
+     */
+    @Query("UPDATE products SET stock_quantity = :newStock WHERE product_id = :productId")
+    suspend fun updateStockQuantity(productId: Int, newStock: Int)
+
+    /**
      * Inserts multiple products.
      *
      * This will be useful when we seed default sample products
@@ -86,6 +127,27 @@ interface ProductDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProducts(products: List<ProductEntity>)
+
+    /**
+     * Updates an existing product.
+     */
+    @androidx.room.Update
+    suspend fun updateProduct(product: ProductEntity)
+
+    /**
+     * Queries for inventory summary statistics.
+     */
+    @Query("SELECT COUNT(*) FROM products WHERE is_active = 1")
+    fun getTotalProductsCount(): Flow<Int>
+
+    @Query("SELECT SUM(stock_quantity) FROM products WHERE is_active = 1")
+    fun getTotalStockUnits(): Flow<Int?>
+
+    @Query("SELECT COUNT(*) FROM products WHERE stock_quantity <= reorder_level AND stock_quantity > 0 AND is_active = 1")
+    fun getLowStockCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM products WHERE stock_quantity <= 0 AND is_active = 1")
+    fun getOutOfStockCount(): Flow<Int>
 
     /**
      * Deletes all products.

@@ -1,736 +1,440 @@
 package com.royalcoffee.pos.ui.dashboard
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 
 /**
- * DashboardSummary contains the main figures shown at the top of the dashboard.
+ * DashboardScreen displays a professional business overview for Admin users.
  *
- * This is temporary sample data for now.
- * Later, these values will be calculated from the local Room database.
- */
-data class DashboardSummary(
-    val todaySales: Int,
-    val todayOrders: Int,
-    val averageOrderValue: Int,
-    val lowStockCount: Int
-)
-
-/**
- * TopSellingProduct represents one product in the top-selling products chart.
- *
- * Later, this will be calculated from receipt/order details stored in Room.
- */
-data class TopSellingProduct(
-    val productName: String,
-    val quantitySold: Int,
-    val revenue: Int
-)
-
-/**
- * PaymentBreakdownItem represents sales grouped by payment method.
- *
- * Later, this will be calculated from saved payment records.
- */
-data class PaymentBreakdownItem(
-    val paymentMethod: String,
-    val orderCount: Int,
-    val amount: Int
-)
-
-/**
- * LowStockDashboardItem represents low-stock products shown in the dashboard.
- *
- * Later, this will be calculated from the inventory table.
- */
-data class LowStockDashboardItem(
-    val productName: String,
-    val stockQuantity: Int,
-    val reorderLevel: Int
-)
-
-/**
- * Identifies which dashboard chart was tapped.
- *
- * This allows the dashboard to open the correct detailed view dialog.
- */
-private enum class DashboardChartType {
-    TOP_PRODUCTS,
-    PAYMENTS,
-    LOW_STOCK
-}
-
-/**
- * Internal data model used by the reusable horizontal bar chart.
- */
-private data class ChartBarItem(
-    val label: String,
-    val value: Int,
-    val supportingText: String
-)
-
-/**
- * DashboardScreen shows a simple Admin business overview.
- *
- * Version 1 goal:
- * - Display summary cards.
- * - Display simple Compose-based charts.
- * - Allow the Admin to tap a chart and view structured details.
- *
- * Important:
- * These values are temporary sample data.
- * Later, this screen will be connected to the Room database.
+ * It features interactive charts for sales trends and payment breakdowns,
+ * along with real-time inventory alerts and key performance metrics.
  */
 @Composable
 fun DashboardScreen(
-    dashboardSummary: DashboardSummary,
-    topSellingProducts: List<TopSellingProduct>,
-    paymentBreakdown: List<PaymentBreakdownItem>,
-    lowStockItems: List<LowStockDashboardItem>,
+    viewModel: DashboardViewModel,
     modifier: Modifier = Modifier
 ) {
-    var selectedChart by remember {
-        mutableStateOf<DashboardChartType?>(null)
-    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Surface(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Dashboard",
-                fontFamily = CinzelFontFamily,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
-            )
-
-            Text(
-                text = "View today's sales performance and key business indicators.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Column(
-                modifier = Modifier.widthIn(max = 1040.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp)
-            ) {
-                DashboardSummarySection(
-                    dashboardSummary = dashboardSummary
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    HorizontalBarChartCard(
-                        title = "Top Products",
-                        description = "Best-selling products by revenue.",
-                        data = topSellingProducts.map { product ->
-                            ChartBarItem(
-                                label = product.productName,
-                                value = product.revenue,
-                                supportingText = "${product.quantitySold} sold"
-                            )
-                        },
-                        valuePrefix = "Rs ",
-                        onClick = {
-                            selectedChart = DashboardChartType.TOP_PRODUCTS
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    HorizontalBarChartCard(
-                        title = "Payments",
-                        description = "Sales grouped by payment method.",
-                        data = paymentBreakdown.map { payment ->
-                            ChartBarItem(
-                                label = payment.paymentMethod,
-                                value = payment.amount,
-                                supportingText = "${payment.orderCount} order(s)"
-                            )
-                        },
-                        valuePrefix = "Rs ",
-                        onClick = {
-                            selectedChart = DashboardChartType.PAYMENTS
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                HorizontalBarChartCard(
-                    title = "Low Stock",
-                    description = "Products that reached or fell below reorder level.",
-                    data = lowStockItems.map { item ->
-                        ChartBarItem(
-                            label = item.productName,
-                            value = item.stockQuantity,
-                            supportingText = "Reorder at ${item.reorderLevel}"
-                        )
-                    },
-                    valueSuffix = " unit(s)",
-                    onClick = {
-                        selectedChart = DashboardChartType.LOW_STOCK
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isWarning = lowStockItems.isNotEmpty()
-                )
+        if (state.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = RoyalGold)
             }
-        }
-    }
-
-    /**
-     * Opens a structured detail dialog when the Admin taps a chart.
-     */
-    when (selectedChart) {
-        DashboardChartType.TOP_PRODUCTS -> {
-            TopProductsDetailDialog(
-                products = topSellingProducts,
-                onDismiss = {
-                    selectedChart = null
+        } else if (state.error != null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "Error loading dashboard", color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = state.error!!, style = MaterialTheme.typography.bodySmall)
                 }
-            )
-        }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                DashboardHeader(
+                    selectedRange = state.selectedRange,
+                    onRangeSelected = { viewModel.updateRange(it) }
+                )
 
-        DashboardChartType.PAYMENTS -> {
-            PaymentBreakdownDetailDialog(
-                paymentBreakdown = paymentBreakdown,
-                onDismiss = {
-                    selectedChart = null
-                }
-            )
-        }
+                Spacer(modifier = Modifier.height(32.dp))
 
-        DashboardChartType.LOW_STOCK -> {
-            LowStockDetailDialog(
-                lowStockItems = lowStockItems,
-                onDismiss = {
-                    selectedChart = null
-                }
-            )
-        }
-
-        null -> {
-            // No chart detail dialog is currently open.
+                DashboardContent(state = state)
+            }
         }
     }
 }
 
 @Composable
-private fun DashboardSummarySection(
-    dashboardSummary: DashboardSummary
+private fun DashboardHeader(
+    selectedRange: DashboardRange,
+    onRangeSelected: (DashboardRange) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "Business Dashboard",
+            fontFamily = CinzelFontFamily,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "Real-time analytics and performance overview",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        RangeSelector(
+            selectedRange = selectedRange,
+            onRangeSelected = onRangeSelected
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RangeSelector(
+    selectedRange: DashboardRange,
+    onRangeSelected: (DashboardRange) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.Center
     ) {
-        DashboardMetricCard(
-            title = "Today's Sales",
-            value = "Rs ${dashboardSummary.todaySales}",
-            modifier = Modifier.weight(1f)
-        )
+        DashboardRange.values().forEach { range ->
+            FilterChip(
+                selected = selectedRange == range,
+                onClick = { onRangeSelected(range) },
+                label = { Text(range.label) },
+                modifier = Modifier.padding(horizontal = 4.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = RoyalGold,
+                    selectedLabelColor = Color.White
+                )
+            )
+        }
+    }
+}
 
-        DashboardMetricCard(
-            title = "Orders",
-            value = dashboardSummary.todayOrders.toString(),
-            modifier = Modifier.weight(1f)
-        )
+@Composable
+private fun DashboardContent(state: DashboardState) {
+    val compLabel = when (state.selectedRange) {
+        DashboardRange.TODAY -> "vs yesterday"
+        DashboardRange.YESTERDAY -> "vs day before"
+        DashboardRange.WEEK -> "vs last week"
+        DashboardRange.MONTH -> "vs last month"
+    }
 
-        DashboardMetricCard(
-            title = "Average Order",
-            value = "Rs ${dashboardSummary.averageOrderValue}",
-            modifier = Modifier.weight(1f)
-        )
+    Column(
+        modifier = Modifier.widthIn(max = 1200.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Data Completeness Info
+        if (state.profitDataCompleteness.isNotEmpty()) {
+            Text(
+                text = "ℹ ${state.profitDataCompleteness}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
 
-        DashboardMetricCard(
-            title = "Low Stock",
-            value = dashboardSummary.lowStockCount.toString(),
-            modifier = Modifier.weight(1f),
-            isWarning = dashboardSummary.lowStockCount > 0
+        // 1. Summary Metrics
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            MetricCardWithTrend(
+                title = "Total Revenue",
+                value = "Rs ${state.totalRevenue}",
+                trend = state.revenueTrendPercentage,
+                isPositive = state.isRevenueTrendPositive,
+                comparisonLabel = compLabel,
+                modifier = Modifier.weight(1f)
+            )
+            MetricCardWithTrend(
+                title = "Gross Profit",
+                value = "Rs ${state.grossProfit}",
+                trend = state.profitTrendPercentage,
+                isPositive = state.isProfitTrendPositive,
+                comparisonLabel = compLabel,
+                modifier = Modifier.weight(1f)
+            )
+            MetricCardWithTrend(
+                title = "Orders",
+                value = state.totalOrders.toString(),
+                trend = state.ordersTrendPercentage,
+                isPositive = state.isOrdersTrendPositive,
+                comparisonLabel = compLabel,
+                modifier = Modifier.weight(1f)
+            )
+            MetricCardWithTrend(
+                title = "Avg Order",
+                value = "Rs ${state.avgOrderValue}",
+                trend = "${state.margin}% Margin",
+                isPositive = true,
+                comparisonLabel = "Total Efficiency",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // 2. Primary Insights: Sales Trend & Busiest Hours
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            ChartCard(
+                title = "Revenue & Gross Profit Trend",
+                modifier = Modifier.weight(1.5f)
+            ) {
+                DashboardLineChart(
+                    revenueData = state.salesTrend,
+                    profitData = state.profitTrend,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            ChartCard(
+                title = "Period Performance",
+                modifier = Modifier.weight(1f)
+            ) {
+                if (state.hourlySales.isEmpty()) {
+                    EmptyStateMessage("No data for this period")
+                } else {
+                    DashboardBarChart(
+                        labels = state.hourlySales.map { it.hourLabel },
+                        revenueValues = state.hourlySales.map { it.totalSales },
+                        valuePrefix = "Rs ",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        // 3. Middle Insights: Payments & Category Performance
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            ChartCard(
+                title = "Payment Methods",
+                modifier = Modifier.weight(1f)
+            ) {
+                DashboardDonutChart(
+                    data = state.paymentBreakdown,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            ChartCard(
+                title = "Category Performance",
+                modifier = Modifier.weight(1.3f)
+            ) {
+                if (state.categorySales.isEmpty()) {
+                    EmptyStateMessage("No category data yet")
+                } else {
+                    DashboardBarChart(
+                        labels = state.categorySales.map { it.category },
+                        revenueValues = state.categorySales.map { it.totalRevenue },
+                        profitValues = state.categorySales.map { it.knownCostRevenue - it.totalCOGS },
+                        valuePrefix = "Rs ",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        // 4. Profitability Insights
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                InsightItem("Most Profitable Category", state.mostProfitableCategory, Modifier.weight(1f))
+                InsightItem("Highest Margin Category", state.highestMarginCategory, Modifier.weight(1f))
+                InsightItem("Most Profitable Product", state.mostProfitableProduct, Modifier.weight(1f))
+            }
+        }
+
+        // 5. Secondary Insights: Top Products & Inventory
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Card(
+                modifier = Modifier.weight(1.2f),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text(
+                        text = "Top Selling Products",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (state.topProducts.isEmpty()) {
+                        EmptyStateMessage("No sales recorded")
+                    } else {
+                        state.topProducts.forEach { product ->
+                            TopProductRow(
+                                name = product.productName,
+                                count = product.totalQuantity,
+                                maxCount = state.topProducts.firstOrNull()?.totalQuantity ?: 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                InventoryAlertCard(
+                    title = "Low Stock Alerts",
+                    items = state.lowStockItems.map { "${it.productName} (${it.stockQuantity} left)" },
+                    isError = false,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                InventoryAlertCard(
+                    title = "Out of Stock",
+                    items = state.outOfStockItems.map { it.productName },
+                    isError = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightItem(title: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(title, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun ChartCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.height(320.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Box(modifier = Modifier.fillMaxSize(), content = content)
+        }
+    }
+}
+
+@Composable
+private fun EmptyStateMessage(message: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
     }
 }
 
 @Composable
-private fun DashboardMetricCard(
+private fun TopProductRow(name: String, count: Int, maxCount: Int) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(text = "$count sold", style = MaterialTheme.typography.bodySmall, color = RoyalGold)
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        val progress = count.toFloat() / maxCount.toFloat()
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp),
+            color = RoyalGold,
+            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+            strokeCap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun InventoryAlertCard(
     title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    isWarning: Boolean = false
+    items: List<String>,
+    isError: Boolean,
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isWarning) {
-                MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
+            containerColor = if (isError && items.isNotEmpty()) {
+                MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isWarning) {
-                MaterialTheme.colorScheme.error.copy(alpha = 0.35f)
-            } else {
-                RoyalGold.copy(alpha = 0.35f)
-            }
         )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = if (isWarning) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-                textAlign = TextAlign.Center
+                color = if (isError && items.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
             )
-        }
-    }
-}
-
-@Composable
-private fun HorizontalBarChartCard(
-    title: String,
-    description: String,
-    data: List<ChartBarItem>,
-    valuePrefix: String = "",
-    valueSuffix: String = "",
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isWarning: Boolean = false
-) {
-    val maxValue = data.maxOfOrNull { it.value }?.coerceAtLeast(1) ?: 1
-
-    Card(
-        modifier = modifier
-            .clickable {
-                onClick()
-            },
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isWarning) {
-                MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
+            Spacer(modifier = Modifier.height(12.dp))
+            if (items.isEmpty()) {
+                Text(text = "All clear", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isWarning) {
-                MaterialTheme.colorScheme.error.copy(alpha = 0.35f)
-            } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-            }
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(22.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isWarning) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                }
-            )
-
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Text(
-                text = "Tap chart to view details",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (data.isEmpty()) {
-                Text(
-                    text = "No data available.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                )
-            } else {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    data.forEach { item ->
-                        HorizontalBarRow(
-                            item = item,
-                            maxValue = maxValue,
-                            valuePrefix = valuePrefix,
-                            valueSuffix = valueSuffix,
-                            isWarning = isWarning
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HorizontalBarRow(
-    item: ChartBarItem,
-    maxValue: Int,
-    valuePrefix: String,
-    valueSuffix: String,
-    isWarning: Boolean
-) {
-    val barFraction = (item.value.toFloat() / maxValue.toFloat()).coerceIn(
-        minimumValue = 0.05f,
-        maximumValue = 1f
-    )
-
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = item.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = item.supportingText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
-
-            Text(
-                text = "$valuePrefix${item.value}$valueSuffix",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isWarning) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(12.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(50)
-                )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(barFraction)
-                    .height(12.dp)
-                    .background(
-                        color = if (isWarning) {
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                        } else {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                        },
-                        shape = RoundedCornerShape(50)
-                    )
-            )
-        }
-    }
-}
-
-@Composable
-private fun TopProductsDetailDialog(
-    products: List<TopSellingProduct>,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(text = "Top Products Details")
-        },
-        text = {
-            Column(
-                modifier = Modifier.widthIn(max = 620.dp)
-            ) {
-                DetailHeaderRow(
-                    first = "Product",
-                    second = "Qty Sold",
-                    third = "Revenue"
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                products.forEach { product ->
-                    DetailDataRow(
-                        first = product.productName,
-                        second = product.quantitySold.toString(),
-                        third = "Rs ${product.revenue}"
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss
-            ) {
-                Text(text = "Close")
-            }
-        }
-    )
-}
-
-@Composable
-private fun PaymentBreakdownDetailDialog(
-    paymentBreakdown: List<PaymentBreakdownItem>,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(text = "Payment Details")
-        },
-        text = {
-            Column(
-                modifier = Modifier.widthIn(max = 620.dp)
-            ) {
-                DetailHeaderRow(
-                    first = "Method",
-                    second = "Orders",
-                    third = "Amount"
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                paymentBreakdown.forEach { payment ->
-                    DetailDataRow(
-                        first = payment.paymentMethod,
-                        second = payment.orderCount.toString(),
-                        third = "Rs ${payment.amount}"
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss
-            ) {
-                Text(text = "Close")
-            }
-        }
-    )
-}
-
-@Composable
-private fun LowStockDetailDialog(
-    lowStockItems: List<LowStockDashboardItem>,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(text = "Low Stock Details")
-        },
-        text = {
-            Column(
-                modifier = Modifier.widthIn(max = 620.dp)
-            ) {
-                if (lowStockItems.isEmpty()) {
+                items.take(3).forEach { item ->
                     Text(
-                        text = "No low-stock products at the moment.",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "• $item",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 2.dp)
                     )
-                } else {
-                    DetailHeaderRow(
-                        first = "Product",
-                        second = "Stock",
-                        third = "Reorder"
+                }
+                if (items.size > 3) {
+                    Text(
+                        text = "+ ${items.size - 3} more",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RoyalGold,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-
-                    lowStockItems.forEach { item ->
-                        DetailDataRow(
-                            first = item.productName,
-                            second = item.stockQuantity.toString(),
-                            third = item.reorderLevel.toString()
-                        )
-                    }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss
-            ) {
-                Text(text = "Close")
-            }
         }
-    )
-}
-
-@Composable
-private fun DetailHeaderRow(
-    first: String,
-    second: String,
-    third: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = first,
-            modifier = Modifier.weight(1.4f),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Text(
-            text = second,
-            modifier = Modifier.weight(0.8f),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = third,
-            modifier = Modifier.weight(0.8f),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.End
-        )
-    }
-}
-
-@Composable
-private fun DetailDataRow(
-    first: String,
-    second: String,
-    third: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = first,
-            modifier = Modifier.weight(1.4f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
-
-        Text(
-            text = second,
-            modifier = Modifier.weight(0.8f),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = third,
-            modifier = Modifier.weight(0.8f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.End
-        )
     }
 }

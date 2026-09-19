@@ -2,6 +2,7 @@ package com.royalcoffee.pos.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -17,7 +18,11 @@ import androidx.room.PrimaryKey
  * - payment method
  */
 @Entity(
-    tableName = "receipt_headers"
+    tableName = "receipt_headers",
+    indices = [
+        Index(value = ["receipt_number"], unique = true),
+        Index(value = ["timestamp"])
+    ]
 )
 data class ReceiptHeaderEntity(
     /**
@@ -39,11 +44,16 @@ data class ReceiptHeaderEntity(
     /**
      * Date and time shown on the receipt.
      *
-     * For now, we store it as formatted text.
-     * Later, we can store ISO timestamps for better filtering.
+     * Format: dd/MM/yyyy HH:mm
      */
     @ColumnInfo(name = "receipt_date_time")
     val receiptDateTime: String,
+
+    /**
+     * Epoch milliseconds for efficient filtering and sorting.
+     */
+    @ColumnInfo(name = "timestamp")
+    val timestamp: Long = 0L,
 
     /**
      * Cashier name shown on the receipt.

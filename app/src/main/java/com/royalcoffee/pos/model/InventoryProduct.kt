@@ -36,6 +36,11 @@ data class InventoryProduct(
     val unitPrice: Int,
 
     /**
+     * Cost price of the product.
+     */
+    val costPrice: Int,
+
+    /**
      * Current stock quantity available.
      */
     val stockQuantity: Int,

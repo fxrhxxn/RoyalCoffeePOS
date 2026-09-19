@@ -79,7 +79,10 @@ private fun ProductEntity.toProduct(): Product {
         id = productId,
         name = productName,
         category = category,
-        price = unitPrice
+        price = unitPrice,
+        costPrice = costPrice,
+        stockQuantity = stockQuantity,
+        reorderLevel = reorderLevel
     )
 }
 
@@ -92,6 +95,7 @@ private fun ProductEntity.toInventoryProduct(): InventoryProduct {
         name = productName,
         category = category,
         unitPrice = unitPrice,
+        costPrice = costPrice,
         stockQuantity = stockQuantity,
         reorderLevel = reorderLevel,
         isActive = isActive
