@@ -37,13 +37,25 @@ fun RegistrationScreen(
     var currentStep by remember { mutableStateOf(1) }
 
     // Step 1: Business Info
-    var businessName by remember { mutableStateOf("") }
+    var businessName by remember { mutableStateOf("Royal Coffee") }
     var address by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var brn by remember { mutableStateOf("") }
     var vat by remember { mutableStateOf("") }
-    var country by remember { mutableStateOf("") }
+    var country by remember { mutableStateOf("Mauritius") } // Default country set to Mauritius
     var email by remember { mutableStateOf("") }
+
+    // Tracks whether the user attempts to continue
+    var hasAttemptedNext by remember { mutableStateOf(false) }
+
+    // Recalculate validation results whether the relevant business fields change
+    val businessValidation = BusinessRegistrationValidator.validate(
+        businessName = businessName,
+        brn = brn,
+        vat = vat,
+        country = country,
+        email = email
+    )
 
     // Step 2: Admin Credentials
     var fullName by remember { mutableStateOf("") }
@@ -51,10 +63,20 @@ fun RegistrationScreen(
     var pin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
 
+    // Admin Account Validation
+    val isAdminInformationValid =
+        fullName.isNotBlank() &&
+                username.isNotBlank() &&
+                pin.length >= 4 &&
+                pin.all { it.isDigit() } &&
+                pin == confirmPin
+
+    // Reset any previous registration state when the screen is open
     LaunchedEffect(Unit) {
         viewModel.resetState()
     }
 
+    // When successful registration, navigate to the home screen
     LaunchedEffect(uiState) {
         if (uiState is RegistrationUiState.Success) {
             onRegistrationComplete()
@@ -62,13 +84,15 @@ fun RegistrationScreen(
     }
 
     Scaffold(
+        // Registration Screen header
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
                         "Welcome to the Registration Page",
                         fontFamily = CinzelFontFamily,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -110,12 +134,15 @@ fun RegistrationScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Registration card
                 Card(
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(24.dp)) {
+                        // Display either Business information or admin account depending on currentStep
                         if (currentStep == 1) {
                             BusinessInfoStep(
                                 businessName = businessName, onBusinessNameChange = { businessName = it },
@@ -124,7 +151,14 @@ fun RegistrationScreen(
                                 brn = brn, onBrnChange = { brn = it },
                                 vat = vat, onVatChange = { vat = it },
                                 country = country, onCountryChange = { country = it },
-                                email = email, onEmailChange = { email = it }
+                                email = email, onEmailChange = { email = it },
+
+                                // Show Validation errors
+                                validationErrors = if (hasAttemptedNext) {
+                                    businessValidation
+                                } else {
+                                    BusinessValidationErrors()
+                                }
                             )
                         } else {
                             AdminCredentialsStep(
@@ -134,9 +168,9 @@ fun RegistrationScreen(
                                 confirmPin = confirmPin, onConfirmPinChange = { confirmPin = it }
                             )
                         }
-
                         Spacer(modifier = Modifier.height(32.dp))
 
+                        // ViewModel Error Message
                         if (uiState is RegistrationUiState.Error) {
                             Text(
                                 text = (uiState as RegistrationUiState.Error).message,
@@ -148,14 +182,16 @@ fun RegistrationScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Back when on step 2
                             if (currentStep == 2) {
                                 OutlinedButton(
                                     onClick = { currentStep = 1 },
                                     modifier = Modifier.height(50.dp)
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                                     Spacer(Modifier.width(8.dp))
                                     Text("Back")
                                 }
@@ -166,37 +202,74 @@ fun RegistrationScreen(
                             Button(
                                 onClick = {
                                     if (currentStep == 1) {
-                                        currentStep = 2
+                                        // The user attempts to move to the next screen
+                                        // The error message becomes visible if there are validation errors
+                                        hasAttemptedNext = true
+                                        // Move to the next screen if there are no validation errors
+                                        if (businessValidation.isValid) {
+                                            currentStep = 2
+                                        }
                                     } else {
+                                        // Validate business information once the user has completed the registration
+                                        // The ViewModel performs the validation
+                                        if (!businessValidation.isValid) {
+                                            hasAttemptedNext = true
+                                            // Returns to step 1
+                                            currentStep = 1
+                                    } else {
+                                        // Move to the next screen
                                         viewModel.register(
-                                            fullName, username, pin, businessName,
-                                            address, phone, brn, vat, country, email
+                                            fullName = fullName.trim(),
+                                            username = username.trim(),
+                                            pin = pin,
+                                            businessName = businessName.trim(),
+                                            address = address.trim(),
+                                            phone = phone.trim(),
+                                            brn = brn.trim().uppercase(),
+                                            vat = vat.trim(),
+                                            country = country.trim(),
+                                            email = email
                                         )
+                                            }
                                     }
                                 },
+                                /*
                                 enabled = if (currentStep == 1) {
                                     businessName.isNotBlank() && email.isNotBlank()
                                 } else {
                                     fullName.isNotBlank() && username.isNotBlank() && pin.length >= 4 && pin == confirmPin
                                 },
                                 modifier = Modifier.height(50.dp)
+                                */
+                                enabled = uiState !is RegistrationUiState.Loading &&
+                                        (currentStep == 1 || (currentStep == 2 &&
+                                                        fullName.isNotBlank() &&
+                                                        username.isNotBlank() &&
+                                                        pin.length >=4 &&
+                                                        pin == confirmPin &&
+                                                        businessValidation.isValid)),
+                                modifier = Modifier.height(50.dp)
                             ) {
                                 if (uiState is RegistrationUiState.Loading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                                 } else {
                                     Text(if (currentStep == 1) "Next" else "Complete Setup")
                                     Spacer(Modifier.width(8.dp))
-                                    Icon(if (currentStep == 1) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.Check, contentDescription = null)
+                                    Icon(if (currentStep == 1) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.Check, contentDescription = null
+                                    )
                                 }
                             }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 }
 
+
+// Display the numbered progress indicator used above registration card
 @Composable
 fun StepIndicator(step: Int, active: Boolean, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -211,7 +284,7 @@ fun StepIndicator(step: Int, active: Boolean, label: String) {
             }
         }
         Text(
-            label,
+            text = label,
             style = MaterialTheme.typography.labelSmall,
             color = if (active) RoyalGreenDark else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
@@ -219,6 +292,8 @@ fun StepIndicator(step: Int, active: Boolean, label: String) {
     }
 }
 
+// Registration - Step 1:
+// Collect Business information from the user to be saved in Room Database later
 @Composable
 fun BusinessInfoStep(
     businessName: String, onBusinessNameChange: (String) -> Unit,
@@ -227,62 +302,155 @@ fun BusinessInfoStep(
     brn: String, onBrnChange: (String) -> Unit,
     vat: String, onVatChange: (String) -> Unit,
     country: String, onCountryChange: (String) -> Unit,
-    email: String, onEmailChange: (String) -> Unit
+    email: String, onEmailChange: (String) -> Unit,
+    validationErrors: BusinessValidationErrors
 ) {
     Column {
-        Text("Business Details", style = MaterialTheme.typography.titleLarge, color = RoyalGreenDark)
-        Text("Legal info for receipts and reports", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = "Business Details",
+            style = MaterialTheme.typography.titleLarge,
+            color = RoyalGreenDark
+        )
+        Text(
+            text = "Legal info for receipts and reports",
+            style = MaterialTheme.typography.bodyMedium
+        )
         Spacer(Modifier.height(24.dp))
 
+        // Business Name
+        // Default Value - Royal Coffee
+        // User may edit this field to modify the business name
         OutlinedTextField(
-            value = businessName, onValueChange = onBusinessNameChange,
+            value = businessName,
+            onValueChange = { onBusinessNameChange(it)},
             label = { Text("Business Name") },
             modifier = Modifier.fillMaxWidth(),
-            leadingIcon = { Icon(Icons.Default.Business, null) }
+            leadingIcon = { Icon(Icons.Default.Business, null) },
+
+            singleLine = true,
+            isError = validationErrors.businessName != null,
+            supportingText = {
+                Text(
+                    text = validationErrors.businessName ?: "Example: Royal Coffee - Ebene"
+                )
+            }
         )
+
+        // Business Address
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
-            value = address, onValueChange = onAddressChange,
+            value = address,
+            onValueChange = { onAddressChange(it)},
             label = { Text("Address") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
+
+        // Business Phone Number
         OutlinedTextField(
-            value = phone, onValueChange = onPhoneChange,
+            value = phone,
+            onValueChange = { newValue ->
+                // Allow digits and common characters
+                if (newValue.all {
+                    character ->
+                        character.isDigit() ||
+                                character == '+' ||
+                                character == '-' ||
+                                character == ' ' ||
+                                character == '(' ||
+                                character == ')' }
+                    ){ onPhoneChange(newValue)
+                }
+            },
             label = { Text("Phone Number") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Phone
+            )
         )
         Spacer(Modifier.height(12.dp))
+
+        // BRN and VAT
+        // Display both next to each other
         Row(Modifier.fillMaxWidth()) {
             OutlinedTextField(
-                value = brn, onValueChange = onBrnChange,
+                value = brn,
+                onValueChange = { newValue ->
+                    if(newValue.length <= 10) {
+                        onBrnChange(newValue.uppercase())
+                    }
+                },
                 label = { Text("BRN") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Ascii
+                ),
+                isError = validationErrors.brn != null,
+                supportingText = { Text(text = validationErrors.brn ?: "Example: C123456789") }
             )
             Spacer(Modifier.width(12.dp))
+
+            // VAT
             OutlinedTextField(
-                value = vat, onValueChange = onVatChange,
+                value = vat,
+                onValueChange = { newValue ->
+                    // Only allow digits of 8 characters or less
+                    if (newValue.length <= 8 && newValue.all { it.isDigit() }) {
+                        onVatChange(newValue)
+                    }
+                },
                 label = { Text("VAT") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number
+                ),
+                isError = validationErrors.vat != null,
+                supportingText = { Text(text = validationErrors.vat ?: "Enter a valid 8 digit VAT number") }
             )
         }
         Spacer(Modifier.height(12.dp))
+
+        // Country
         OutlinedTextField(
-            value = country, onValueChange = onCountryChange,
+            value = country,
+            onValueChange = { onCountryChange(it)},
             label = { Text("Country") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            isError = validationErrors.country != null,
+            supportingText = {
+                validationErrors.country?.let { errorMessage -> Text(text = errorMessage) }
+            }
         )
         Spacer(Modifier.height(12.dp))
+
+        // Business Email
         OutlinedTextField(
-            value = email, onValueChange = onEmailChange,
+            value = email,
+            onValueChange = {onEmailChange(it)},
             label = { Text("Business Email") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Done
+            ),
+            isError = validationErrors.email != null,
+            supportingText = {
+                Text(
+                    text = validationErrors.email ?: "Enter valid email: johndoe@example.com"
+                )
+            }
         )
     }
 }
 
+
+
+// Create the first admin account of the application
 @Composable
 fun AdminCredentialsStep(
     fullName: String, onFullNameChange: (String) -> Unit,
@@ -290,42 +458,95 @@ fun AdminCredentialsStep(
     pin: String, onPinChange: (String) -> Unit,
     confirmPin: String, onConfirmPinChange: (String) -> Unit
 ) {
+    // Used to determine whether confirm pin field should display an error
+    val pinsDoNotMatch = pin.isNotEmpty() && confirmPin.isNotEmpty() && pin != confirmPin
+
+
     Column {
         Text("Admin Account", style = MaterialTheme.typography.titleLarge, color = RoyalGreenDark)
-        Text("Create the account you will use to log in.", style = MaterialTheme.typography.bodyMedium)
+        Text("Create first Admin account", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(24.dp))
 
+        // Full Name
         OutlinedTextField(
-            value = fullName, onValueChange = onFullNameChange,
+            value = fullName,
+            onValueChange = { onFullNameChange(it)},
             label = { Text("Full Name") },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Default.Person, null) },
-            supportingText = { Text("Example: Mungada Christa") }
+            supportingText = { Text("Example: John Doe") } // { Text("Example: Mungada Christa") }
         )
         Spacer(Modifier.height(12.dp))
+
+
+        // Usernae
         OutlinedTextField(
             value = username, onValueChange = onUsernameChange,
             label = { Text("Login Username") },
             modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("This is what you type to log in (e.g., 'admin')") }
+            supportingText = { Text("Username used for login in. Example: JohnDoe") } // { Text("This is what you type to log in (e.g., 'admin')") }
         )
         Spacer(Modifier.height(12.dp))
+
+        // Pin
         OutlinedTextField(
-            value = pin, onValueChange = onPinChange,
+            value = pin,
+            onValueChange = { newPin ->
+                // Pin contains only digits
+                if (newPin.all { it.isDigit() }) {
+                    onPinChange(newPin)
+                }
+            },
             label = { Text("Security PIN") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            supportingText = { Text("Minimum 4 digits (e.g., '0102')") }
+            supportingText = {
+                if (pin.isNotEmpty() && pin.length < 4) {
+                    Text( text = "Entered pin must contain 4 digits minimum")
+                } else {
+                    Text(text = "Pin must contain 4 digits minimum")
+                }
+            }
         )
         Spacer(Modifier.height(12.dp))
+
+        // Pin confirmation
         OutlinedTextField(
-            value = confirmPin, onValueChange = onConfirmPinChange,
+            value = confirmPin,
+            onValueChange = { newPin ->
+                // Confirm pin contains only digits
+                if (newPin.all { it.isDigit() }
+                ) {
+
+                onConfirmPinChange(newPin)
+                }
+            },
             label = { Text("Confirm PIN") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            isError = pin.isNotEmpty() && confirmPin.isNotEmpty() && pin != confirmPin
+            keyboardOptions = KeyboardOptions(
+                keyboardType =
+                    KeyboardType.NumberPassword,
+                imeAction = ImeAction.Done
+            ),
+            isError = pinsDoNotMatch,
+
+            supportingText = {
+                when {
+                    pinsDoNotMatch -> {
+                        Text(text = "Pins do not match")
+                    }
+
+                    confirmPin.isNotEmpty() && pin == confirmPin -> {
+                        Text(text = "Pins match")
+                    } else -> {
+                        Text(text = "Re enter security pin")
+                    }
+                }
+            }
         )
     }
 }
+
+
