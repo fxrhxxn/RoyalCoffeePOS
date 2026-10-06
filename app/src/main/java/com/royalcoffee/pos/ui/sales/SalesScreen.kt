@@ -65,6 +65,8 @@ import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import com.royalcoffee.pos.data.local.repository.CategoryRepository
+import com.royalcoffee.pos.data.local.dao.CategoryDao
 
 @Composable
 fun SalesScreen(
@@ -83,6 +85,12 @@ fun SalesScreen(
             database = database,
             productDao = database.productDao(),
             inventoryHistoryDao = database.inventoryHistoryDao()
+        )
+    }
+
+    val categoryRepository = remember(database) {
+        CategoryRepository(
+            database.CategoryDao()
         )
     }
 
@@ -290,6 +298,7 @@ fun SalesScreen(
                         InventoryScreen(
                             userRole = userRole,
                             productRepository = productRepository,
+                            categoryRepository = categoryRepository,
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
