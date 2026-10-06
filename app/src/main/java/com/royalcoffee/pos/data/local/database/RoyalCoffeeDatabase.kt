@@ -15,6 +15,8 @@ import com.royalcoffee.pos.data.local.entity.ProductEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.data.local.entity.UserEntity
+import com.royalcoffee.pos.data.local.dao.CategoryDao
+import com.royalcoffee.pos.data.local.entity.CategoryEntity
 
 /**
  * RoyalCoffeeDatabase is the main Room database for the app.
@@ -31,37 +33,33 @@ import com.royalcoffee.pos.data.local.entity.UserEntity
         ReceiptDetailEntity::class,
         InventoryHistoryEntity::class,
         UserEntity::class,
-        BusinessEntity::class
+        BusinessEntity::class,
+        CategoryEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
-    /**
-     * Gives access to product-related database operations.
-     */
+    // Gives access to product-related database operations.
     abstract fun productDao(): ProductDao
 
-    /**
-     * Gives access to receipt-related database operations.
-     */
+    // Gives access to category-related database operations.
+    abstract fun CategoryDao(): CategoryDao
+
+    // Gives access to receipt-related database operations.
     abstract fun receiptDao(): ReceiptDao
 
-    /**
-     * Gives access to inventory history operations.
-     */
+    // Gives access to inventory history operations.
     abstract fun inventoryHistoryDao(): InventoryHistoryDao
 
-    /**
-     * Gives access to user operations.
-     */
+    // Gives access to user operations.
     abstract fun userDao(): UserDao
 
-    /**
-     * Gives access to business info operations.
-     */
+    // Gives access to business info operations.
     abstract fun businessDao(): BusinessDao
+
+
 
     companion object {
         /**
@@ -132,6 +130,76 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `products` ADD COLUMN `cost_price` INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE `receipt_details` ADD COLUMN `cost_price` INTEGER")
+            }
+        }
+
+        /**
+         * Migration from version 8 to 9:
+         *
+         * Adds the categories table.
+         *
+         * Existing category names already stored inside products
+         * are copied into the categories table automatically.
+         *
+         * This allows existing installations to keep their product data
+         * while introducing proper category management.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+
+            override fun migrate(
+                db: SupportSQLiteDatabase
+            ) {
+
+                /*
+                 * 1. Create categories table.
+                 */
+                db.execSQL(
+                    """
+            CREATE TABLE IF NOT EXISTS `categories` (
+                `category_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `category_name` TEXT NOT NULL
+            )
+            """.trimIndent()
+                )
+                /*
+                 * 2. Create a unique index.
+                 *
+                 * Prevents exact duplicate category names.
+                 */
+                db.execSQL(
+                    """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+            `index_categories_category_name`
+            ON `categories` (`category_name`)
+            """.trimIndent()
+                )
+
+
+                /*
+                 * 3. Copy existing categories from products.
+                 *
+                 * For example:
+                 *
+                 * Latte       -> Coffee
+                 * Espresso    -> Coffee
+                 * Croissant   -> Pastries
+                 *
+                 * becomes:
+                 *
+                 * Coffee
+                 * Pastries
+                 *
+                 * inside the categories table.
+                 */
+                db.execSQL(
+                    """
+            INSERT OR IGNORE INTO `categories` (`category_name`)
+            SELECT DISTINCT TRIM(`category`)
+            FROM `products`
+            WHERE TRIM(`category`) <> ''
+            ORDER BY `category`
+            """.trimIndent()
+                )
             }
         }
     }
