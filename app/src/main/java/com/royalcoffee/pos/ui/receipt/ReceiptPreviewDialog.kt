@@ -56,7 +56,8 @@ fun ReceiptPreviewDialog(
     onClose: () -> Unit,
     onNextOrder: () -> Unit,
     onPrintReceipt: (Receipt) -> Unit,
-    onDownloadPdf: (Receipt) -> Unit
+    onDownloadPdf: (Receipt) -> Unit,
+    onShareWhatsApp: (Receipt) -> Unit
 ) {
     Dialog(
         onDismissRequest = {
@@ -164,6 +165,7 @@ fun ReceiptPreviewDialog(
                              * The dialog does not decide how printing works.
                              * It simply tells the parent screen that the user clicked Print Receipt.
                              */
+                            onShareWhatsApp = { onShareWhatsApp(receipt) },
                             onPrintReceipt = {
                                 onPrintReceipt(receipt)
                             },
@@ -197,6 +199,7 @@ private fun ReceiptSideActionPanel(
     onNextOrder: () -> Unit,
     onPrintReceipt: () -> Unit,
     onDownloadPdf: () -> Unit,
+    onShareWhatsApp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -234,13 +237,7 @@ private fun ReceiptSideActionPanel(
 
         ReceiptSecondaryActionButton(
             text = "Share via WhatsApp",
-            onClick = {
-                Toast.makeText(
-                    context,
-                    "WhatsApp sharing is not available yet.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            onClick = onShareWhatsApp
         )
 
         Spacer(modifier = Modifier.height(12.dp))

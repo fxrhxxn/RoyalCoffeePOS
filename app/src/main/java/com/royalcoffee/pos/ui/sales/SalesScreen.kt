@@ -75,6 +75,7 @@ fun SalesScreen(
     onLogout: () -> Unit
 ) {
     val userRole = authenticatedUser.role
+    var sharingReceipt by remember { mutableStateOf<com.royalcoffee.pos.model.Receipt?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadReceipt = com.royalcoffee.pos.ui.receipt.rememberReceiptDownloader()
@@ -447,6 +448,10 @@ fun SalesScreen(
         )
     }
 
+    sharingReceipt?.let { receipt ->
+        com.royalcoffee.pos.ui.receipt.WhatsAppReceiptDialog(receipt) { sharingReceipt = null }
+    }
+
     if (salesViewModel.showReceiptPreviewDialog && salesViewModel.currentReceipt != null) {
         ReceiptPreviewDialog(
             receipt = salesViewModel.currentReceipt!!,
@@ -456,6 +461,7 @@ fun SalesScreen(
                 val res = receiptPrinter.printReceipt(receipt, defaultPrinter)
                 Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             },
+            onShareWhatsApp = { sharingReceipt = it },
             onDownloadPdf = { receipt ->
                 downloadReceipt(receipt)
             }
