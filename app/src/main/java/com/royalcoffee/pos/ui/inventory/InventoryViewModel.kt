@@ -539,7 +539,8 @@ class InventoryViewModel(
         productId: Int,
         change: Int,
         type: InventoryTransactionType,
-        reason: String
+        reason: String,
+        expiryDay: Long? = null
     ) {
 
         if (userRole != UserRole.ADMIN) {
@@ -554,7 +555,8 @@ class InventoryViewModel(
                     productId = productId,
                     quantityChange = change,
                     type = type,
-                    reason = reason
+                    reason = reason,
+                    expiryDay = expiryDay
                 )
 
                 inventoryError = null

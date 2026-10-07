@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.data.local.repository
 
+import com.royalcoffee.pos.notifications.*
 import androidx.room.withTransaction
 import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.data.local.dao.InventoryHistoryDao
@@ -59,6 +60,7 @@ class ProductRepository(
             val productId = productDao.insertProductAndGetId(product).toInt()
             
             if (product.stockQuantity > 0) {
+                database.stockAlertDao().insertBatch(StockBatch(productId = productId, remaining = product.stockQuantity))
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(
                         productId = productId,
@@ -79,7 +81,10 @@ class ProductRepository(
      */
     suspend fun updateProduct(product: ProductEntity) {
         validateMoney(product)
-        productDao.updateProduct(product)
+        database.withTransaction {
+            val current = productDao.getProductById(product.productId) ?: return@withTransaction
+            productDao.updateProduct(product.copy(stockQuantity = current.stockQuantity))
+        }
     }
 
     /**
@@ -90,12 +95,13 @@ class ProductRepository(
         productId: Int,
         quantityChange: Int,
         type: InventoryTransactionType,
-        reason: String?
+        reason: String?,
+        expiryDay: Long? = null
     ) {
         database.withTransaction {
             val product = productDao.getProductById(productId) ?: return@withTransaction
             val previousStock = product.stockQuantity
-            val newStock = previousStock + quantityChange
+            val newStock = Math.addExact(previousStock, quantityChange)
             
             if (newStock < 0) throw IllegalArgumentException("Resulting stock cannot be negative")
 
@@ -110,6 +116,8 @@ class ProductRepository(
             }
 
             if (rowsAffected > 0) {
+                if (quantityChange > 0) database.stockAlertDao().insertBatch(StockBatch(productId = productId, remaining = quantityChange, expiryDay = expiryDay))
+                if (quantityChange < 0) database.consumeBatches(productId, -quantityChange, previousStock)
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(
                         productId = productId,
@@ -139,7 +147,7 @@ class ProductRepository(
      * Inserts multiple products into the database.
      */
     suspend fun insertProducts(products: List<ProductEntity>) {
-        productDao.insertProducts(products)
+        products.forEach { addProduct(it) }
     }
 
     /**
@@ -152,9 +160,7 @@ class ProductRepository(
         val productCount = productDao.getProductCount()
 
         if (productCount == 0) {
-            productDao.insertProducts(
-                defaultProducts()
-            )
+            insertProducts(defaultProducts())
         }
     }
 

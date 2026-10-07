@@ -575,7 +575,7 @@ fun InventoryScreen(
 
             onConfirm = {
                     quantity,
-                    reason ->
+                    reason, expiryDay ->
 
                 val change =
                     if (
@@ -601,8 +601,8 @@ fun InventoryScreen(
                     type =
                         adjustmentType,
 
-                    reason =
-                        reason
+                    reason = reason,
+                    expiryDay = expiryDay
                 )
 
 
@@ -1913,10 +1913,13 @@ fun StockActionDialog(
     onDismiss: () -> Unit,
     onConfirm: (
         qty: Int,
-        reason: String
+        reason: String,
+        expiryDay: Long?
     ) -> Unit
 ) {
 
+    var expiryText by remember { mutableStateOf("") }
+    val expiryDay = runCatching { java.time.LocalDate.parse(expiryText.trim()).toEpochDay() }.getOrNull()
     var qty by remember {
         mutableStateOf("")
     }
@@ -2008,6 +2011,11 @@ fun StockActionDialog(
                 )
 
 
+                if (type == InventoryTransactionType.RESTOCK) {
+                    OutlinedTextField(value = expiryText, onValueChange = { expiryText = it },
+                        label = { Text("Expiry YYYY-MM-DD (optional)") }, singleLine = true,
+                        isError = expiryText.isNotBlank() && expiryDay == null)
+                }
                 /*
                  * Restocking does not require an explanation.
                  *
@@ -2043,7 +2051,7 @@ fun StockActionDialog(
 
             Button(
                 enabled =
-                    qty.toIntOrNull() != null &&
+                    (expiryText.isBlank() || expiryDay != null) && qty.toIntOrNull() != null &&
                             (qty.toIntOrNull()
                                 ?: 0) > 0 &&
                             (
@@ -2058,7 +2066,8 @@ fun StockActionDialog(
                         qty.toIntOrNull()
                             ?: 0,
 
-                        reason.trim()
+                        reason.trim(),
+                        expiryDay
                     )
                 }
             ) {

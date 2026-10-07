@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface ProductDao {
+    @Query("SELECT * FROM products WHERE is_active=1")
+    suspend fun alertProducts(): List<ProductEntity>
+
 
     /**
      * Returns all active products.
@@ -166,3 +169,4 @@ interface ProductDao {
     @Query("SELECT COUNT(*) FROM products")
     suspend fun getProductCount(): Int
 }
+

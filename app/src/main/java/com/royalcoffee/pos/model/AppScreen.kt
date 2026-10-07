@@ -12,6 +12,7 @@ enum class AppScreen(
     /**
      * Main POS screen where products are selected and orders are processed.
      */
+    NOTIFICATIONS("Notifications"),
     SALES("Sales"),
 
     /**
