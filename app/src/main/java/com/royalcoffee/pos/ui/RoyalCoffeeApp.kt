@@ -294,7 +294,7 @@ fun RoyalCoffeeApp() {
 
                 if (user != null) {
 
-                    SalesScreen(
+                    AuthenticatedSession(
                         authenticatedUser = user,
 
                         onLogout = {
@@ -317,5 +317,24 @@ fun RoyalCoffeeApp() {
                 }
             }
         }
+    }
+}
+
+
+/** Own all authenticated ViewModels for one login and release them on logout. */
+@Composable
+private fun AuthenticatedSession(authenticatedUser: AuthenticatedUser, onLogout: () -> Unit) {
+    val owner = remember(authenticatedUser.sessionId) {
+        object : androidx.lifecycle.ViewModelStoreOwner {
+            override val viewModelStore = androidx.lifecycle.ViewModelStore()
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(owner) {
+        onDispose { owner.viewModelStore.clear() }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner provides owner
+    ) {
+        SalesScreen(authenticatedUser = authenticatedUser, onLogout = onLogout)
     }
 }
