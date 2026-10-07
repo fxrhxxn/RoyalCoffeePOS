@@ -5072,3 +5072,11 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
 - Documented platform limitation: WhatsApp's public click-to-chat supports number/text but does not document direct PDF attachment targeting. Open chat prepares the numbered chat; Share PDF explicitly asks the cashier to select that recipient in WhatsApp. No undocumented jid extra or claim of automatic sending. References: https://faq.whatsapp.com/5913398998672934 and https://developer.android.com/develop/ui/compose/sharing/send .
 - After returning from the share activity, offer native contact insertion only if an authorized phone lookup found the number absent. Unknown permission state is not mistaken for an absent contact; Save customer is also available manually. Returning never counts as proof of sending.
 - Checked FileProvider scope, read grant/ClipData, package query and all dialog call sites; git diff --check passes. Real-device WhatsApp attachment/recipient behavior remains an integration test requirement.
+
+
+## Historical receipt actions
+
+- Opening a historical receipt now uses the same full receipt preview with Download, WhatsApp and Reprint actions. All actions load persisted receipt amounts/items/cashier; they regenerate PDF content as needed, without requiring a previously saved PDF.
+- Historical previews hide Next Order and never clear or modify the active cart. Reprint uses the existing FakeReceiptPrinter path; hardware printing remains unconfigured as requested.
+- Receipt-load failures show a recoverable message and concurrent taps do not race. Added explicit Flow collect import for stock observation.
+- Reviewed new-sale and historical preview call sites and ran git diff --check. Android UI/device checks remain pending.

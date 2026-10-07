@@ -57,7 +57,8 @@ fun ReceiptPreviewDialog(
     onNextOrder: () -> Unit,
     onPrintReceipt: (Receipt) -> Unit,
     onDownloadPdf: (Receipt) -> Unit,
-    onShareWhatsApp: (Receipt) -> Unit
+    onShareWhatsApp: (Receipt) -> Unit,
+    isHistorical: Boolean = false
 ) {
     Dialog(
         onDismissRequest = {
@@ -158,6 +159,7 @@ fun ReceiptPreviewDialog(
                          * Right-side action panel.
                          */
                         ReceiptSideActionPanel(
+                            isHistorical = isHistorical,
                             onClose = onClose,
                             onNextOrder = onNextOrder,
 
@@ -200,6 +202,7 @@ private fun ReceiptSideActionPanel(
     onPrintReceipt: () -> Unit,
     onDownloadPdf: () -> Unit,
     onShareWhatsApp: () -> Unit,
+    isHistorical: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -256,7 +259,7 @@ private fun ReceiptSideActionPanel(
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(
-                text = "Print Receipt",
+                text = if (isHistorical) "Reprint Receipt" else "Print Receipt",
                 style = MaterialTheme.typography.titleSmall
             )
         }
@@ -266,7 +269,7 @@ private fun ReceiptSideActionPanel(
         /**
          * Next Order completes the current order and clears the POS screen.
          */
-        OutlinedButton(
+        if (!isHistorical) OutlinedButton(
             onClick = onNextOrder,
             modifier = Modifier
                 .fillMaxWidth()

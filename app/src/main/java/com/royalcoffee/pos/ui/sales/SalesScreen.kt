@@ -75,6 +75,8 @@ fun SalesScreen(
     onLogout: () -> Unit
 ) {
     val userRole = authenticatedUser.role
+    var historyPreview by remember { mutableStateOf<com.royalcoffee.pos.model.Receipt?>(null) }
+    var historyLoading by remember { mutableStateOf(false) }
     var sharingReceipt by remember { mutableStateOf<com.royalcoffee.pos.model.Receipt?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -322,10 +324,20 @@ fun SalesScreen(
                             receipts = receiptHistoryItems,
                             selectedReceipt = receiptHistoryViewModel.selectedReceipt,
                             selectedReceiptDetails = receiptHistoryViewModel.selectedReceiptDetails,
-                            isDetailDialogVisible = receiptHistoryViewModel.isReceiptDetailDialogVisible,
+                            isDetailDialogVisible = false,
                             currentFilter = receiptHistoryViewModel.currentFilter,
                             customDate = receiptHistoryViewModel.customDate,
-                            onReceiptClick = { receiptHistoryViewModel.openReceiptDetails(it) },
+                            onReceiptClick = { selected ->
+                                if (!historyLoading) scope.launch {
+                                    historyLoading = true
+                                    try {
+                                        historyPreview = receiptRepository.getFullReceipt(selected.receiptId)
+                                        if (historyPreview == null) Toast.makeText(context, "Receipt data not found.", Toast.LENGTH_SHORT).show()
+                                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                                    catch (_: Exception) { Toast.makeText(context, "Unable to load receipt.", Toast.LENGTH_SHORT).show() }
+                                    finally { historyLoading = false }
+                                }
+                            },
                             onCloseDetailDialog = { receiptHistoryViewModel.closeReceiptDetails() },
                             onDownloadReceipt = { receiptId ->
                                 scope.launch {
@@ -445,6 +457,21 @@ fun SalesScreen(
             dismissButton = {
                 TextButton(onClick = { showClearTicketConfirmDialog = false }) { Text("Cancel") }
             }
+        )
+    }
+
+    historyPreview?.let { receipt ->
+        ReceiptPreviewDialog(
+            receipt = receipt,
+            isHistorical = true,
+            onClose = { historyPreview = null },
+            onNextOrder = {},
+            onPrintReceipt = { saved ->
+                val result = receiptPrinter.printReceipt(saved, defaultPrinter)
+                Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+            },
+            onDownloadPdf = downloadReceipt,
+            onShareWhatsApp = { sharingReceipt = it }
         )
     }
 
