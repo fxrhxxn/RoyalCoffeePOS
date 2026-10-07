@@ -71,9 +71,10 @@ import com.royalcoffee.pos.data.local.dao.CategoryDao
 
 @Composable
 fun SalesScreen(
-    userRole: UserRole,
+    authenticatedUser: com.royalcoffee.pos.model.AuthenticatedUser,
     onLogout: () -> Unit
 ) {
+    val userRole = authenticatedUser.role
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
@@ -118,7 +119,7 @@ fun SalesScreen(
     val receiptHistoryItems by receiptHistoryViewModel.receiptHistory.collectAsStateWithLifecycle()
 
     val salesViewModel: SalesViewModel = viewModel(
-        key = "sales-${userRole.name}",
+        key = "sales-${authenticatedUser.sessionId}",
         factory = SalesViewModelFactory(receiptRepository = receiptRepository, userRole = userRole)
     )
 
@@ -207,7 +208,7 @@ fun SalesScreen(
             paymentMethod = paymentMethod,
             amountPaid = paid,
             changeGiven = change,
-            cashierName = if (userRole == UserRole.ADMIN) "Admin" else "Barista",
+            cashierName = authenticatedUser.fullName,
             footerMessage = receiptFooterText
         )
     }

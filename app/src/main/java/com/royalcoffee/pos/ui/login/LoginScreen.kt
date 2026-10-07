@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.model.AuthenticatedUser
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 import androidx.compose.foundation.text.KeyboardActions
@@ -59,7 +59,7 @@ import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
-    onLoginSuccess: (UserRole) -> Unit
+    onLoginSuccess: (AuthenticatedUser) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -81,7 +81,7 @@ fun LoginScreen(
 
     LaunchedEffect(uiState) {
         when (uiState) {
-            is LoginUiState.Success -> onLoginSuccess((uiState as LoginUiState.Success).role)
+            is LoginUiState.Success -> onLoginSuccess((uiState as LoginUiState.Success).user)
             is LoginUiState.Error -> errorMessage = (uiState as LoginUiState.Error).message
             else -> {}
         }
@@ -407,4 +407,5 @@ private fun LoginFormPanel(
         }
     }
 }
+
 

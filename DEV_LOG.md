@@ -5039,3 +5039,11 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
   repository stock validation remains in place; acknowledging does not block checkout.
 - Reviewed empty/one-unit/multiple-unit and decrease-then-increase paths; diff check
   passed. Android build/device validation remains blocked by Gradle download access.
+
+
+## Receipt user details
+
+- Pass a credential-free authenticated identity snapshot from successful login to sales.
+- Save the actual full name on each receipt; historical names remain unchanged when accounts change.
+- Give each login its own sales ViewModel key so a previous session cannot supply its cart or cashier identity. Role-based pricing still uses the authenticated role.
+- Reviewed login/logout and receipt snapshot paths; whitespace checks passed. Android compilation/device verification remains pending because the Gradle distribution cannot be downloaded in this environment.

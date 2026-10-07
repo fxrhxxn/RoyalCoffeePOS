@@ -18,7 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
 import com.royalcoffee.pos.data.local.repository.BusinessRepository
 import com.royalcoffee.pos.data.local.repository.UserRepository
-import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.model.AuthenticatedUser
 import com.royalcoffee.pos.ui.login.LoginScreen
 import com.royalcoffee.pos.ui.login.LoginViewModel
 import com.royalcoffee.pos.ui.login.LoginViewModelFactory
@@ -96,10 +96,10 @@ fun RoyalCoffeeApp() {
     }
 
     /*
-     * Stores the role of the user who successfully logged in.
+     * Stores the identity snapshot of the user who successfully logged in.
      */
-    var loggedInUserRole by remember {
-        mutableStateOf<UserRole?>(null)
+    var loggedInUser by remember {
+        mutableStateOf<AuthenticatedUser?>(null)
     }
 
     /*
@@ -265,12 +265,12 @@ fun RoyalCoffeeApp() {
                 LoginScreen(
                     viewModel = loginViewModel,
 
-                    onLoginSuccess = { role ->
+                    onLoginSuccess = { user ->
 
                         /*
-                         * Keep the user's role in memory.
+                         * Keep the authenticated identity in memory.
                          */
-                        loggedInUserRole = role
+                        loggedInUser = user
 
                         /*
                          * Move into the main POS application.
@@ -287,22 +287,22 @@ fun RoyalCoffeeApp() {
             AppAuthState.AUTHENTICATED -> {
 
                 /*
-                 * loggedInUserRole should always exist here because
+                 * loggedInUser should always exist here because
                  * AUTHENTICATED can only be reached after successful login.
                  */
-                val role = loggedInUserRole
+                val user = loggedInUser
 
-                if (role != null) {
+                if (user != null) {
 
                     SalesScreen(
-                        userRole = role,
+                        authenticatedUser = user,
 
                         onLogout = {
 
                             /*
                              * Clear the current session.
                              */
-                            loggedInUserRole = null
+                            loggedInUser = null
 
                             /*
                              * Return to the Login screen.

@@ -3,7 +3,7 @@ package com.royalcoffee.pos.ui.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.royalcoffee.pos.data.local.repository.UserRepository
-import com.royalcoffee.pos.model.UserRole
+import com.royalcoffee.pos.model.AuthenticatedUser
 import com.royalcoffee.pos.util.HashUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +25,7 @@ class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
             val user = userRepository.getUserByUsername(cleanUsername)
             
             if (user != null && user.hashedPin == HashUtils.sha256(cleanPin)) {
-                _uiState.value = LoginUiState.Success(user.role)
+                _uiState.value = LoginUiState.Success(AuthenticatedUser(user.id, user.fullName, user.role))
             } else {
                 _uiState.value = LoginUiState.Error("Invalid username or PIN")
             }
@@ -40,7 +40,7 @@ class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
 sealed class LoginUiState {
     object Idle : LoginUiState()
     object Loading : LoginUiState()
-    data class Success(val role: UserRole) : LoginUiState()
+    data class Success(val user: AuthenticatedUser) : LoginUiState()
     data class Error(val message: String) : LoginUiState()
 }
 
@@ -55,3 +55,4 @@ class LoginViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
