@@ -76,10 +76,10 @@ object RoyalCoffeeDatabaseProvider {
                  *
                  * Later, for a production app, we should replace this with real migrations.
                  */
-                .fallbackToDestructiveMigration(dropAllTables = true)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_3_4)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_4_5)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_5_6)
+                .addMigrations(RoyalCoffeeDatabase.MIGRATION_8_9)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
 
