@@ -76,5 +76,8 @@ data class ProductEntity(
      * false = hidden/disabled product
      */
     @ColumnInfo(name = "is_active")
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+
+    @ColumnInfo(name = "legacy_history_uncertain", defaultValue = "0")
+    val legacyHistoryUncertain: Boolean = false
 )

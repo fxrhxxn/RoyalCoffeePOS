@@ -5080,3 +5080,10 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
 - Historical previews hide Next Order and never clear or modify the active cart. Reprint uses the existing FakeReceiptPrinter path; hardware printing remains unconfigured as requested.
 - Receipt-load failures show a recoverable message and concurrent taps do not race. Added explicit Flow collect import for stock observation.
 - Reviewed new-sale and historical preview call sites and ran git diff --check. Android UI/device checks remain pending.
+
+## Product lifecycle
+
+- Admin removal first checks related stock/history. Confirm permanent deletion only for an empty, unreferenced product; otherwise deactivate. Recheck transactionally before mutation so concurrent sales preserve history. Reactivate is explicit in the inactive product menu; inventory keeps inactive products visible and labels them Inactive.
+- Room v12 adds nullable product identity to new receipt lines and RESTRICT foreign keys for receipt and inventory history. It retains every old receipt/history row. Legacy receipts cannot reliably identify renamed products, so pre-existing products are conservatively marked ineligible for hard deletion whenever unlinked legacy receipts exist; newly created empty products remain deletable.
+- Metadata edits preserve activation and legacy protection flags. Sales revalidate activation in the save transaction, rejecting products deactivated after cart entry. Removed REPLACE conflict policy from product inserts to avoid delete/reinsert side effects.
+- Five SQLite tests pass, including exact migration execution, unchanged inventory records, legacy safeguards, and foreign-key refusal of destructive deletion. git diff --check passes. Room-generated schema/Android UI verification remains pending in the Android build environment.

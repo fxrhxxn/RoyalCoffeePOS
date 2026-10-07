@@ -67,5 +67,5 @@ data class InventoryProduct(
      * User-friendly stock status shown in the Inventory screen.
      */
     val stockStatus: String
-        get() = if (isLowStock) "Low Stock" else "In Stock"
+        get() = if (!isActive) "Inactive" else if (isLowStock) "Low Stock" else "In Stock"
 }

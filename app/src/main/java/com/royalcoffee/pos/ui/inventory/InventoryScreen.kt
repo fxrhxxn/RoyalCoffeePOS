@@ -424,11 +424,8 @@ fun InventoryScreen(
                             type
                     },
 
-                    onDeactivate = {
-                        viewModel.deactivateProduct(
-                            it.productId
-                        )
-                    }
+                    onReactivate = { viewModel.reactivateProduct(it.productId) },
+                    onDeactivate = { viewModel.requestRemoval(it) }
                 )
             }
         }
@@ -438,6 +435,19 @@ fun InventoryScreen(
     // ---------------------------------------------------------
     // INVENTORY ERROR
     // ---------------------------------------------------------
+
+    viewModel.removalCandidate?.let { product ->
+        AlertDialog(onDismissRequest = { viewModel.cancelRemoval() },
+            title = { Text(if (viewModel.removalPermanent) "Permanently delete product?" else "Deactivate product?") },
+            text = { Text(if (viewModel.removalPermanent) "Delete ${product.name}? This cannot be undone. If related history is added before confirmation, it will be deactivated instead."
+                else "${product.name} has stock or related history, or legacy history cannot be ruled out. It will remain in inventory and can be reactivated.") },
+            confirmButton = { TextButton(onClick = { viewModel.confirmRemoval() }) { Text(if (viewModel.removalPermanent) "Delete permanently" else "Deactivate") } },
+            dismissButton = { TextButton(onClick = { viewModel.cancelRemoval() }) { Text("Cancel") } })
+    }
+    viewModel.lifecycleMessage?.let { message ->
+        AlertDialog(onDismissRequest = { viewModel.clearLifecycleMessage() }, title = { Text("Product updated") },
+            text = { Text(message) }, confirmButton = { TextButton(onClick = { viewModel.clearLifecycleMessage() }) { Text("OK") } })
+    }
 
     if (inventoryError != null) {
 
@@ -547,7 +557,7 @@ fun InventoryScreen(
 
                     reorder = reorder,
 
-                    active = true
+                    active = editingProduct!!.isActive
                 )
 
                 editingProduct = null
@@ -776,7 +786,8 @@ private fun InventoryList(
         InventoryProduct,
         InventoryTransactionType
     ) -> Unit,
-    onDeactivate: (InventoryProduct) -> Unit
+    onDeactivate: (InventoryProduct) -> Unit,
+    onReactivate: (InventoryProduct) -> Unit
 ) {
 
     Card(
@@ -985,6 +996,8 @@ private fun InventoryList(
 
 
                                 ProductActionMenu(
+                                    isActive = product.isActive,
+                                    onReactivate = { onReactivate(product) },
                                     onRestock = {
                                         onAdjust(
                                             product,
@@ -1108,7 +1121,9 @@ fun ProductActionMenu(
     onRestock: () -> Unit,
     onAdjust: () -> Unit,
     onWaste: () -> Unit,
-    onDeactivate: () -> Unit
+    onDeactivate: () -> Unit,
+    isActive: Boolean,
+    onReactivate: () -> Unit
 ) {
 
     var expanded by remember {
@@ -1177,6 +1192,7 @@ fun ProductActionMenu(
             )
 
 
+            if (!isActive) DropdownMenuItem(text = { Text("Reactivate") }, onClick = { onReactivate(); expanded = false })
             HorizontalDivider()
 
 
@@ -1184,7 +1200,7 @@ fun ProductActionMenu(
                 text = {
 
                     Text(
-                        text = "Deactivate",
+                        text = "Delete / Deactivate",
                         color = Color.Red
                     )
                 },

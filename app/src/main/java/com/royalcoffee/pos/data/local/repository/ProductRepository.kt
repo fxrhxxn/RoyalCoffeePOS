@@ -83,7 +83,7 @@ class ProductRepository(
         validateMoney(product)
         database.withTransaction {
             val current = productDao.getProductById(product.productId) ?: return@withTransaction
-            productDao.updateProduct(product.copy(stockQuantity = current.stockQuantity))
+            productDao.updateProduct(product.copy(stockQuantity = current.stockQuantity, isActive = current.isActive, legacyHistoryUncertain = current.legacyHistoryUncertain))
         }
     }
 
@@ -138,9 +138,29 @@ class ProductRepository(
     /**
      * Deactivates a product.
      */
-    suspend fun deactivateProduct(productId: Int) {
-        val product = productDao.getProductById(productId) ?: return
-        productDao.updateProduct(product.copy(isActive = false))
+    suspend fun canDeleteProduct(productId: Int, role: com.royalcoffee.pos.model.UserRole): Boolean {
+        require(role == com.royalcoffee.pos.model.UserRole.ADMIN) { "Admin access required" }
+        return !productDao.hasHistory(productId)
+    }
+
+    /** Recheck inside the mutation transaction: a concurrent sale must turn deletion into deactivation. */
+    suspend fun removeProduct(productId: Int, role: com.royalcoffee.pos.model.UserRole, allowPermanentDelete: Boolean): Boolean = database.withTransaction {
+        require(role == com.royalcoffee.pos.model.UserRole.ADMIN) { "Admin access required" }
+        val product = productDao.getProductById(productId) ?: return@withTransaction false
+        if (allowPermanentDelete && !productDao.hasHistory(productId)) {
+            database.stockAlertDao().deleteEmptyProductBatches(productId)
+            productDao.deleteProduct(productId)
+            true
+        } else {
+            productDao.updateProduct(product.copy(isActive = false))
+            false
+        }
+    }
+
+    suspend fun reactivateProduct(productId: Int, role: com.royalcoffee.pos.model.UserRole) = database.withTransaction {
+        require(role == com.royalcoffee.pos.model.UserRole.ADMIN) { "Admin access required" }
+        val product = productDao.getProductById(productId) ?: return@withTransaction
+        productDao.updateProduct(product.copy(isActive = true))
     }
 
     /**

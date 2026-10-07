@@ -123,7 +123,9 @@ class ReceiptRepository(
              * for history records.
              */
             val stockSnapshots = cartItems.map { cartItem ->
-                val currentStock = productDao.getProductStock(cartItem.product.id) ?: 0
+                val currentProduct = productDao.getProductById(cartItem.product.id)
+                check(currentProduct != null && currentProduct.isActive) { "${cartItem.product.name} is no longer available for sale." }
+                val currentStock = currentProduct.stockQuantity
                 if (currentStock < cartItem.quantity) {
                     throw InsufficientStockException(
                         productName = cartItem.product.name,
@@ -190,6 +192,7 @@ class ReceiptRepository(
             val receiptDetails = receipt.items.mapIndexed { index, item ->
                 ReceiptDetailEntity(
                     receiptId = 0,
+                    productId = cartItems[index].product.id,
                     productName = item.productName,
                     quantity = item.quantity,
                     unitPrice = item.unitPrice,
