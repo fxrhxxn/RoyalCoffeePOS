@@ -185,15 +185,14 @@ class ProductRepository(
     }
 
     /**
-     * Temporary default products for first database setup.
-     *
-     * Later, Admin users will be able to add/edit products from the app.
+     *  Default products already preset in the application.
      */
     private fun defaultProducts(): List<ProductEntity> {
         return listOf(
+            // --- Hot Drinks ---
             ProductEntity(
                 productName = "Latte",
-                category = "Coffee",
+                category = "Hot Drinks",
                 unitPrice = 12000L,
                 costPrice = 4500L,
                 stockQuantity = 28,
@@ -201,88 +200,154 @@ class ProductRepository(
             ),
             ProductEntity(
                 productName = "Espresso",
-                category = "Coffee",
-                unitPrice = 9500L,
+                category = "Hot Drinks",
+                unitPrice = 8000L,
                 costPrice = 3000L,
+                stockQuantity = 40,
+                reorderLevel = 15
+            ),
+            ProductEntity(
+                productName = "Cappuccino",
+                category = "Hot Drinks",
+                unitPrice = 11000L,
+                costPrice = 4000L,
+                stockQuantity = 30,
+                reorderLevel = 10
+            ),
+            ProductEntity(
+                productName = "Americano",
+                category = "Hot Drinks",
+                unitPrice = 9000L,
+                costPrice = 3500L,
                 stockQuantity = 35,
                 reorderLevel = 12
             ),
-
             ProductEntity(
-                productName = "Black Coffee - small",
-                category = "Coffee",
-                unitPrice = 10000L,
-                stockQuantity = 20,
-                reorderLevel = 5
-            ),
-
-            ProductEntity(
-                productName = "Croissant",
-                category = "Pastries",
-                unitPrice = 8000L,
-                costPrice = 3500L,
-                stockQuantity = 5,
+                productName = "Mocha",
+                category = "Hot Drinks",
+                unitPrice = 13000L,
+                costPrice = 5000L,
+                stockQuantity = 25,
                 reorderLevel = 8
             ),
             ProductEntity(
-                productName = "Mocha",
-                category = "Coffee",
-                unitPrice = 13500L,
-                costPrice = 5500L,
-                stockQuantity = 18,
+                productName = "Hot Chocolate",
+                category = "Hot Drinks",
+                unitPrice = 10000L,
+                costPrice = 4000L,
+                stockQuantity = 20,
+                reorderLevel = 8
+            ),
+
+            // --- Cold Drinks ---
+            ProductEntity(
+                productName = "Iced Americano",
+                category = "Cold Drinks",
+                unitPrice = 9500L,
+                costPrice = 3500L,
+                stockQuantity = 30,
                 reorderLevel = 10
             ),
             ProductEntity(
-                productName = "Iced Coffee",
-                category = "Cold",
-                unitPrice = 14000L,
-                costPrice = 5000L,
-                stockQuantity = 22,
+                productName = "Iced Latte",
+                category = "Cold Drinks",
+                unitPrice = 12500L,
+                costPrice = 4500L,
+                stockQuantity = 25,
                 reorderLevel = 10
+            ),
+            ProductEntity(
+                productName = "Iced Matcha",
+                category = "Cold Drinks",
+                unitPrice = 14000L,
+                costPrice = 5500L,
+                stockQuantity = 20,
+                reorderLevel = 8
+            ),
+            ProductEntity(
+                productName = "Cold Brew",
+                category = "Cold Drinks",
+                unitPrice = 11000L,
+                costPrice = 4000L,
+                stockQuantity = 25,
+                reorderLevel = 10
+            ),
+
+            // --- Pastries ---
+            ProductEntity(
+                productName = "Croissant",
+                category = "Pastries",
+                unitPrice = 6000L,
+                costPrice = 2000L,
+                stockQuantity = 15,
+                reorderLevel = 5
+            ),
+            ProductEntity(
+                productName = "Donut",
+                category = "Pastries",
+                unitPrice = 5000L,
+                costPrice = 1500L,
+                stockQuantity = 20,
+                reorderLevel = 6
+            ),
+            ProductEntity(
+                productName = "Cupcake",
+                category = "Pastries",
+                unitPrice = 5500L,
+                costPrice = 1800L,
+                stockQuantity = 18,
+                reorderLevel = 5
+            ),
+            ProductEntity(
+                productName = "Cheesecake",
+                category = "Pastries",
+                unitPrice = 15000L,
+                costPrice = 6000L,
+                stockQuantity = 10,
+                reorderLevel = 3
             ),
             ProductEntity(
                 productName = "Muffin",
                 category = "Pastries",
-                unitPrice = 7500L,
-                costPrice = 2500L,
-                stockQuantity = 3,
-                reorderLevel = 6
-            ),
-            ProductEntity(
-                productName = "Hot Chocolate",
-                category = "Hot",
-                unitPrice = 11000L,
-                costPrice = 4000L,
+                unitPrice = 6500L,
+                costPrice = 2200L,
                 stockQuantity = 16,
-                reorderLevel = 8
+                reorderLevel = 5
             ),
 
+            // --- Food ---
             ProductEntity(
-                productName = "Cappuccino",
-                category = "Coffee",
-                unitPrice = 12500L,
-                stockQuantity = 20,
-                reorderLevel = 8
+                productName = "Panini",
+                category = "Food",
+                unitPrice = 18000L,
+                costPrice = 7500L,
+                stockQuantity = 12,
+                reorderLevel = 4
             ),
-
             ProductEntity(
-                productName = "Royal Coffee Special",
-                category = "Coffee",
-                unitPrice = 12500L,
-                stockQuantity = 20,
-                reorderLevel = 8
+                productName = "Wrap",
+                category = "Food",
+                unitPrice = 16000L,
+                costPrice = 6500L,
+                stockQuantity = 15,
+                reorderLevel = 5
             ),
-
             ProductEntity(
-                productName = "Eclaire",
-                category = "Pastries",
-                unitPrice = 7500L,
-                stockQuantity = 20,
-                reorderLevel = 8
+                productName = "Salad",
+                category = "Food",
+                unitPrice = 20000L,
+                costPrice = 8000L,
+                stockQuantity = 10,
+                reorderLevel = 3
             ),
-
-
-
+            ProductEntity(
+                productName = "Pasta",
+                category = "Food",
+                unitPrice = 24000L,
+                costPrice = 9500L,
+                stockQuantity = 8,
+                reorderLevel = 2
+            )
         )
     }
 }
