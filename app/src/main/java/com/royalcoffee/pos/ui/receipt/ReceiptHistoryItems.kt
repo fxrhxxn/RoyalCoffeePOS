@@ -11,6 +11,6 @@ data class ReceiptHistoryItem(
     val receiptNumber: String,
     val receiptDateTime: String,
     val cashierName: String,
-    val total: Int,
+    val total: Long,
     val paymentMethod: String
 )

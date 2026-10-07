@@ -5,6 +5,6 @@ data class CartItem(
     val product: Product,
     val quantity: Int
 ) {
-    val lineTotal: Int
-        get() = product.price * quantity
+    val lineTotal: Long
+        get() = Money.lineTotal(product.price, quantity)
 }

@@ -36,7 +36,7 @@ import com.royalcoffee.pos.data.local.entity.CategoryEntity
         BusinessEntity::class,
         CategoryEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
@@ -62,6 +62,18 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
 
     companion object {
+        /** Preserve all historical charges; convert whole rupees to cents exactly once. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE products SET unit_price = unit_price * 100, cost_price = cost_price * 100")
+                db.execSQL("UPDATE receipt_headers SET subtotal = subtotal * 100, discount = discount * 100, tax = tax * 100, total = total * 100, amount_paid = amount_paid * 100, change_given = change_given * 100")
+                db.execSQL("UPDATE receipt_details SET unit_price = unit_price * 100, cost_price = cost_price * 100, line_total = line_total * 100")
+                db.execSQL("ALTER TABLE receipt_headers ADD COLUMN discount_percent INTEGER")
+                db.execSQL("ALTER TABLE receipt_headers ADD COLUMN vat_included INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE receipt_details ADD COLUMN discount_amount INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /**
          * Migration from version 3 to 4:
          * Adds the 'inventory_history' table.
@@ -204,3 +216,4 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
         }
     }
 }
+

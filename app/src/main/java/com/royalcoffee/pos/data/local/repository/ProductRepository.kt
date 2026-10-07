@@ -1,6 +1,7 @@
 package com.royalcoffee.pos.data.local.repository
 
 import androidx.room.withTransaction
+import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.data.local.dao.InventoryHistoryDao
 import com.royalcoffee.pos.data.local.dao.ProductDao
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabase
@@ -23,6 +24,12 @@ class ProductRepository(
     /**
      * Active products are the products that should appear in the Sales screen.
      */
+    private fun validateMoney(product: ProductEntity) {
+        require(product.unitPrice in 0..Money.MAX_INPUT_CENTS && product.costPrice in 0..Money.MAX_INPUT_CENTS) {
+            "Prices must be non-negative and within the supported range."
+        }
+    }
+
     val activeProducts: Flow<List<ProductEntity>> = productDao.getActiveProducts()
 
     /**
@@ -47,6 +54,7 @@ class ProductRepository(
      * Inserts one product into the database and records initial stock if > 0.
      */
     suspend fun addProduct(product: ProductEntity) {
+        validateMoney(product)
         database.withTransaction {
             val productId = productDao.insertProductAndGetId(product).toInt()
             
@@ -70,6 +78,7 @@ class ProductRepository(
      * Updates an existing product's information (excludes manual stock change).
      */
     suspend fun updateProduct(product: ProductEntity) {
+        validateMoney(product)
         productDao.updateProduct(product)
     }
 
@@ -159,16 +168,16 @@ class ProductRepository(
             ProductEntity(
                 productName = "Latte",
                 category = "Coffee",
-                unitPrice = 120,
-                costPrice = 45,
+                unitPrice = 12000L,
+                costPrice = 4500L,
                 stockQuantity = 28,
                 reorderLevel = 10
             ),
             ProductEntity(
                 productName = "Espresso",
                 category = "Coffee",
-                unitPrice = 95,
-                costPrice = 30,
+                unitPrice = 9500L,
+                costPrice = 3000L,
                 stockQuantity = 35,
                 reorderLevel = 12
             ),
@@ -176,7 +185,7 @@ class ProductRepository(
             ProductEntity(
                 productName = "Black Coffee - small",
                 category = "Coffee",
-                unitPrice = 100,
+                unitPrice = 10000L,
                 stockQuantity = 20,
                 reorderLevel = 5
             ),
@@ -184,40 +193,40 @@ class ProductRepository(
             ProductEntity(
                 productName = "Croissant",
                 category = "Pastries",
-                unitPrice = 80,
-                costPrice = 35,
+                unitPrice = 8000L,
+                costPrice = 3500L,
                 stockQuantity = 5,
                 reorderLevel = 8
             ),
             ProductEntity(
                 productName = "Mocha",
                 category = "Coffee",
-                unitPrice = 135,
-                costPrice = 55,
+                unitPrice = 13500L,
+                costPrice = 5500L,
                 stockQuantity = 18,
                 reorderLevel = 10
             ),
             ProductEntity(
                 productName = "Iced Coffee",
                 category = "Cold",
-                unitPrice = 140,
-                costPrice = 50,
+                unitPrice = 14000L,
+                costPrice = 5000L,
                 stockQuantity = 22,
                 reorderLevel = 10
             ),
             ProductEntity(
                 productName = "Muffin",
                 category = "Pastries",
-                unitPrice = 75,
-                costPrice = 25,
+                unitPrice = 7500L,
+                costPrice = 2500L,
                 stockQuantity = 3,
                 reorderLevel = 6
             ),
             ProductEntity(
                 productName = "Hot Chocolate",
                 category = "Hot",
-                unitPrice = 110,
-                costPrice = 40,
+                unitPrice = 11000L,
+                costPrice = 4000L,
                 stockQuantity = 16,
                 reorderLevel = 8
             ),
@@ -225,7 +234,7 @@ class ProductRepository(
             ProductEntity(
                 productName = "Cappuccino",
                 category = "Coffee",
-                unitPrice = 125,
+                unitPrice = 12500L,
                 stockQuantity = 20,
                 reorderLevel = 8
             ),
@@ -233,7 +242,7 @@ class ProductRepository(
             ProductEntity(
                 productName = "Royal Coffee Special",
                 category = "Coffee",
-                unitPrice = 125,
+                unitPrice = 12500L,
                 stockQuantity = 20,
                 reorderLevel = 8
             ),
@@ -241,7 +250,7 @@ class ProductRepository(
             ProductEntity(
                 productName = "Eclaire",
                 category = "Pastries",
-                unitPrice = 75,
+                unitPrice = 7500L,
                 stockQuantity = 20,
                 reorderLevel = 8
             ),

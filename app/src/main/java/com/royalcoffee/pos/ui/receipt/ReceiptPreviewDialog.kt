@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.receipt
 
+import com.royalcoffee.pos.model.Money
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -459,13 +460,13 @@ private fun ThermalReceiptItems(
         ReceiptMonoText(
             text = formatReceiptLine(
                 left = item.productName,
-                right = "Rs ${item.lineTotal}"
+                right = "Rs ${Money.format(item.lineTotal)}"
             ),
             fontWeight = FontWeight.Medium
         )
 
         ReceiptMonoText(
-            text = "  ${item.quantity} x Rs ${item.unitPrice}",
+            text = "  ${item.quantity} x Rs ${Money.format(item.unitPrice)}",
             color = Color.Black.copy(alpha = 0.68f),
             fontSize = 12.sp
         )
@@ -487,21 +488,21 @@ private fun ThermalReceiptSummary(
     ReceiptMonoText(
         text = formatReceiptLine(
             left = "Subtotal",
-            right = "Rs ${receipt.subtotal}"
+            right = "Rs ${Money.format(receipt.subtotal)}"
         )
     )
 
     ReceiptMonoText(
         text = formatReceiptLine(
-            left = "Discount",
-            right = "Rs ${receipt.discount}"
+            left = receipt.discountPercent?.let { "Discount ($it%)" } ?: "Discount",
+            right = "Rs ${Money.format(receipt.discount)}"
         )
     )
 
     ReceiptMonoText(
         text = formatReceiptLine(
-            left = "Tax",
-            right = "Rs ${receipt.tax}"
+            left = if (receipt.vatIncluded) "VAT Included" else "Tax",
+            right = if (receipt.vatIncluded) "" else "Rs ${Money.format(receipt.tax)}"
         )
     )
 
@@ -510,7 +511,7 @@ private fun ThermalReceiptSummary(
     ReceiptMonoText(
         text = formatReceiptLine(
             left = "TOTAL",
-            right = "Rs ${receipt.total}"
+            right = "Rs ${Money.format(receipt.total)}"
         ),
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp
@@ -546,7 +547,7 @@ private fun ThermalPaymentSection(
         ReceiptMonoText(
             text = formatReceiptLine(
                 left = "Amount Paid",
-                right = "Rs ${receipt.amountPaid}"
+                right = "Rs ${Money.format(receipt.amountPaid)}"
             )
         )
     }
@@ -555,7 +556,7 @@ private fun ThermalPaymentSection(
         ReceiptMonoText(
             text = formatReceiptLine(
                 left = "Change",
-                right = "Rs ${receipt.changeGiven}"
+                right = "Rs ${Money.format(requireNotNull(receipt.changeGiven))}"
             )
         )
     }

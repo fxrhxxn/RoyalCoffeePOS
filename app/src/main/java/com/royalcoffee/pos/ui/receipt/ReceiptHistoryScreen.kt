@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.receipt
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -390,7 +391,7 @@ private fun ReceiptHistoryRow(
         )
 
         Text(
-            text = "Rs ${receipt.total}",
+            text = "Rs ${Money.format(receipt.total)}",
             modifier = Modifier.weight(0.9f),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
@@ -434,7 +435,7 @@ private fun ReceiptDetailDialog(
                 modifier = Modifier.widthIn(max = 680.dp)
             ) {
                 Text(
-                    text = "${receipt.receiptDateTime} • ${receipt.paymentMethod} • Rs ${receipt.total}",
+                    text = "${receipt.receiptDateTime} • ${receipt.paymentMethod} • Rs ${Money.format(receipt.total)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -460,9 +461,9 @@ private fun ReceiptDetailDialog(
                 } else {
                     details.forEach { detail ->
                         DetailDataRow(
-                            first = "${detail.productName}\nRs ${detail.unitPrice} each",
+                            first = "${detail.productName}\nRs ${Money.format(detail.unitPrice)} each",
                             second = detail.quantity.toString(),
-                            third = "Rs ${detail.lineTotal}"
+                            third = "Rs ${Money.format(detail.lineTotal)}"
                         )
                     }
                 }

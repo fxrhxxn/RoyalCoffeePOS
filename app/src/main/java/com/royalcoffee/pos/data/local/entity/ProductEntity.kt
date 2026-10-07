@@ -45,17 +45,17 @@ data class ProductEntity(
     val category: String,
 
     /**
-     * Selling price in Mauritian Rupees.
+     * VAT-inclusive selling price in cents (Rs 1 = 100 cents).
      */
     @ColumnInfo(name = "unit_price")
-    val unitPrice: Int,
+    val unitPrice: Long,
 
     /**
      * Cost price to produce or purchase the product.
      * 0 = Unknown / Not yet entered.
      */
     @ColumnInfo(name = "cost_price")
-    val costPrice: Int = 0,
+    val costPrice: Long = 0,
 
     /**
      * Current stock quantity.

@@ -5012,3 +5012,22 @@ Farhaan and Christa should coordinate through GitHub using feature branches and 
 This DEV_LOG should be updated after every major feature or debugging checkpoint.
 
 
+
+
+## 2026-10-07 — Pricing and discounts (Room 10)
+
+- Category management was merged into `develop/pos-improvements` through PR #3
+  (`7ed5b14`); pricing work starts from that integration commit.
+- Added Long-cent money handling across products, cart, payments, receipt models,
+  history, PDF/thermal output and dashboard aggregates. Updated seed prices.
+- Removed additional VAT from new sales; added whole-order role-limited discounts
+  (BARISTA 0/5%, ADMIN 0/5/10/15%) and explicit HALF_UP rounding.
+- Persisted receipt percentage/VAT flags and exact line discount allocations for
+  net dashboard reporting. Historical monetary values remain preserved.
+- Registered non-destructive Room 9 -> 10 migration; removed destructive fallback.
+  Legacy migration gaps before version 8 remain documented, not fabricated.
+- Validation: six standalone Kotlin/JUnit tests and two host SQLite migration/query
+  tests passed. Full Gradle build attempted but blocked at distribution download
+  by Java network connectivity. Android/Room/device validation remains pending.
+- See `docs/PRICING.md` for the money contract, upgrade limits and pre-merge checklist.
+  No feature merge is authorized by this entry; owner approval is still required.
