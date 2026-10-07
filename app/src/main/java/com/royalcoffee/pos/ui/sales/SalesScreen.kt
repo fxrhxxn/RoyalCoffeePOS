@@ -176,7 +176,14 @@ fun SalesScreen(
 
     val salesError = salesViewModel.salesError
     LaunchedEffect(salesError) {
-        salesViewModel.stockLimitProduct?.let { productName ->
+        if (salesError != null) {
+            confirmedPaymentMethod = null
+            amountPaid = null
+            changeGiven = null
+        }
+    }
+
+    salesViewModel.stockLimitProduct?.let { productName ->
         AlertDialog(
             onDismissRequest = salesViewModel::acknowledgeStockLimit,
             title = { Text("Stock limit reached") },
@@ -185,13 +192,6 @@ fun SalesScreen(
                 Button(onClick = salesViewModel::acknowledgeStockLimit) { Text("OK") }
             }
         )
-    }
-
-    if (salesError != null) {
-            confirmedPaymentMethod = null
-            amountPaid = null
-            changeGiven = null
-        }
     }
 
     var showCancelOrderDialog by remember { mutableStateOf(false) }
