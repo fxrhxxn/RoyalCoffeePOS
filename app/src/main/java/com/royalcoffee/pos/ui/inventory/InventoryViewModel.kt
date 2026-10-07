@@ -574,34 +574,41 @@ class InventoryViewModel(
     /**
      * Deactivates a product.
      */
-    fun deactivateProduct(
-        productId: Int
-    ) {
-
-        if (userRole != UserRole.ADMIN) {
-            return
-        }
-
-
+    var removalCandidate by mutableStateOf<InventoryProduct?>(null)
+        private set
+    var removalPermanent by mutableStateOf(false)
+        private set
+    var lifecycleMessage by mutableStateOf<String?>(null)
+        private set
+    fun clearLifecycleMessage() { lifecycleMessage = null }
+    fun cancelRemoval() { removalCandidate = null }
+    fun requestRemoval(product: InventoryProduct) {
+        if (userRole != UserRole.ADMIN) return
         viewModelScope.launch {
-
             try {
-
-                productRepository.deactivateProduct(
-                    productId
-                )
-
-                inventoryError = null
-
-            } catch (exception: Exception) {
-
-                inventoryError =
-                    "Unable to deactivate product: " +
-                            "${exception.localizedMessage}"
-            }
+                removalPermanent = productRepository.canDeleteProduct(product.productId, userRole)
+                removalCandidate = product
+            } catch (failure: Exception) { inventoryError = failure.localizedMessage }
         }
     }
-
+    fun confirmRemoval() {
+        val candidate = removalCandidate ?: return
+        val permanent = removalPermanent
+        removalCandidate = null
+        viewModelScope.launch {
+            try {
+                val deleted = productRepository.removeProduct(candidate.productId, userRole, permanent)
+                lifecycleMessage = if (deleted) "Product permanently deleted." else "Product deactivated. All history is retained."
+            } catch (failure: Exception) { inventoryError = failure.localizedMessage }
+        }
+    }
+    fun reactivateProduct(productId: Int) {
+        if (userRole != UserRole.ADMIN) return
+        viewModelScope.launch {
+            try { productRepository.reactivateProduct(productId, userRole) }
+            catch (failure: Exception) { inventoryError = failure.localizedMessage }
+        }
+    }
 
     // ---------------------------------------------------------
     // ENTITY TO UI MODEL

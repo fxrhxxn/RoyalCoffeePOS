@@ -19,6 +19,7 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "receipt_details",
     foreignKeys = [
+        ForeignKey(entity = ProductEntity::class, parentColumns = ["product_id"], childColumns = ["product_id"], onDelete = ForeignKey.RESTRICT),
         ForeignKey(
             entity = ReceiptHeaderEntity::class,
             parentColumns = ["receipt_id"],
@@ -27,7 +28,8 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        Index(value = ["receipt_id"])
+        Index(value = ["receipt_id"]),
+        Index(value = ["product_id"])
     ]
 )
 data class ReceiptDetailEntity(
@@ -84,5 +86,8 @@ data class ReceiptDetailEntity(
     val lineTotal: Long,
 
     @ColumnInfo(name = "discount_amount", defaultValue = "0")
-    val discountAmount: Long = 0L
+    val discountAmount: Long = 0L,
+
+    @ColumnInfo(name = "product_id")
+    val productId: Int? = null
 )

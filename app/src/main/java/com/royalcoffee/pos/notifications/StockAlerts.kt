@@ -27,6 +27,8 @@ data class NamedBatch(val id: Long, val productId: Int, val remaining: Int, val 
 
 @Dao
 interface StockAlertDao {
+    @Query("DELETE FROM stock_batches WHERE productId=:id") suspend fun deleteEmptyProductBatches(id: Int)
+
     @Insert suspend fun insertBatch(batch: StockBatch)
     @Query("SELECT * FROM stock_batches WHERE productId = :productId AND remaining > 0 ORDER BY expiryDay IS NULL, expiryDay, receivedAt, id")
     suspend fun batches(productId: Int): List<StockBatch>

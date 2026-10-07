@@ -39,7 +39,7 @@ import com.royalcoffee.pos.data.local.entity.CategoryEntity
         StockAlert::class,
         CategoryEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
@@ -67,6 +67,22 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
 
     companion object {
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE products ADD COLUMN legacy_history_uncertain INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE receipt_details ADD COLUMN product_id INTEGER REFERENCES products(product_id) ON UPDATE NO ACTION ON DELETE RESTRICT")
+                db.execSQL("CREATE INDEX index_receipt_details_product_id ON receipt_details(product_id)")
+                // Names alone cannot reliably identify renamed legacy products. Preserve their history conservatively.
+                db.execSQL("UPDATE products SET legacy_history_uncertain = 1 WHERE EXISTS (SELECT 1 FROM receipt_details WHERE product_id IS NULL)")
+                db.execSQL("CREATE TABLE inventory_history_new (history_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, product_id INTEGER NOT NULL, product_name_snapshot TEXT NOT NULL, transaction_type TEXT NOT NULL, quantity_change INTEGER NOT NULL, previous_stock INTEGER NOT NULL, new_stock INTEGER NOT NULL, reason TEXT, timestamp INTEGER NOT NULL, FOREIGN KEY(product_id) REFERENCES products(product_id) ON UPDATE NO ACTION ON DELETE RESTRICT)")
+                db.execSQL("INSERT INTO inventory_history_new SELECT history_id,product_id,product_name_snapshot,transaction_type,quantity_change,previous_stock,new_stock,reason,timestamp FROM inventory_history")
+                db.execSQL("DROP TABLE inventory_history")
+                db.execSQL("ALTER TABLE inventory_history_new RENAME TO inventory_history")
+                db.execSQL("CREATE INDEX index_inventory_history_product_id ON inventory_history(product_id)")
+                db.execSQL("CREATE INDEX index_inventory_history_timestamp ON inventory_history(timestamp)")
+            }
+        }
+
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS stock_batches (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, productId INTEGER NOT NULL, remaining INTEGER NOT NULL, expiryDay INTEGER, receivedAt INTEGER NOT NULL)")

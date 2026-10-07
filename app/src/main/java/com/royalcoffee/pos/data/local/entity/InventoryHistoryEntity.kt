@@ -27,7 +27,7 @@ enum class InventoryTransactionType {
             entity = ProductEntity::class,
             parentColumns = ["product_id"],
             childColumns = ["product_id"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.RESTRICT
         )
     ],
     indices = [
@@ -76,3 +76,4 @@ data class InventoryHistoryEntity(
     @ColumnInfo(name = "timestamp")
     val timestamp: Long = System.currentTimeMillis()
 )
+
