@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.data.local.repository
 
+import com.royalcoffee.pos.notifications.consumeBatches
 import androidx.room.withTransaction
 import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.model.DiscountPolicy
@@ -151,6 +152,7 @@ class ReceiptRepository(
                     )
                 }
 
+                database.consumeBatches(cartItem.product.id, cartItem.quantity, previousStock)
                 val newStock = previousStock - cartItem.quantity
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(

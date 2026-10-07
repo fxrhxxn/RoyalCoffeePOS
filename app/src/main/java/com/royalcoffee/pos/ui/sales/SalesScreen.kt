@@ -342,6 +342,9 @@ fun SalesScreen(
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
+                    AppScreen.NOTIFICATIONS -> {
+                        com.royalcoffee.pos.notifications.StockAlertsScreen(database, userRole == UserRole.ADMIN, Modifier.weight(1f).fillMaxHeight())
+                    }
                     AppScreen.SETTINGS -> {
                         SettingsScreen(
                             userRole = userRole,
@@ -493,6 +496,7 @@ private fun SideNavigation(
                 NavigationItem("Dashboard", currentScreen == AppScreen.DASHBOARD) { onScreenSelected(AppScreen.DASHBOARD) }
                 NavigationItem("Inventory", currentScreen == AppScreen.INVENTORY) { onScreenSelected(AppScreen.INVENTORY) }
             }
+            NavigationItem("Notifications", currentScreen == AppScreen.NOTIFICATIONS) { onScreenSelected(AppScreen.NOTIFICATIONS) }
             NavigationItem("Receipts", currentScreen == AppScreen.RECEIPTS) { onScreenSelected(AppScreen.RECEIPTS) }
             NavigationItem("Settings", currentScreen == AppScreen.SETTINGS) { onScreenSelected(AppScreen.SETTINGS) }
         }

@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.data.local.database
 
+import com.royalcoffee.pos.notifications.*
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
@@ -34,12 +35,16 @@ import com.royalcoffee.pos.data.local.entity.CategoryEntity
         InventoryHistoryEntity::class,
         UserEntity::class,
         BusinessEntity::class,
+        StockBatch::class,
+        StockAlert::class,
         CategoryEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
+
+    abstract fun stockAlertDao(): StockAlertDao
 
     // Gives access to product-related database operations.
     abstract fun productDao(): ProductDao
@@ -62,6 +67,15 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
 
     companion object {
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS stock_batches (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, productId INTEGER NOT NULL, remaining INTEGER NOT NULL, expiryDay INTEGER, receivedAt INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_stock_batches_productId ON stock_batches(productId)")
+                db.execSQL("INSERT INTO stock_batches(productId,remaining,expiryDay,receivedAt) SELECT product_id,stock_quantity,NULL,0 FROM products WHERE stock_quantity>0")
+                db.execSQL("CREATE TABLE IF NOT EXISTS stock_alerts (alertKey TEXT NOT NULL PRIMARY KEY, message TEXT NOT NULL, createdAt INTEGER NOT NULL, active INTEGER NOT NULL, delivered INTEGER NOT NULL)")
+            }
+        }
+
         /** Preserve all historical charges; convert whole rupees to cents exactly once. */
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {

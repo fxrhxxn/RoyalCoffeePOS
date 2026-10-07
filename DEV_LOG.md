@@ -5047,3 +5047,11 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
 - Save the actual full name on each receipt; historical names remain unchanged when accounts change.
 - Give each login its own sales ViewModel key so a previous session cannot supply its cart or cashier identity. Role-based pricing still uses the authenticated role.
 - Reviewed login/logout and receipt snapshot paths; whitespace checks passed. Android compilation/device verification remains pending because the Gradle distribution cannot be downloaded in this environment.
+
+## Stock notifications and expiry batches
+
+- Room v11 adds persistent alerts and per-receipt-of-stock batches. Migration preserves all existing units with unknown expiry. Initial stock and restocks create batches; sales, waste and reductions consume earliest known expiry first, then undated batches, inside the stock transaction.
+- Optional restock expiry uses YYYY-MM-DD. Admins can correct individual batch dates in Notifications. Both roles can view active/resolved alerts and remaining batches. Expiry warnings start 14 days before expiry; expired batches remain sellable and are clearly marked.
+- Low-stock alerts trigger at or below reorder level, update quantity without repeating notification, resolve after restock and create a new history episode if stock falls again. Alerts are reconciled on observed inventory changes/resume and a persisted six-hour Android job (OS scheduling may defer it).
+- Android delivery respects permission and notification settings; denied delivery leaves in-app history available. Runtime permission UI is the next feature. No network delivery.
+- Prevented inventory metadata edits from overwriting concurrent stock changes. SQLite migration tests (3 total) and git diff --check pass; Android build/device checks remain pending due to unavailable Gradle distribution.

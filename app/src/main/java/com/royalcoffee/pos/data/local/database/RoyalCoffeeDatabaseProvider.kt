@@ -73,6 +73,7 @@ object RoyalCoffeeDatabaseProvider {
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_5_6)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_8_9)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_9_10)
+                .addMigrations(RoyalCoffeeDatabase.MIGRATION_10_11)
                 // Missing legacy migrations fail safely instead of deleting business data.
                 .build()
 
