@@ -20,7 +20,7 @@ fun rememberReceiptDownloader(): (Receipt) -> Unit {
         val receipt = pending
         pending = null
         if (destination != null && receipt != null) scope.launch {
-            val saved = withContext(Dispatchers.IO) { ReceiptPdfGenerator.writePdf(context, receipt, destination) }
+            val saved = withContext(Dispatchers.IO) { runCatching { ReceiptPdfGenerator.writePdf(context, receipt, destination) }.getOrDefault(false) }
             Toast.makeText(context, if (saved) "Receipt saved." else "Unable to save PDF.", Toast.LENGTH_LONG).show()
         }
     }

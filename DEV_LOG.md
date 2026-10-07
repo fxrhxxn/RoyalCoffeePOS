@@ -5063,3 +5063,12 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
 - PDF downloads now use Android CreateDocument on every supported API. No broad storage read/write permissions are needed. PDF writing runs off the UI thread; cancellation is harmless and write errors report failure. Increased page allowance to prevent the existing short-receipt footer clipping.
 - Contacts permission is intentionally just-in-time in the upcoming WhatsApp contact search. No custom permission explanation screen.
 - Reviewed permission-denied and canceled-picker paths; git diff --check passed. Android/device validation remains pending.
+
+
+## WhatsApp receipt sharing
+
+- Added a shared receipt dialog with manual number, +230 normalization for local 7/8-digit input, optional name and live name/number contact search. READ_CONTACTS is requested only by Search contacts; manual entry works after denial. No WRITE_CONTACTS permission.
+- Regenerate a PDF in a narrowly scoped FileProvider cache, grant temporary read access, and launch only com.whatsapp with PDF plus thank-you text. If unavailable, show a modal; never fall back to another app or WhatsApp Business.
+- Documented platform limitation: WhatsApp's public click-to-chat supports number/text but does not document direct PDF attachment targeting. Open chat prepares the numbered chat; Share PDF explicitly asks the cashier to select that recipient in WhatsApp. No undocumented jid extra or claim of automatic sending. References: https://faq.whatsapp.com/5913398998672934 and https://developer.android.com/develop/ui/compose/sharing/send .
+- After returning from the share activity, offer native contact insertion only if an authorized phone lookup found the number absent. Unknown permission state is not mistaken for an absent contact; Save customer is also available manually. Returning never counts as proof of sending.
+- Checked FileProvider scope, read grant/ClipData, package query and all dialog call sites; git diff --check passes. Real-device WhatsApp attachment/recipient behavior remains an integration test requirement.
