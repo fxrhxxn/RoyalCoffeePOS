@@ -27,14 +27,6 @@
     <!-- Required later for connecting to paired Bluetooth printers on Android 12+. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- Storage permissions for saving PDF receipts on Android 9 and below. -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
     <!-- Bluetooth is useful, but the app should still install on devices without Bluetooth. -->
     <uses-feature
         android:name="android.hardware.bluetooth"

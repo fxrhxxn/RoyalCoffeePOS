@@ -34,7 +34,7 @@ object ReceiptPdfGenerator {
      * 
      * @return The Uri of the saved file if successful, null otherwise.
      */
-    fun generateAndSavePdf(context: Context, receipt: Receipt): Uri? {
+    fun writePdf(context: Context, receipt: Receipt, destination: Uri): Boolean {
         val pdfDocument = PdfDocument()
 
         // Page settings: 300 points wide (approx 105mm), dynamic height.
@@ -176,60 +176,22 @@ object ReceiptPdfGenerator {
 
         pdfDocument.finishPage(page)
 
-        val fileName = "Receipt_${receipt.receiptNumber}.pdf"
-        var uri: Uri? = null
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val resolver = context.contentResolver
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download")
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
-                }
-                
-                uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { outputStream ->
-                        pdfDocument.writeTo(outputStream)
-                        outputStream.flush()
-                    }
-                    
-                    contentValues.clear()
-                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                    resolver.update(it, contentValues, null, null)
-                }
-            } else {
-                // Legacy approach for API 26-28
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!downloadsDir.exists()) {
-                    downloadsDir.mkdirs()
-                }
-                
-                val file = File(downloadsDir, fileName)
-                FileOutputStream(file).use { outputStream ->
-                    pdfDocument.writeTo(outputStream)
-                    outputStream.flush()
-                }
-                uri = Uri.fromFile(file)
-
-                // Trigger media scanner to make the file visible in file managers immediately
-                MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
+        return try {
+            requireNotNull(context.contentResolver.openOutputStream(destination, "w")).use { output ->
+                pdfDocument.writeTo(output)
+                output.flush()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            true
+        } catch (_: Exception) {
+            false
         } finally {
             pdfDocument.close()
         }
-
-        return uri
     }
 
     private fun calculateEstimatedHeight(receipt: Receipt): Int {
         // Base height for headers, summary, payment, and footer
-        var height = 350
+        var height = 500
         // Add height for each item (approx 34 points per item row)
         height += receipt.items.size * 34
         // Add height for address lines

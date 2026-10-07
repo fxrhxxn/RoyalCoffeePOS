@@ -21,6 +21,7 @@ fun StockAlertsScreen(database: RoyalCoffeeDatabase, isAdmin: Boolean, modifier:
     var date by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     LazyColumn(modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { NotificationPermission() }
         item { Text("Notifications", style = MaterialTheme.typography.headlineMedium) }
         item { Text("Expiry warnings start 14 days before expiry. Expired stock is marked for review; sales remain available.") }
         if (alerts.isEmpty()) item { Text("No stock alerts yet.") }
