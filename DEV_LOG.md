@@ -5031,3 +5031,11 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
   by Java network connectivity. Android/Room/device validation remains pending.
 - See `docs/PRICING.md` for the money contract, upgrade limits and pre-merge checklist.
   No feature merge is authorized by this entry; owner approval is still required.
+
+## 2026-10-07 — Stock-limit warning
+- Added an acknowledgement dialog on the successful cart transition to available stock,
+  including products with one unit. Further taps at the limit silently do nothing.
+- Quantity-increase actions resolve the latest observed product stock. Final atomic
+  repository stock validation remains in place; acknowledging does not block checkout.
+- Reviewed empty/one-unit/multiple-unit and decrease-then-increase paths; diff check
+  passed. Android build/device validation remains blocked by Gradle download access.

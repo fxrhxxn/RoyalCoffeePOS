@@ -120,49 +120,24 @@ class SalesViewModel(
     /**
      * Adds a product to the cart if stock allows.
      */
+    var stockLimitProduct by mutableStateOf<String?>(null)
+        private set
+
+    fun acknowledgeStockLimit() { stockLimitProduct = null }
+
     fun addProductToCart(product: Product) {
         if (isSaving || currentReceipt != null) return
-        if (product.stockQuantity <= 0) return
-
-        val existingItemIndex = _cartItems.indexOfFirst {
-            it.product.id == product.id
-        }
-
-        if (existingItemIndex >= 0) {
-            val existingItem = _cartItems[existingItemIndex]
-            if (existingItem.quantity < product.stockQuantity) {
-                _cartItems[existingItemIndex] = existingItem.copy(
-                    quantity = existingItem.quantity + 1
-                )
-            }
-        } else {
-            _cartItems.add(
-                CartItem(
-                    product = product,
-                    quantity = 1
-                )
-            )
-        }
+        val index = _cartItems.indexOfFirst { it.product.id == product.id }
+        val quantity = if (index < 0) 0 else _cartItems[index].quantity
+        // Warn only on a successful transition to the limit; further taps are silent.
+        if (quantity >= product.stockQuantity) return
+        val next = quantity + 1
+        val item = CartItem(product, next)
+        if (index < 0) _cartItems.add(item) else _cartItems[index] = item
+        if (next == product.stockQuantity) stockLimitProduct = product.name
     }
 
-    /**
-     * Increases the quantity of a cart item if stock allows.
-     */
-    fun increaseQuantity(product: Product) {
-        if (isSaving || currentReceipt != null) return
-        val itemIndex = _cartItems.indexOfFirst {
-            it.product.id == product.id
-        }
-
-        if (itemIndex >= 0) {
-            val item = _cartItems[itemIndex]
-            if (item.quantity < product.stockQuantity) {
-                _cartItems[itemIndex] = item.copy(
-                    quantity = item.quantity + 1
-                )
-            }
-        }
-    }
+    fun increaseQuantity(product: Product) { addProductToCart(product) }
 
     /**
      * Decreases the quantity of a cart item.
@@ -200,6 +175,7 @@ class SalesViewModel(
     fun clearCart() {
         if (isSaving) return
         _cartItems.clear()
+        stockLimitProduct = null
         discountPercent = 0
     }
 

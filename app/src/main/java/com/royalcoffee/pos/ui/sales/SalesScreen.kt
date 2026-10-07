@@ -171,7 +171,18 @@ fun SalesScreen(
 
     val salesError = salesViewModel.salesError
     LaunchedEffect(salesError) {
-        if (salesError != null) {
+        salesViewModel.stockLimitProduct?.let { productName ->
+        AlertDialog(
+            onDismissRequest = salesViewModel::acknowledgeStockLimit,
+            title = { Text("Stock limit reached") },
+            text = { Text("$productName: All available units of this product are now in the order. Please restock before adding more.") },
+            confirmButton = {
+                Button(onClick = salesViewModel::acknowledgeStockLimit) { Text("OK") }
+            }
+        )
+    }
+
+    if (salesError != null) {
             confirmedPaymentMethod = null
             amountPaid = null
             changeGiven = null
@@ -274,7 +285,9 @@ fun SalesScreen(
                             changeGiven = changeGiven,
                             contentPadding = ticketPanelPadding,
                             isOrderLocked = isOrderLocked,
-                            onIncreaseQuantity = { salesViewModel.increaseQuantity(it) },
+                            onIncreaseQuantity = { item ->
+                                products.firstOrNull { it.id == item.id }?.let(salesViewModel::increaseQuantity)
+                            },
                             onDecreaseQuantity = { salesViewModel.decreaseQuantity(it) },
                             onRemoveItem = { salesViewModel.removeItem(it) },
                             onClearTicketClick = { showClearTicketConfirmDialog = true },
