@@ -5093,3 +5093,5 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
 - All scoped feature branches are integrated into develop/pos-improvements. Added a per-login ViewModelStore to release authenticated state on logout, including inventory ViewModels and pending dialogs.
 - Added a GitHub Actions build/unit-test attempt with read-only repository permissions and a 25-minute timeout, plus docs/INTEGRATION_VALIDATION.md with explicit pending device checks and platform boundaries.
 - Local Android compilation remains blocked before source compilation by Gradle distribution network access. Five SQLite migration tests and whitespace verification pass. Main integration remains pending Android/Room and tablet/WhatsApp verification; no build or device success is implied.
+
+- Hosted validation run 37642106563 passed five SQLite tests and Room/KSP generation, then caught a stock-limit AlertDialog incorrectly nested inside LaunchedEffect. Moved rendering into the composable body and retained only payment-state cleanup in the effect. Rerunning the Android build after this concrete compiler fix.

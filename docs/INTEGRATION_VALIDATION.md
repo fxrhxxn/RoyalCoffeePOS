@@ -8,7 +8,7 @@ The scoped improvement set is implemented on `develop/pos-improvements`: categor
 - Pricing's six standalone Kotlin/JUnit tests passed during its implementation. Full Android unit-test execution still requires the Android build toolchain.
 - `git diff --check` passes.
 - Local `bash gradlew :app:compileDebugKotlin --no-daemon` stops before compilation: downloading Gradle 9.6.1 fails with `java.net.SocketException: Network is unreachable`. No Android build success is claimed.
-- GitHub's Android validation workflow attempts the unchanged project toolchain on a hosted runner. Its result must be reviewed before release.
+- GitHub hosted validation reached Room code generation successfully and exposed a Compose error in the stock-limit dialog placement. The dialog was moved out of LaunchedEffect into the composable body; the corrected build is being verified.
 
 ## Android checks required before main integration
 
