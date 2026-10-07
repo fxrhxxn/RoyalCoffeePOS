@@ -4,6 +4,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.royalcoffee.pos.model.Money
+import com.royalcoffee.pos.model.DiscountPolicy
+import com.royalcoffee.pos.model.UserRole
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -30,7 +33,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * SalesScreen -> SalesViewModel -> ReceiptRepository -> ReceiptDao -> Room
  */
 class SalesViewModel(
-    private val receiptRepository: ReceiptRepository
+    private val receiptRepository: ReceiptRepository,
+    private val userRole: UserRole
 ) : ViewModel() {
 
     private val _searchText = MutableStateFlow("")
@@ -66,10 +70,20 @@ class SalesViewModel(
     /**
      * Basic order calculations.
      */
-    val subtotal: Int get() = _cartItems.sumOf { it.lineTotal }
-    val discount: Int get() = 0 // Fixed at 0 for Step 1
-    val tax: Int get() = (subtotal * 0.15).toInt()
-    val total: Int get() = subtotal - discount + tax
+    val subtotal: Long get() = Money.sum(_cartItems.map { it.lineTotal })
+    var discountPercent by mutableStateOf(0)
+        private set
+    val discountOptions get() = DiscountPolicy.options(userRole)
+    fun selectDiscount(percent: Int) {
+        if (currentReceipt != null || isSaving) return
+        DiscountPolicy.requireAllowed(userRole, percent)
+        discountPercent = percent
+    }
+    var isSaving by mutableStateOf(false)
+        private set
+    val discount: Long get() = Money.discount(subtotal, discountPercent)
+    val tax: Long get() = 0L // Selling prices already include VAT.
+    val total: Long get() = subtotal - discount + tax
 
     /**
      * Updates the search text and resets category if needed (optional).
@@ -107,6 +121,7 @@ class SalesViewModel(
      * Adds a product to the cart if stock allows.
      */
     fun addProductToCart(product: Product) {
+        if (isSaving || currentReceipt != null) return
         if (product.stockQuantity <= 0) return
 
         val existingItemIndex = _cartItems.indexOfFirst {
@@ -134,6 +149,7 @@ class SalesViewModel(
      * Increases the quantity of a cart item if stock allows.
      */
     fun increaseQuantity(product: Product) {
+        if (isSaving || currentReceipt != null) return
         val itemIndex = _cartItems.indexOfFirst {
             it.product.id == product.id
         }
@@ -153,6 +169,7 @@ class SalesViewModel(
      * If quantity reaches 0, the item is removed.
      */
     fun decreaseQuantity(product: Product) {
+        if (isSaving || currentReceipt != null) return
         val itemIndex = _cartItems.indexOfFirst {
             it.product.id == product.id
         }
@@ -173,6 +190,7 @@ class SalesViewModel(
      * Removes an item from the cart regardless of quantity.
      */
     fun removeItem(product: Product) {
+        if (isSaving || currentReceipt != null) return
         _cartItems.removeAll { it.product.id == product.id }
     }
 
@@ -180,7 +198,9 @@ class SalesViewModel(
      * Clears the cart/ticket.
      */
     fun clearCart() {
+        if (isSaving) return
         _cartItems.clear()
+        discountPercent = 0
     }
 
     /**
@@ -191,13 +211,9 @@ class SalesViewModel(
      */
     fun processCompletedOrder(
         cartItems: List<CartItem>,
-        subtotal: Int,
-        discount: Int,
-        tax: Int,
-        total: Int,
         paymentMethod: PaymentMethod,
-        amountPaid: Int?,
-        changeGiven: Int?,
+        amountPaid: Long?,
+        changeGiven: Long?,
         cashierName: String,
         footerMessage: String
     ) {
@@ -209,15 +225,29 @@ class SalesViewModel(
             return
         }
 
+        if (isSaving) return
+        // Capture the order before suspending so totals and stock refer to the same cart.
+        val orderItems = cartItems.toList()
+        val percent = discountPercent
+        val orderSubtotal = Money.sum(orderItems.map { it.lineTotal })
+        val orderDiscount = Money.discount(orderSubtotal, percent)
+        val orderTotal = orderSubtotal - orderDiscount
+        if (orderItems.isEmpty() || amountPaid == null || amountPaid < orderTotal ||
+            changeGiven != amountPaid - orderTotal) {
+            salesError = "Payment does not match the order total."
+            return
+        }
+        isSaving = true
         viewModelScope.launch {
             try {
+                DiscountPolicy.requireAllowed(userRole, percent)
                 /**
                  * 1. Get latest sequence and generate number from Room.
                  */
                 val nextReceiptNumber = receiptRepository.generateNextReceiptNumber()
                 val now = LocalDateTime.now()
 
-                val receiptItems = cartItems.map { cartItem ->
+                val receiptItems = orderItems.map { cartItem ->
                     ReceiptItem(
                         productName = cartItem.product.name,
                         quantity = cartItem.quantity,
@@ -237,14 +267,16 @@ class SalesViewModel(
                     storePhone = "+230 0000 0000",
                     cashierName = cashierName,
                     items = receiptItems,
-                    subtotal = subtotal,
-                    discount = discount,
+                    subtotal = orderSubtotal,
+                    discount = orderDiscount,
                     tax = tax,
-                    total = total,
+                    total = orderTotal,
                     paymentMethod = paymentMethod,
                     amountPaid = amountPaid,
                     changeGiven = changeGiven,
-                    footerMessage = footerMessage
+                    footerMessage = footerMessage,
+                    discountPercent = percent,
+                    vatIncluded = true
                 )
 
                 /**
@@ -254,7 +286,8 @@ class SalesViewModel(
                  */
                 receiptRepository.saveReceipt(
                     receipt = receipt,
-                    cartItems = cartItems
+                    cartItems = orderItems,
+                    userRole = userRole
                 )
 
                 /**
@@ -270,6 +303,8 @@ class SalesViewModel(
             } catch (exception: Exception) {
                 // Generic error handling
                 salesError = "Unable to complete sale: ${exception.localizedMessage}"
+            } finally {
+                isSaving = false
             }
         }
     }
@@ -299,13 +334,15 @@ class SalesViewModel(
  * Factory for creating SalesViewModel with its dependencies.
  */
 class SalesViewModelFactory(
-    private val receiptRepository: ReceiptRepository
+    private val receiptRepository: ReceiptRepository,
+    private val userRole: UserRole
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SalesViewModel::class.java)) {
-            return SalesViewModel(receiptRepository) as T
+            return SalesViewModel(receiptRepository, userRole) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+

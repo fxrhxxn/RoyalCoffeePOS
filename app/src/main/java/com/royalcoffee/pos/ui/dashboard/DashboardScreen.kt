@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.dashboard
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -155,7 +156,7 @@ private fun DashboardContent(state: DashboardState) {
         ) {
             MetricCardWithTrend(
                 title = "Total Revenue",
-                value = "Rs ${state.totalRevenue}",
+                value = "Rs ${Money.format(state.totalRevenue)}",
                 trend = state.revenueTrendPercentage,
                 isPositive = state.isRevenueTrendPositive,
                 comparisonLabel = compLabel,
@@ -163,7 +164,7 @@ private fun DashboardContent(state: DashboardState) {
             )
             MetricCardWithTrend(
                 title = "Gross Profit",
-                value = "Rs ${state.grossProfit}",
+                value = "Rs ${Money.format(state.grossProfit)}",
                 trend = state.profitTrendPercentage,
                 isPositive = state.isProfitTrendPositive,
                 comparisonLabel = compLabel,
@@ -179,7 +180,7 @@ private fun DashboardContent(state: DashboardState) {
             )
             MetricCardWithTrend(
                 title = "Avg Order",
-                value = "Rs ${state.avgOrderValue}",
+                value = "Rs ${Money.format(state.avgOrderValue)}",
                 trend = "${state.margin}% Margin",
                 isPositive = true,
                 comparisonLabel = "Total Efficiency",
@@ -438,3 +439,4 @@ private fun InventoryAlertCard(
         }
     }
 }
+

@@ -63,14 +63,14 @@ data class ReceiptDetailEntity(
      * Unit price at the time of sale.
      */
     @ColumnInfo(name = "unit_price")
-    val unitPrice: Int,
+    val unitPrice: Long,
 
     /**
      * Snapshot of the cost price at the time of sale.
      * Null = Unknown historical cost.
      */
     @ColumnInfo(name = "cost_price")
-    val costPrice: Int? = null,
+    val costPrice: Long? = null,
 
     /**
      * Total for this receipt line.
@@ -81,5 +81,8 @@ data class ReceiptDetailEntity(
      * lineTotal = 240
      */
     @ColumnInfo(name = "line_total")
-    val lineTotal: Int
+    val lineTotal: Long,
+
+    @ColumnInfo(name = "discount_amount", defaultValue = "0")
+    val discountAmount: Long = 0L
 )

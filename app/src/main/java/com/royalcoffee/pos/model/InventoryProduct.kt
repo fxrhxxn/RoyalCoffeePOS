@@ -33,12 +33,12 @@ data class InventoryProduct(
     /**
      * Selling price of the product.
      */
-    val unitPrice: Int,
+    val unitPrice: Long,
 
     /**
      * Cost price of the product.
      */
-    val costPrice: Int,
+    val costPrice: Long,
 
     /**
      * Current stock quantity available.

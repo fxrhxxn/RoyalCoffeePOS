@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.payment
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +24,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun PaymentMethodDialog(
-    total: Int,
+    total: Long,
     onPaymentMethodSelected: (PaymentMethod) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -54,7 +55,7 @@ fun PaymentMethodDialog(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Rs $total",
+                    text = "Rs ${Money.format(total)}",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,

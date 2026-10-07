@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
  * Data model for dashboard sales summary.
  */
 data class SalesSummary(
-    val totalSales: Int,
+    val totalSales: Long,
     val orderCount: Int
 )
 
@@ -22,7 +22,7 @@ data class SalesSummary(
  */
 data class PaymentBreakdown(
     val paymentMethod: String,
-    val totalAmount: Int,
+    val totalAmount: Long,
     val orderCount: Int
 )
 
@@ -39,7 +39,7 @@ data class TopProduct(
  */
 data class ProfitableProduct(
     val productName: String,
-    val totalGrossProfit: Int
+    val totalGrossProfit: Long
 )
 
 /**
@@ -47,7 +47,7 @@ data class ProfitableProduct(
  */
 data class SalesTrendPoint(
     val dateLabel: String,
-    val totalSales: Int,
+    val totalSales: Long,
     val orderCount: Int
 )
 
@@ -56,7 +56,7 @@ data class SalesTrendPoint(
  */
 data class HourlySales(
     val hourLabel: String, // e.g. "09:00"
-    val totalSales: Int,
+    val totalSales: Long,
     val orderCount: Int
 )
 
@@ -65,9 +65,9 @@ data class HourlySales(
  */
 data class CategorySales(
     val category: String,
-    val totalRevenue: Int,
-    val knownCostRevenue: Int,
-    val totalCOGS: Int,
+    val totalRevenue: Long,
+    val knownCostRevenue: Long,
+    val totalCOGS: Long,
     val quantitySold: Int
 )
 
@@ -75,9 +75,9 @@ data class CategorySales(
  * Data model for profit statistics.
  */
 data class GrossProfitStats(
-    val totalRevenue: Int,
-    val knownCostRevenue: Int,
-    val totalCOGS: Int,
+    val totalRevenue: Long,
+    val knownCostRevenue: Long,
+    val totalCOGS: Long,
     val knownCostCount: Int,
     val totalSalesCount: Int
 )
@@ -87,8 +87,8 @@ data class GrossProfitStats(
  */
 data class ProfitTrendPoint(
     val dateLabel: String,
-    val totalRevenue: Int,
-    val totalGrossProfit: Int
+    val totalRevenue: Long,
+    val totalGrossProfit: Long
 )
 
 /**
@@ -308,8 +308,8 @@ interface ReceiptDao {
     @Query(
         """
         SELECT products.category as category, 
-               SUM(receipt_details.line_total) as totalRevenue, 
-               SUM(CASE WHEN receipt_details.cost_price IS NOT NULL THEN receipt_details.line_total ELSE 0 END) as knownCostRevenue,
+               SUM(receipt_details.line_total - receipt_details.discount_amount) as totalRevenue,
+               SUM(CASE WHEN receipt_details.cost_price IS NOT NULL THEN receipt_details.line_total - receipt_details.discount_amount ELSE 0 END) as knownCostRevenue,
                SUM(CASE WHEN receipt_details.cost_price IS NOT NULL THEN receipt_details.quantity * receipt_details.cost_price ELSE 0 END) as totalCOGS,
                SUM(receipt_details.quantity) as quantitySold 
         FROM receipt_details 
@@ -328,7 +328,7 @@ interface ReceiptDao {
     @Query(
         """
         SELECT product_name as productName, 
-               SUM(quantity * (unit_price - IFNULL(cost_price, unit_price))) as totalGrossProfit
+               SUM(CASE WHEN cost_price IS NOT NULL THEN line_total - discount_amount - quantity * cost_price ELSE 0 END) as totalGrossProfit
         FROM receipt_details
         JOIN receipt_headers ON receipt_details.receipt_id = receipt_headers.receipt_id
         WHERE receipt_headers.timestamp >= :start AND receipt_headers.timestamp <= :end
@@ -346,7 +346,7 @@ interface ReceiptDao {
         """
         SELECT 
             IFNULL((SELECT SUM(total) FROM receipt_headers WHERE timestamp >= :start AND timestamp <= :end), 0) as totalRevenue,
-            SUM(CASE WHEN d.cost_price IS NOT NULL THEN d.line_total ELSE 0 END) as knownCostRevenue,
+            SUM(CASE WHEN d.cost_price IS NOT NULL THEN d.line_total - d.discount_amount ELSE 0 END) as knownCostRevenue,
             SUM(d.quantity * d.cost_price) as totalCOGS,
             COUNT(DISTINCT CASE WHEN d.cost_price IS NOT NULL THEN h.receipt_id END) as knownCostCount,
             COUNT(DISTINCT h.receipt_id) as totalSalesCount
@@ -371,7 +371,7 @@ interface ReceiptDao {
                 strftime('%d/%m', h.timestamp / 1000, 'unixepoch') as dateLabel,
                 h.receipt_id,
                 MAX(h.total) as receiptTotal,
-                SUM(d.quantity * (d.unit_price - IFNULL(d.cost_price, d.unit_price))) as receiptGrossProfit,
+                SUM(CASE WHEN d.cost_price IS NOT NULL THEN d.line_total - d.discount_amount - d.quantity * d.cost_price ELSE 0 END) as receiptGrossProfit,
                 MIN(h.timestamp) as minTimestamp
             FROM receipt_headers h
             JOIN receipt_details d ON h.receipt_id = d.receipt_id
@@ -384,3 +384,4 @@ interface ReceiptDao {
     )
     fun getProfitTrend(start: Long, end: Long): Flow<List<ProfitTrendPoint>>
 }
+

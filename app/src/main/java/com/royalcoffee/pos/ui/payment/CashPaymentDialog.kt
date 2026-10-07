@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.payment
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,11 +23,11 @@ import com.royalcoffee.pos.model.PaymentMethod
 
 @Composable
 fun CashPaymentDialog(
-    total: Int,
+    total: Long,
     onConfirmPayment: (
         paymentMethod: PaymentMethod,
-        amountPaid: Int,
-        changeGiven: Int
+        amountPaid: Long,
+        changeGiven: Long
     ) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -38,7 +39,7 @@ fun CashPaymentDialog(
         mutableStateOf<String?>(null)
     }
 
-    val amountReceived = amountReceivedText.toIntOrNull()
+    val amountReceived = Money.parse(amountReceivedText)
     val change = if (amountReceived != null) {
         amountReceived - total
     } else {
@@ -54,19 +55,19 @@ fun CashPaymentDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(text = "Amount due: Rs $total")
+                Text(text = "Amount due: Rs ${Money.format(total)}")
 
                 OutlinedTextField(
                     value = amountReceivedText,
                     onValueChange = { newValue ->
-                        amountReceivedText = newValue.filter { it.isDigit() }
+                        amountReceivedText = newValue
                         errorMessage = null
                     },
                     label = {
                         Text(text = "Amount received")
                     },
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
+                        keyboardType = KeyboardType.Decimal
                     ),
                     singleLine = true,
                     isError = errorMessage != null,
@@ -74,7 +75,7 @@ fun CashPaymentDialog(
                 )
 
                 if (amountReceived != null) {
-                    Text(text = "Change: Rs ${change.coerceAtLeast(0)}")
+                    Text(text = "Change: Rs ${Money.format(change.coerceAtLeast(0))}")
                 }
 
                 if (errorMessage != null) {

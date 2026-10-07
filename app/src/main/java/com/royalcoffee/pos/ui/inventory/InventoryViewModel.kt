@@ -401,8 +401,8 @@ class InventoryViewModel(
     fun addProduct(
         name: String,
         category: String,
-        price: Int,
-        cost: Int,
+        price: Long,
+        cost: Long,
         stock: Int,
         reorder: Int
     ) {
@@ -460,8 +460,8 @@ class InventoryViewModel(
         productId: Int,
         name: String,
         category: String,
-        price: Int,
-        cost: Int,
+        price: Long,
+        cost: Long,
         reorder: Int,
         active: Boolean
     ) {

@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.util
 
+import com.royalcoffee.pos.model.Money
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Canvas
@@ -100,14 +101,14 @@ object ReceiptPdfGenerator {
             // Product name and line total
             canvas.drawText(item.productName, 25f, yPos, paint)
             paint.textAlign = Paint.Align.RIGHT
-            canvas.drawText("Rs ${item.lineTotal}", pageWidth - 25f, yPos, paint)
+            canvas.drawText("Rs ${Money.format(item.lineTotal)}", pageWidth - 25f, yPos, paint)
             yPos += 16f
 
             // Quantity and unit price
             paint.textAlign = Paint.Align.LEFT
             paint.textSize = 9f
             paint.color = Color.DKGRAY
-            canvas.drawText("  ${item.quantity} x Rs ${item.unitPrice}", 25f, yPos, paint)
+            canvas.drawText("  ${item.quantity} x Rs ${Money.format(item.unitPrice)}", 25f, yPos, paint)
             yPos += 18f
             paint.textSize = 10f
             paint.color = Color.BLACK
@@ -121,21 +122,21 @@ object ReceiptPdfGenerator {
         paint.textAlign = Paint.Align.LEFT
         canvas.drawText("Subtotal", 25f, yPos, paint)
         paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Rs ${receipt.subtotal}", pageWidth - 25f, yPos, paint)
+        canvas.drawText("Rs ${Money.format(receipt.subtotal)}", pageWidth - 25f, yPos, paint)
         yPos += 16f
 
-        if (receipt.discount > 0) {
+        if (receipt.discount > 0 || receipt.discountPercent != null) {
             paint.textAlign = Paint.Align.LEFT
-            canvas.drawText("Discount", 25f, yPos, paint)
+            canvas.drawText(receipt.discountPercent?.let { "Discount ($it%)" } ?: "Discount", 25f, yPos, paint)
             paint.textAlign = Paint.Align.RIGHT
-            canvas.drawText("-Rs ${receipt.discount}", pageWidth - 25f, yPos, paint)
+            canvas.drawText("-Rs ${Money.format(receipt.discount)}", pageWidth - 25f, yPos, paint)
             yPos += 16f
         }
 
         paint.textAlign = Paint.Align.LEFT
-        canvas.drawText("Tax (15%)", 25f, yPos, paint)
+        canvas.drawText(if (receipt.vatIncluded) "VAT Included" else "Tax (15%)", 25f, yPos, paint)
         paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Rs ${receipt.tax}", pageWidth - 25f, yPos, paint)
+        canvas.drawText(if (receipt.vatIncluded) "" else "Rs ${Money.format(receipt.tax)}", pageWidth - 25f, yPos, paint)
         yPos += 24f
 
         // Grand Total
@@ -144,7 +145,7 @@ object ReceiptPdfGenerator {
         paint.textAlign = Paint.Align.LEFT
         canvas.drawText("TOTAL", 25f, yPos, paint)
         paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Rs ${receipt.total}", pageWidth - 25f, yPos, paint)
+        canvas.drawText("Rs ${Money.format(receipt.total)}", pageWidth - 25f, yPos, paint)
         yPos += 34f
 
         // 6. Payment Info
@@ -155,12 +156,12 @@ object ReceiptPdfGenerator {
         yPos += 16f
 
         if (receipt.amountPaid != null) {
-            canvas.drawText("Amount Paid: Rs ${receipt.amountPaid}", (pageWidth / 2).toFloat(), yPos, paint)
+            canvas.drawText("Amount Paid: Rs ${Money.format(receipt.amountPaid)}", (pageWidth / 2).toFloat(), yPos, paint)
             yPos += 16f
         }
 
         if (receipt.hasChange) {
-            canvas.drawText("Change: Rs ${receipt.changeGiven}", (pageWidth / 2).toFloat(), yPos, paint)
+            canvas.drawText("Change: Rs ${Money.format(requireNotNull(receipt.changeGiven))}", (pageWidth / 2).toFloat(), yPos, paint)
             yPos += 24f
         }
 
@@ -242,3 +243,4 @@ object ReceiptPdfGenerator {
         canvas.drawText("-".repeat(32), (startX + endX) / 2, y, paint)
     }
 }
+

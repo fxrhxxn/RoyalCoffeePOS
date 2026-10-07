@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.sales
 
+import com.royalcoffee.pos.model.Money
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -117,7 +118,8 @@ fun SalesScreen(
     val receiptHistoryItems by receiptHistoryViewModel.receiptHistory.collectAsStateWithLifecycle()
 
     val salesViewModel: SalesViewModel = viewModel(
-        factory = SalesViewModelFactory(receiptRepository = receiptRepository)
+        key = "sales-${userRole.name}",
+        factory = SalesViewModelFactory(receiptRepository = receiptRepository, userRole = userRole)
     )
 
     val productViewModel: ProductViewModel = viewModel(
@@ -159,14 +161,13 @@ fun SalesScreen(
     val cartItems = salesViewModel.cartItems
     val subtotal = salesViewModel.subtotal
     val discount = salesViewModel.discount
-    val tax = salesViewModel.tax
     val total = salesViewModel.total
 
     var showPaymentDialog by remember { mutableStateOf(false) }
     var activePaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
     var confirmedPaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
-    var amountPaid by remember { mutableStateOf<Int?>(null) }
-    var changeGiven by remember { mutableStateOf<Int?>(null) }
+    var amountPaid by remember { mutableStateOf<Long?>(null) }
+    var changeGiven by remember { mutableStateOf<Long?>(null) }
 
     val salesError = salesViewModel.salesError
     LaunchedEffect(salesError) {
@@ -189,13 +190,9 @@ fun SalesScreen(
         return cartItems.isNotEmpty() || confirmedPaymentMethod != null || salesViewModel.currentReceipt != null
     }
 
-    fun prepareReceiptPreview(paymentMethod: PaymentMethod, paid: Int?, change: Int?) {
+    fun prepareReceiptPreview(paymentMethod: PaymentMethod, paid: Long?, change: Long?) {
         salesViewModel.processCompletedOrder(
             cartItems = cartItems,
-            subtotal = subtotal,
-            discount = discount,
-            tax = tax,
-            total = total,
             paymentMethod = paymentMethod,
             amountPaid = paid,
             changeGiven = change,
@@ -268,7 +265,9 @@ fun SalesScreen(
                             cartItems = cartItems,
                             subtotal = subtotal,
                             discount = discount,
-                            tax = tax,
+                            discountPercent = salesViewModel.discountPercent,
+                            discountOptions = salesViewModel.discountOptions,
+                            onDiscountSelected = salesViewModel::selectDiscount,
                             total = total,
                             confirmedPaymentMethod = confirmedPaymentMethod,
                             amountPaid = amountPaid,
@@ -596,7 +595,7 @@ private fun ProductCard(product: Product, enabled: Boolean, onClick: () -> Unit)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(product.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(0.5f))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Rs ${product.price}", fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("Rs ${Money.format(product.price)}", fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(8.dp))
                 if (isOutOfStock) {
                     Text("OUT OF STOCK", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
@@ -615,13 +614,15 @@ private fun ProductCard(product: Product, enabled: Boolean, onClick: () -> Unit)
 @Composable
 private fun TicketPanel(
     cartItems: List<CartItem>,
-    subtotal: Int,
-    discount: Int,
-    tax: Int,
-    total: Int,
+    subtotal: Long,
+    discount: Long,
+    discountPercent: Int,
+    discountOptions: List<Int>,
+    onDiscountSelected: (Int) -> Unit,
+    total: Long,
     confirmedPaymentMethod: PaymentMethod?,
-    amountPaid: Int?,
-    changeGiven: Int?,
+    amountPaid: Long?,
+    changeGiven: Long?,
     contentPadding: Dp,
     isOrderLocked: Boolean,
     onIncreaseQuantity: (Product) -> Unit,
@@ -646,7 +647,17 @@ private fun TicketPanel(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                OrderSummaryCard(subtotal, discount, tax, total)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    discountOptions.forEach { percent ->
+                        FilterChip(
+                            selected = discountPercent == percent,
+                            onClick = { onDiscountSelected(percent) },
+                            enabled = !isOrderLocked,
+                            label = { Text("$percent%") }
+                        )
+                    }
+                }
+                OrderSummaryCard(subtotal, discount, discountPercent, total)
                 confirmedPaymentMethod?.let {
                     Spacer(Modifier.height(16.dp))
                     PaymentSummaryCard(it, amountPaid, changeGiven)
@@ -668,7 +679,7 @@ private fun TicketPanel(
                     enabled = cartItems.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp)
-                ) { Text("Charge Rs $total") }
+                ) { Text("Charge Rs ${Money.format(total)}") }
             }
         } else {
             Button(onViewReceiptClick, Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) { Text("View Receipt") }
@@ -706,7 +717,7 @@ private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDe
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {
                     Text(item.product.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                    Text("Rs ${item.product.price} each", style = MaterialTheme.typography.bodySmall)
+                    Text("Rs ${Money.format(item.product.price)} each", style = MaterialTheme.typography.bodySmall)
                 }
                 IconButton(
                     onClick = { onRem() },
@@ -716,7 +727,7 @@ private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDe
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("Rs ${item.lineTotal}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                Text("Rs ${Money.format(item.lineTotal)}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
                         onClick = { onDec() },
@@ -738,17 +749,17 @@ private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDe
 }
 
 @Composable
-private fun OrderSummaryCard(subtotal: Int, discount: Int, tax: Int, total: Int) {
+private fun OrderSummaryCard(subtotal: Long, discount: Long, discountPercent: Int, total: Long) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(0.65f)), border = androidx.compose.foundation.BorderStroke(1.dp, RoyalGold.copy(0.35f))) {
         Column(Modifier.padding(16.dp)) {
             Text("Order Summary", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-            SummaryRow("Subtotal", "Rs $subtotal")
-            SummaryRow("Discount", "Rs $discount")
-            SummaryRow("Tax", "Rs $tax")
+            SummaryRow("Subtotal", "Rs ${Money.format(subtotal)}")
+            SummaryRow("Discount ($discountPercent%)", "Rs ${Money.format(discount)}")
+            SummaryRow("VAT Included", "")
             HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.12f))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Rs $total", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("Discounted Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Rs ${Money.format(total)}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -763,15 +774,16 @@ private fun SummaryRow(label: String, value: String) {
 }
 
 @Composable
-private fun PaymentSummaryCard(method: PaymentMethod, paid: Int?, change: Int?) {
+private fun PaymentSummaryCard(method: PaymentMethod, paid: Long?, change: Long?) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.primary.copy(0.10f)), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.35f))) {
         Column(Modifier.padding(16.dp)) {
             Text("Payment Confirmed", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             SummaryRow("Method", method.name)
-            paid?.let { SummaryRow("Amount Paid", "Rs $it") }
-            change?.let { if (it > 0) SummaryRow("Change", "Rs $it") }
+            paid?.let { SummaryRow("Amount Paid", "Rs ${Money.format(it)}") }
+            change?.let { if (it > 0) SummaryRow("Change", "Rs ${Money.format(it)}") }
         }
     }
 }
+
 
 

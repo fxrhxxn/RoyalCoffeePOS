@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.inventory
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -1213,8 +1214,8 @@ fun ProductFormDialog(
     onConfirm: (
         name: String,
         category: String,
-        price: Int,
-        cost: Int,
+        price: Long,
+        cost: Long,
         stock: Int,
         reorder: Int
     ) -> Unit
@@ -1241,7 +1242,7 @@ fun ProductFormDialog(
 
     var price by remember {
         mutableStateOf(
-            product?.unitPrice?.toString()
+            product?.unitPrice?.let(Money::format)
                 ?: ""
         )
     }
@@ -1249,7 +1250,7 @@ fun ProductFormDialog(
 
     var cost by remember {
         mutableStateOf(
-            product?.costPrice?.toString()
+            product?.costPrice?.let(Money::format)
                 ?: "0"
         )
     }
@@ -1431,7 +1432,7 @@ fun ProductFormDialog(
 
                         if (
                             value.all {
-                                it.isDigit()
+                                it.isDigit() || it == '.'
                             }
                         ) {
 
@@ -1448,7 +1449,7 @@ fun ProductFormDialog(
                     keyboardOptions =
                         KeyboardOptions(
                             keyboardType =
-                                KeyboardType.Number
+                                KeyboardType.Decimal
                         ),
 
                     modifier =
@@ -1473,7 +1474,7 @@ fun ProductFormDialog(
 
                             if (
                                 value.all {
-                                    it.isDigit()
+                                    it.isDigit() || it == '.'
                                 }
                             ) {
 
@@ -1496,7 +1497,7 @@ fun ProductFormDialog(
                         keyboardOptions =
                             KeyboardOptions(
                                 keyboardType =
-                                    KeyboardType.Number
+                                    KeyboardType.Decimal
                             ),
 
                         modifier =
@@ -1593,8 +1594,8 @@ fun ProductFormDialog(
                 enabled =
                     name.isNotBlank() &&
                             category.isNotBlank() &&
-                            price.toIntOrNull() != null &&
-                            cost.toIntOrNull() != null &&
+                            Money.parse(price) != null &&
+                            Money.parse(cost) != null &&
                             reorder.toIntOrNull() != null,
 
                 onClick = {
@@ -1602,9 +1603,9 @@ fun ProductFormDialog(
                     onConfirm(
                         name.trim(),
                         category,
-                        price.toIntOrNull()
+                        Money.parse(price)
                             ?: 0,
-                        cost.toIntOrNull()
+                        Money.parse(cost)
                             ?: 0,
                         stock.toIntOrNull()
                             ?: 0,

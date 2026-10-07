@@ -48,10 +48,10 @@ data class Receipt(
      * We store these directly instead of recalculating them later because
      * a receipt should represent the transaction exactly as it happened.
      */
-    val subtotal: Int,
-    val discount: Int,
-    val tax: Int,
-    val total: Int,
+    val subtotal: Long,
+    val discount: Long,
+    val tax: Long,
+    val total: Long,
 
     /**
      * Payment information.
@@ -59,15 +59,17 @@ data class Receipt(
      * PaymentMethod is already used by the app for Cash, Card, and Mobile Payment.
      */
     val paymentMethod: PaymentMethod,
-    val amountPaid: Int?,
-    val changeGiven: Int?,
+    val amountPaid: Long?,
+    val changeGiven: Long?,
 
     /**
      * Footer message printed at the bottom of the receipt.
      *
      * Later, Admin will be able to change this from Settings.
      */
-    val footerMessage: String = "Thank you for your purchase."
+    val footerMessage: String = "Thank you for your purchase.",
+    val discountPercent: Int? = null,
+    val vatIncluded: Boolean = false
 ) {
     /**
      * Returns the total quantity of items sold in this receipt.

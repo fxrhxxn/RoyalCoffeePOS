@@ -68,19 +68,12 @@ object RoyalCoffeeDatabaseProvider {
                 "royal_coffee_pos_database"
             )
                 .addMigrations(MIGRATION_2_3)
-                /**
-                 * Development-only migration shortcut.
-                 *
-                 * Because we are still building the app and changing tables,
-                 * this allows Room to recreate the database when the version changes.
-                 *
-                 * Later, for a production app, we should replace this with real migrations.
-                 */
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_3_4)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_4_5)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_5_6)
                 .addMigrations(RoyalCoffeeDatabase.MIGRATION_8_9)
-                .fallbackToDestructiveMigration(dropAllTables = true)
+                .addMigrations(RoyalCoffeeDatabase.MIGRATION_9_10)
+                // Missing legacy migrations fail safely instead of deleting business data.
                 .build()
 
             INSTANCE = database
@@ -88,3 +81,4 @@ object RoyalCoffeeDatabaseProvider {
         }
     }
 }
+

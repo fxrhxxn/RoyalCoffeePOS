@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.printer
 
+import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.model.PrinterConfig
 import com.royalcoffee.pos.model.Receipt
 import com.royalcoffee.pos.model.ReceiptItem
@@ -110,21 +111,21 @@ class EscPosReceiptFormatter {
         appendLeftRightLine(
             builder = builder,
             left = "Subtotal",
-            right = "Rs ${receipt.subtotal}",
+            right = "Rs ${Money.format(receipt.subtotal)}",
             lineWidth = lineWidth
         )
 
         appendLeftRightLine(
             builder = builder,
-            left = "Discount",
-            right = "Rs ${receipt.discount}",
+            left = receipt.discountPercent?.let { "Discount ($it%)" } ?: "Discount",
+            right = "Rs ${Money.format(receipt.discount)}",
             lineWidth = lineWidth
         )
 
         appendLeftRightLine(
             builder = builder,
-            left = "Tax",
-            right = "Rs ${receipt.tax}",
+            left = if (receipt.vatIncluded) "VAT Included" else "Tax",
+            right = if (receipt.vatIncluded) "" else "Rs ${Money.format(receipt.tax)}",
             lineWidth = lineWidth
         )
 
@@ -133,7 +134,7 @@ class EscPosReceiptFormatter {
         appendLeftRightLine(
             builder = builder,
             left = "TOTAL",
-            right = "Rs ${receipt.total}",
+            right = "Rs ${Money.format(receipt.total)}",
             lineWidth = lineWidth
         )
 
@@ -156,7 +157,7 @@ class EscPosReceiptFormatter {
             appendLeftRightLine(
                 builder = builder,
                 left = "Amount Paid",
-                right = "Rs ${receipt.amountPaid}",
+                right = "Rs ${Money.format(receipt.amountPaid)}",
                 lineWidth = lineWidth
             )
         }
@@ -165,7 +166,7 @@ class EscPosReceiptFormatter {
             appendLeftRightLine(
                 builder = builder,
                 left = "Change",
-                right = "Rs ${receipt.changeGiven}",
+                right = "Rs ${Money.format(requireNotNull(receipt.changeGiven))}",
                 lineWidth = lineWidth
             )
         }
@@ -266,11 +267,11 @@ class EscPosReceiptFormatter {
         appendLeftRightLine(
             builder = builder,
             left = item.productName,
-            right = "Rs ${item.lineTotal}",
+            right = "Rs ${Money.format(item.lineTotal)}",
             lineWidth = lineWidth
         )
 
-        builder.append("  ${item.quantity} x Rs ${item.unitPrice}")
+        builder.append("  ${item.quantity} x Rs ${Money.format(item.unitPrice)}")
         builder.append("\n")
         builder.append("\n")
     }
