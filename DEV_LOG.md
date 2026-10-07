@@ -5055,3 +5055,11 @@ This DEV_LOG should be updated after every major feature or debugging checkpoint
 - Low-stock alerts trigger at or below reorder level, update quantity without repeating notification, resolve after restock and create a new history episode if stock falls again. Alerts are reconciled on observed inventory changes/resume and a persisted six-hour Android job (OS scheduling may defer it).
 - Android delivery respects permission and notification settings; denied delivery leaves in-app history available. Runtime permission UI is the next feature. No network delivery.
 - Prevented inventory metadata edits from overwriting concurrent stock changes. SQLite migration tests (3 total) and git diff --check pass; Android build/device checks remain pending due to unavailable Gradle distribution.
+
+
+## App permissions
+
+- Request the native Android 13+ notification permission when Notifications is first opened; remember the request and provide Android notification settings for later changes. Denial never blocks in-app history or checkout.
+- PDF downloads now use Android CreateDocument on every supported API. No broad storage read/write permissions are needed. PDF writing runs off the UI thread; cancellation is harmless and write errors report failure. Increased page allowance to prevent the existing short-receipt footer clipping.
+- Contacts permission is intentionally just-in-time in the upcoming WhatsApp contact search. No custom permission explanation screen.
+- Reviewed permission-denied and canceled-picker paths; git diff --check passed. Android/device validation remains pending.

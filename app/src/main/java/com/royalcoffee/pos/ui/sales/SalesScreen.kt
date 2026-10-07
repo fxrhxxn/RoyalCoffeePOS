@@ -77,6 +77,7 @@ fun SalesScreen(
     val userRole = authenticatedUser.role
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val downloadReceipt = com.royalcoffee.pos.ui.receipt.rememberReceiptDownloader()
     
     val database = remember(context) {
         RoyalCoffeeDatabaseProvider.getDatabase(context)
@@ -329,9 +330,7 @@ fun SalesScreen(
                                 scope.launch {
                                     val fullReceipt = receiptRepository.getFullReceipt(receiptId)
                                     if (fullReceipt != null) {
-                                        val uri = ReceiptPdfGenerator.generateAndSavePdf(context, fullReceipt)
-                                        val msg = if (uri != null) "Saved: Receipt_${fullReceipt.receiptNumber}.pdf" else "Unable to save PDF."
-                                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                        downloadReceipt(fullReceipt)
                                     } else {
                                         Toast.makeText(context, "Error: Receipt data not found.", Toast.LENGTH_SHORT).show()
                                     }
@@ -458,9 +457,7 @@ fun SalesScreen(
                 Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             },
             onDownloadPdf = { receipt ->
-                val uri = ReceiptPdfGenerator.generateAndSavePdf(context, receipt)
-                val msg = if (uri != null) "Saved: Receipt_${receipt.receiptNumber}.pdf" else "Unable to save PDF."
-                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                downloadReceipt(receipt)
             }
         )
     }
