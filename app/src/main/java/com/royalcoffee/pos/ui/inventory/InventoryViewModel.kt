@@ -404,7 +404,8 @@ class InventoryViewModel(
         price: Long,
         cost: Long,
         stock: Int,
-        reorder: Int
+        reorder: Int,
+        expiryDay: Long? = null
     ) {
 
         if (userRole != UserRole.ADMIN) {
@@ -438,7 +439,8 @@ class InventoryViewModel(
 
                         isActive =
                             true
-                    )
+                    ),
+                    initialExpiryDay = expiryDay
                 )
 
                 inventoryError = null

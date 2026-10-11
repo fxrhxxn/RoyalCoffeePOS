@@ -57,6 +57,7 @@ import com.royalcoffee.pos.ui.receipt.ReceiptHistoryScreen
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModel
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModelFactory
 import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
+import com.royalcoffee.pos.ui.receipt.rememberWhatsAppReceiptSharer
 import com.royalcoffee.pos.util.ReceiptPdfGenerator
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -77,11 +78,12 @@ fun SalesScreen(
     val userRole = authenticatedUser.role
     var historyPreview by remember { mutableStateOf<com.royalcoffee.pos.model.Receipt?>(null) }
     var historyLoading by remember { mutableStateOf(false) }
-    var sharingReceipt by remember { mutableStateOf<com.royalcoffee.pos.model.Receipt?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadReceipt = com.royalcoffee.pos.ui.receipt.rememberReceiptDownloader()
-    
+    val shareReceiptViaWhatsApp = rememberWhatsAppReceiptSharer()
+
+
     val database = remember(context) {
         RoyalCoffeeDatabaseProvider.getDatabase(context)
     }
@@ -124,7 +126,7 @@ fun SalesScreen(
 
     val salesViewModel: SalesViewModel = viewModel(
         key = "sales-${authenticatedUser.sessionId}",
-        factory = SalesViewModelFactory(receiptRepository = receiptRepository, userRole = userRole)
+        factory = SalesViewModelFactory(receiptRepository = receiptRepository, businessRepository = businessRepository ,userRole = userRole)
     )
 
     val productViewModel: ProductViewModel = viewModel(
@@ -261,6 +263,7 @@ fun SalesScreen(
                             selectedCategory = selectedCategory,
                             searchText = searchText,
                             products = filteredProducts,
+                            hasCatalogProducts = products.isNotEmpty(),
                             productCardMinWidth = productCardMinWidth,
                             contentPadding = productAreaPadding,
                             canCancelOrder = hasActiveOrder(),
@@ -355,7 +358,11 @@ fun SalesScreen(
                         )
                     }
                     AppScreen.NOTIFICATIONS -> {
-                        com.royalcoffee.pos.notifications.StockAlertsScreen(database, userRole == UserRole.ADMIN, Modifier.weight(1f).fillMaxHeight())
+                        com.royalcoffee.pos.notifications.StockAlertsScreen(
+                            database = database,
+                            isAdmin = userRole == UserRole.ADMIN,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        )
                     }
                     AppScreen.SETTINGS -> {
                         SettingsScreen(
@@ -471,12 +478,8 @@ fun SalesScreen(
                 Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
             },
             onDownloadPdf = downloadReceipt,
-            onShareWhatsApp = { sharingReceipt = it }
+            onShareWhatsApp = shareReceiptViaWhatsApp
         )
-    }
-
-    sharingReceipt?.let { receipt ->
-        com.royalcoffee.pos.ui.receipt.WhatsAppReceiptDialog(receipt) { sharingReceipt = null }
     }
 
     if (salesViewModel.showReceiptPreviewDialog && salesViewModel.currentReceipt != null) {
@@ -488,7 +491,7 @@ fun SalesScreen(
                 val res = receiptPrinter.printReceipt(receipt, defaultPrinter)
                 Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             },
-            onShareWhatsApp = { sharingReceipt = it },
+            onShareWhatsApp = shareReceiptViaWhatsApp,
             onDownloadPdf = { receipt ->
                 downloadReceipt(receipt)
             }
@@ -563,6 +566,7 @@ private fun ProductArea(
     selectedCategory: String,
     searchText: String,
     products: List<Product>,
+    hasCatalogProducts: Boolean,
     productCardMinWidth: Dp,
     contentPadding: Dp,
     canCancelOrder: Boolean,
@@ -612,16 +616,32 @@ private fun ProductArea(
         }
         Spacer(modifier = Modifier.height(20.dp))
         Box(modifier = Modifier.weight(1f)) {
-            LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Adaptive(productCardMinWidth),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 60.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(products) { product ->
-                    ProductCard(product, !isOrderLocked) { onProductClick(product) }
+            if (products.isEmpty()) {
+                Text(
+                    text = if (hasCatalogProducts) {
+                        "No products match this search or category."
+                    } else {
+                        "No products have been added yet. Open Inventory to add products before starting a sale."
+                    },
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    fontFamily = CinzelFontFamily
+                )
+            } else {
+                // Using a LazyVerticalGrid to display the products
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(productCardMinWidth),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 60.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(products) { product ->
+                        ProductCard(product, !isOrderLocked) { onProductClick(product) }
+                    }
                 }
             }
         }
@@ -721,7 +741,7 @@ private fun TicketPanel(
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(14.dp)
                 ) { Text("Clear Ticket") }
-                
+
                 Button(
                     onClick = onChargeClick,
                     enabled = cartItems.isNotEmpty(),
@@ -782,9 +802,9 @@ private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDe
                         enabled = !locked,
                         shape = RoundedCornerShape(10.dp)
                     ) { Text("-", style = MaterialTheme.typography.titleMedium) }
-                    
+
                     Text("${item.quantity}", fontWeight = FontWeight.Bold)
-                    
+
                     TextButton(
                         onClick = { onInc() },
                         enabled = !locked && item.quantity < item.product.stockQuantity,
@@ -832,6 +852,3 @@ private fun PaymentSummaryCard(method: PaymentMethod, paid: Long?, change: Long?
         }
     }
 }
-
-
-

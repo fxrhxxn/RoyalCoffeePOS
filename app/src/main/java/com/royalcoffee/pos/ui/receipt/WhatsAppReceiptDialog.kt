@@ -1,5 +1,7 @@
 package com.royalcoffee.pos.ui.receipt
 
+/*package com.royalcoffee.pos.ui.receipt
+
 import android.Manifest
 import android.content.*
 import android.content.pm.PackageManager
@@ -175,3 +177,4 @@ fun WhatsAppReceiptDialog(receipt: Receipt, onDismiss: () -> Unit) {
         confirmButton = { TextButton(onClick = { offerSave = false; saveContact(sharedName, sharedNumber) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = { offerSave = false }) { Text("Not now") } })
 }
+*/

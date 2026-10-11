@@ -10,6 +10,7 @@ import com.royalcoffee.pos.data.local.entity.InventoryHistoryEntity
 import com.royalcoffee.pos.data.local.entity.InventoryTransactionType
 import com.royalcoffee.pos.data.local.entity.ProductEntity
 import kotlinx.coroutines.flow.Flow
+import com.royalcoffee.pos.notifications.NamedBatch
 
 /**
  * ProductRepository acts as a clean layer between the UI and ProductDao.
@@ -51,16 +52,31 @@ class ProductRepository(
     val lowStockCount: Flow<Int> = productDao.getLowStockCount()
     val outOfStockCount: Flow<Int> = productDao.getOutOfStockCount()
 
+    /** Active stock batches for the product editor's expiry management. */
+    fun observeBatchesForProduct(productId: Int): Flow<List<NamedBatch>> =
+        database.stockAlertDao().observeBatches(productId)
+
+    /** Update an expiry date from the inventory product editor. */
+    suspend fun updateBatchExpiry(batchId: Long, expiryDay: Long?) {
+        database.stockAlertDao().updateExpiry(batchId, expiryDay)
+    }
+
     /**
      * Inserts one product into the database and records initial stock if > 0.
      */
-    suspend fun addProduct(product: ProductEntity) {
+    suspend fun addProduct(product: ProductEntity, initialExpiryDay: Long? = null) {
         validateMoney(product)
         database.withTransaction {
             val productId = productDao.insertProductAndGetId(product).toInt()
-            
+
             if (product.stockQuantity > 0) {
-                database.stockAlertDao().insertBatch(StockBatch(productId = productId, remaining = product.stockQuantity))
+                database.stockAlertDao().insertBatch(
+                    StockBatch(
+                        productId = productId,
+                        remaining = product.stockQuantity,
+                        expiryDay = initialExpiryDay
+                    )
+                )
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(
                         productId = productId,
@@ -102,7 +118,7 @@ class ProductRepository(
             val product = productDao.getProductById(productId) ?: return@withTransaction
             val previousStock = product.stockQuantity
             val newStock = Math.addExact(previousStock, quantityChange)
-            
+
             if (newStock < 0) throw IllegalArgumentException("Resulting stock cannot be negative")
 
             // Atomic update check
@@ -163,191 +179,4 @@ class ProductRepository(
         productDao.updateProduct(product.copy(isActive = true))
     }
 
-    /**
-     * Inserts multiple products into the database.
-     */
-    suspend fun insertProducts(products: List<ProductEntity>) {
-        products.forEach { addProduct(it) }
-    }
-
-    /**
-     * Seeds default products only if the products table is empty.
-     *
-     * This prevents duplicate sample products from being inserted every time
-     * the app starts.
-     */
-    suspend fun seedDefaultProductsIfNeeded() {
-        val productCount = productDao.getProductCount()
-
-        if (productCount == 0) {
-            insertProducts(defaultProducts())
-        }
-    }
-
-    /**
-     *  Default products already preset in the application.
-     */
-    private fun defaultProducts(): List<ProductEntity> {
-        return listOf(
-            // --- Hot Drinks ---
-            ProductEntity(
-                productName = "Latte",
-                category = "Hot Drinks",
-                unitPrice = 12000L,
-                costPrice = 4500L,
-                stockQuantity = 28,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Espresso",
-                category = "Hot Drinks",
-                unitPrice = 8000L,
-                costPrice = 3000L,
-                stockQuantity = 40,
-                reorderLevel = 15
-            ),
-            ProductEntity(
-                productName = "Cappuccino",
-                category = "Hot Drinks",
-                unitPrice = 11000L,
-                costPrice = 4000L,
-                stockQuantity = 30,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Americano",
-                category = "Hot Drinks",
-                unitPrice = 9000L,
-                costPrice = 3500L,
-                stockQuantity = 35,
-                reorderLevel = 12
-            ),
-            ProductEntity(
-                productName = "Mocha",
-                category = "Hot Drinks",
-                unitPrice = 13000L,
-                costPrice = 5000L,
-                stockQuantity = 25,
-                reorderLevel = 8
-            ),
-            ProductEntity(
-                productName = "Hot Chocolate",
-                category = "Hot Drinks",
-                unitPrice = 10000L,
-                costPrice = 4000L,
-                stockQuantity = 20,
-                reorderLevel = 8
-            ),
-
-            // --- Cold Drinks ---
-            ProductEntity(
-                productName = "Iced Americano",
-                category = "Cold Drinks",
-                unitPrice = 9500L,
-                costPrice = 3500L,
-                stockQuantity = 30,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Iced Latte",
-                category = "Cold Drinks",
-                unitPrice = 12500L,
-                costPrice = 4500L,
-                stockQuantity = 25,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Iced Matcha",
-                category = "Cold Drinks",
-                unitPrice = 14000L,
-                costPrice = 5500L,
-                stockQuantity = 20,
-                reorderLevel = 8
-            ),
-            ProductEntity(
-                productName = "Cold Brew",
-                category = "Cold Drinks",
-                unitPrice = 11000L,
-                costPrice = 4000L,
-                stockQuantity = 25,
-                reorderLevel = 10
-            ),
-
-            // --- Pastries ---
-            ProductEntity(
-                productName = "Croissant",
-                category = "Pastries",
-                unitPrice = 6000L,
-                costPrice = 2000L,
-                stockQuantity = 15,
-                reorderLevel = 5
-            ),
-            ProductEntity(
-                productName = "Donut",
-                category = "Pastries",
-                unitPrice = 5000L,
-                costPrice = 1500L,
-                stockQuantity = 20,
-                reorderLevel = 6
-            ),
-            ProductEntity(
-                productName = "Cupcake",
-                category = "Pastries",
-                unitPrice = 5500L,
-                costPrice = 1800L,
-                stockQuantity = 18,
-                reorderLevel = 5
-            ),
-            ProductEntity(
-                productName = "Cheesecake",
-                category = "Pastries",
-                unitPrice = 15000L,
-                costPrice = 6000L,
-                stockQuantity = 10,
-                reorderLevel = 3
-            ),
-            ProductEntity(
-                productName = "Muffin",
-                category = "Pastries",
-                unitPrice = 6500L,
-                costPrice = 2200L,
-                stockQuantity = 16,
-                reorderLevel = 5
-            ),
-
-            // --- Food ---
-            ProductEntity(
-                productName = "Panini",
-                category = "Food",
-                unitPrice = 18000L,
-                costPrice = 7500L,
-                stockQuantity = 12,
-                reorderLevel = 4
-            ),
-            ProductEntity(
-                productName = "Wrap",
-                category = "Food",
-                unitPrice = 16000L,
-                costPrice = 6500L,
-                stockQuantity = 15,
-                reorderLevel = 5
-            ),
-            ProductEntity(
-                productName = "Salad",
-                category = "Food",
-                unitPrice = 20000L,
-                costPrice = 8000L,
-                stockQuantity = 10,
-                reorderLevel = 3
-            ),
-            ProductEntity(
-                productName = "Pasta",
-                category = "Food",
-                unitPrice = 24000L,
-                costPrice = 9500L,
-                stockQuantity = 8,
-                reorderLevel = 2
-            )
-        )
-    }
 }

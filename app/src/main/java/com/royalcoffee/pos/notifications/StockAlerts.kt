@@ -38,6 +38,8 @@ interface StockAlertDao {
     suspend fun updateExpiry(id: Long, day: Long?)
     @Query("SELECT b.id,b.productId,b.remaining,b.expiryDay,p.product_name AS productName FROM stock_batches b JOIN products p ON p.product_id=b.productId WHERE b.remaining>0 AND p.is_active=1 ORDER BY b.expiryDay IS NULL,b.expiryDay,b.id")
     fun observeBatches(): Flow<List<NamedBatch>>
+    @Query("SELECT b.id,b.productId,b.remaining,b.expiryDay,p.product_name AS productName FROM stock_batches b JOIN products p ON p.product_id=b.productId WHERE b.productId=:productId AND b.remaining>0 ORDER BY b.expiryDay IS NULL,b.expiryDay,b.id")
+    fun observeBatches(productId: Int): Flow<List<NamedBatch>>
     @Query("SELECT * FROM stock_alerts ORDER BY createdAt DESC")
     fun observeAlerts(): Flow<List<StockAlert>>
     @Query("SELECT * FROM stock_alerts WHERE active=1")
