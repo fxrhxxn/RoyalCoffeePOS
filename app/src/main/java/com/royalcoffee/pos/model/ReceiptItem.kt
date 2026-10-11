@@ -15,8 +15,8 @@ package com.royalcoffee.pos.model
 data class ReceiptItem(
     val productName: String,
     val quantity: Int,
-    val unitPrice: Int,
-    val costPrice: Int? = null
+    val unitPrice: Long,
+    val costPrice: Long? = null
 ) {
     /**
      * Calculates the total price for this item line.
@@ -26,6 +26,6 @@ data class ReceiptItem(
      * unitPrice = 120
      * lineTotal = 240
      */
-    val lineTotal: Int
+    val lineTotal: Long
         get() = quantity * unitPrice
 }

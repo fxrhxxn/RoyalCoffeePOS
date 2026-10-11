@@ -37,10 +37,10 @@ enum class DashboardRange(val label: String) {
 data class DashboardState(
     val isLoading: Boolean = false,
     val selectedRange: DashboardRange = DashboardRange.TODAY,
-    val totalRevenue: Int = 0,
+    val totalRevenue: Long = 0,
     val totalOrders: Int = 0,
-    val avgOrderValue: Int = 0,
-    val grossProfit: Int = 0,
+    val avgOrderValue: Long = 0,
+    val grossProfit: Long = 0,
     val margin: Int = 0,
     val profitDataCompleteness: String = "",
     val topProduct: String = "N/A",
@@ -153,7 +153,7 @@ class DashboardViewModel(
             val outOfStock = allProds.filter { it.stockQuantity <= 0 && it.isActive }
 
             val revTrend = calculateTrend(currentSum.totalSales, prevSum.totalSales)
-            val ordTrend = calculateTrend(currentSum.orderCount, prevSum.orderCount)
+            val ordTrend = calculateTrend(currentSum.orderCount.toLong(), prevSum.orderCount.toLong())
             
             val currentGP = currentProfit.knownCostRevenue - currentProfit.totalCOGS
             val prevGP = prevProfit.knownCostRevenue - prevProfit.totalCOGS
@@ -197,8 +197,8 @@ class DashboardViewModel(
         }
     }
 
-    private fun calculateTrend(current: Int, previous: Int): Pair<String, Boolean> {
-        if (previous == 0) {
+    private fun calculateTrend(current: Long, previous: Long): Pair<String, Boolean> {
+        if (previous == 0L) {
             return if (current > 0) "↑ New" to true else "No comparison" to true
         }
 
@@ -281,3 +281,4 @@ class DashboardViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+

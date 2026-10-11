@@ -10,6 +10,6 @@ package com.royalcoffee.pos.ui.receipt
 data class ReceiptDetailItem(
     val productName: String,
     val quantity: Int,
-    val unitPrice: Int,
-    val lineTotal: Int
+    val unitPrice: Long,
+    val lineTotal: Long
 )

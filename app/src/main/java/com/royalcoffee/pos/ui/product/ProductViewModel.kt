@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /**
  * ProductViewModel connects the UI layer to product data from Room.
@@ -20,27 +19,13 @@ import kotlinx.coroutines.launch
  * Instead:
  * UI -> ViewModel -> Repository -> DAO -> Room database
  */
+
+
+// Defining the class ProductViewModel that extends ViewModel
 class ProductViewModel(
     private val productRepository: ProductRepository
 ) : ViewModel() {
-
-    init {
-        /**
-         * Insert default products only if the products table is empty.
-         *
-         * This means the app will automatically have starter products
-         * the first time the database is created.
-         */
-        viewModelScope.launch {
-            productRepository.seedDefaultProductsIfNeeded()
-        }
-    }
-
-    /**
-     * Products used by the Sales screen.
-     *
-     * These are active products only.
-     */
+    // Active products used by the Sales screen.
     val products: StateFlow<List<Product>> = productRepository.activeProducts
         .map { productEntities ->
             productEntities.map { productEntity ->
@@ -53,11 +38,8 @@ class ProductViewModel(
             initialValue = emptyList()
         )
 
-    /**
-     * Products used by the Inventory screen.
-     *
-     * These include stock quantity and reorder level.
-     */
+     // Products used by the Inventory screen
+     // These include stock quantity and reorder level.
     val inventoryProducts: StateFlow<List<InventoryProduct>> = productRepository.allProducts
         .map { productEntities ->
             productEntities.map { productEntity ->
@@ -71,9 +53,8 @@ class ProductViewModel(
         )
 }
 
-/**
- * Converts a database ProductEntity into the Product model used by the Sales screen.
- */
+// Converts a database ProductEntity into the Product model used by the Sales screen.
+// Inherits from the Product data class.
 private fun ProductEntity.toProduct(): Product {
     return Product(
         id = productId,
@@ -86,9 +67,7 @@ private fun ProductEntity.toProduct(): Product {
     )
 }
 
-/**
- * Converts a database ProductEntity into the InventoryProduct model used by the Inventory screen.
- */
+// Converts a database ProductEntity into the InventoryProduct model used by the Inventory screen.
 private fun ProductEntity.toInventoryProduct(): InventoryProduct {
     return InventoryProduct(
         productId = productId,
@@ -102,15 +81,15 @@ private fun ProductEntity.toInventoryProduct(): InventoryProduct {
     )
 }
 
-/**
- * ProductViewModelFactory allows us to create ProductViewModel manually.
- *
- * We need this because ProductViewModel requires a ProductRepository parameter.
- */
+
+// The ProductViewModelFactory allows us to create ProductViewModel manually, because
+// ProductViewModel needs a ProductRepository parameter.
 class ProductViewModelFactory(
     private val productRepository: ProductRepository
 ) : ViewModelProvider.Factory {
 
+    // @Supress is used to suppress the warning that says "UNCHECKED_CAST"
+    // Meaning that the cast is safe as long as the class is a subclass of ViewModel
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(
         modelClass: Class<T>

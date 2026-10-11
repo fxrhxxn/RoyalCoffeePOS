@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.receipt
 
+import com.royalcoffee.pos.model.Money
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +56,9 @@ fun ReceiptPreviewDialog(
     onClose: () -> Unit,
     onNextOrder: () -> Unit,
     onPrintReceipt: (Receipt) -> Unit,
-    onDownloadPdf: (Receipt) -> Unit
+    onDownloadPdf: (Receipt) -> Unit,
+    onShareWhatsApp: (Receipt) -> Unit,
+    isHistorical: Boolean = false
 ) {
     Dialog(
         onDismissRequest = {
@@ -156,6 +159,7 @@ fun ReceiptPreviewDialog(
                          * Right-side action panel.
                          */
                         ReceiptSideActionPanel(
+                            isHistorical = isHistorical,
                             onClose = onClose,
                             onNextOrder = onNextOrder,
 
@@ -163,6 +167,7 @@ fun ReceiptPreviewDialog(
                              * The dialog does not decide how printing works.
                              * It simply tells the parent screen that the user clicked Print Receipt.
                              */
+                            onShareWhatsApp = { onShareWhatsApp(receipt) },
                             onPrintReceipt = {
                                 onPrintReceipt(receipt)
                             },
@@ -196,6 +201,8 @@ private fun ReceiptSideActionPanel(
     onNextOrder: () -> Unit,
     onPrintReceipt: () -> Unit,
     onDownloadPdf: () -> Unit,
+    onShareWhatsApp: () -> Unit,
+    isHistorical: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -233,13 +240,7 @@ private fun ReceiptSideActionPanel(
 
         ReceiptSecondaryActionButton(
             text = "Share via WhatsApp",
-            onClick = {
-                Toast.makeText(
-                    context,
-                    "WhatsApp sharing is not available yet.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            onClick = onShareWhatsApp
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -258,7 +259,7 @@ private fun ReceiptSideActionPanel(
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(
-                text = "Print Receipt",
+                text = if (isHistorical) "Reprint Receipt" else "Print Receipt",
                 style = MaterialTheme.typography.titleSmall
             )
         }
@@ -268,7 +269,7 @@ private fun ReceiptSideActionPanel(
         /**
          * Next Order completes the current order and clears the POS screen.
          */
-        OutlinedButton(
+        if (!isHistorical) OutlinedButton(
             onClick = onNextOrder,
             modifier = Modifier
                 .fillMaxWidth()
@@ -459,13 +460,13 @@ private fun ThermalReceiptItems(
         ReceiptMonoText(
             text = formatReceiptLine(
                 left = item.productName,
-                right = "Rs ${item.lineTotal}"
+                right = "Rs ${Money.format(item.lineTotal)}"
             ),
             fontWeight = FontWeight.Medium
         )
 
         ReceiptMonoText(
-            text = "  ${item.quantity} x Rs ${item.unitPrice}",
+            text = "  ${item.quantity} x Rs ${Money.format(item.unitPrice)}",
             color = Color.Black.copy(alpha = 0.68f),
             fontSize = 12.sp
         )
@@ -487,21 +488,21 @@ private fun ThermalReceiptSummary(
     ReceiptMonoText(
         text = formatReceiptLine(
             left = "Subtotal",
-            right = "Rs ${receipt.subtotal}"
+            right = "Rs ${Money.format(receipt.subtotal)}"
         )
     )
 
     ReceiptMonoText(
         text = formatReceiptLine(
-            left = "Discount",
-            right = "Rs ${receipt.discount}"
+            left = receipt.discountPercent?.let { "Discount ($it%)" } ?: "Discount",
+            right = "Rs ${Money.format(receipt.discount)}"
         )
     )
 
     ReceiptMonoText(
         text = formatReceiptLine(
-            left = "Tax",
-            right = "Rs ${receipt.tax}"
+            left = if (receipt.vatIncluded) "VAT Included" else "Tax",
+            right = if (receipt.vatIncluded) "" else "Rs ${Money.format(receipt.tax)}"
         )
     )
 
@@ -510,7 +511,7 @@ private fun ThermalReceiptSummary(
     ReceiptMonoText(
         text = formatReceiptLine(
             left = "TOTAL",
-            right = "Rs ${receipt.total}"
+            right = "Rs ${Money.format(receipt.total)}"
         ),
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp
@@ -546,7 +547,7 @@ private fun ThermalPaymentSection(
         ReceiptMonoText(
             text = formatReceiptLine(
                 left = "Amount Paid",
-                right = "Rs ${receipt.amountPaid}"
+                right = "Rs ${Money.format(receipt.amountPaid)}"
             )
         )
     }
@@ -555,7 +556,7 @@ private fun ThermalPaymentSection(
         ReceiptMonoText(
             text = formatReceiptLine(
                 left = "Change",
-                right = "Rs ${receipt.changeGiven}"
+                right = "Rs ${Money.format(requireNotNull(receipt.changeGiven))}"
             )
         )
     }

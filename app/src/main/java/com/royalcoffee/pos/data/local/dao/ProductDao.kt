@@ -19,6 +19,14 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface ProductDao {
+    @Query("SELECT EXISTS(SELECT 1 FROM inventory_history WHERE product_id=:id) OR EXISTS(SELECT 1 FROM receipt_details WHERE product_id=:id) OR EXISTS(SELECT 1 FROM products WHERE product_id=:id AND (legacy_history_uncertain=1 OR stock_quantity>0))")
+    suspend fun hasHistory(id: Int): Boolean
+    @Query("DELETE FROM products WHERE product_id=:id")
+    suspend fun deleteProduct(id: Int)
+
+    @Query("SELECT * FROM products WHERE is_active=1")
+    suspend fun alertProducts(): List<ProductEntity>
+
 
     /**
      * Returns all active products.
@@ -98,7 +106,7 @@ interface ProductDao {
      * If a product with the same primary key already exists,
      * it will be replaced.
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertProduct(product: ProductEntity)
 
     /**
@@ -125,7 +133,7 @@ interface ProductDao {
      * This will be useful when we seed default sample products
      * the first time the app database is created.
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertProducts(products: List<ProductEntity>)
 
     /**
@@ -166,3 +174,4 @@ interface ProductDao {
     @Query("SELECT COUNT(*) FROM products")
     suspend fun getProductCount(): Int
 }
+

@@ -45,17 +45,17 @@ data class ProductEntity(
     val category: String,
 
     /**
-     * Selling price in Mauritian Rupees.
+     * VAT-inclusive selling price in cents (Rs 1 = 100 cents).
      */
     @ColumnInfo(name = "unit_price")
-    val unitPrice: Int,
+    val unitPrice: Long,
 
     /**
      * Cost price to produce or purchase the product.
      * 0 = Unknown / Not yet entered.
      */
     @ColumnInfo(name = "cost_price")
-    val costPrice: Int = 0,
+    val costPrice: Long = 0,
 
     /**
      * Current stock quantity.
@@ -76,5 +76,8 @@ data class ProductEntity(
      * false = hidden/disabled product
      */
     @ColumnInfo(name = "is_active")
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+
+    @ColumnInfo(name = "legacy_history_uncertain", defaultValue = "0")
+    val legacyHistoryUncertain: Boolean = false
 )

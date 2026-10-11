@@ -1,6 +1,8 @@
 package com.royalcoffee.pos.data.local.repository
 
+import com.royalcoffee.pos.notifications.*
 import androidx.room.withTransaction
+import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.data.local.dao.InventoryHistoryDao
 import com.royalcoffee.pos.data.local.dao.ProductDao
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabase
@@ -8,6 +10,7 @@ import com.royalcoffee.pos.data.local.entity.InventoryHistoryEntity
 import com.royalcoffee.pos.data.local.entity.InventoryTransactionType
 import com.royalcoffee.pos.data.local.entity.ProductEntity
 import kotlinx.coroutines.flow.Flow
+import com.royalcoffee.pos.notifications.NamedBatch
 
 /**
  * ProductRepository acts as a clean layer between the UI and ProductDao.
@@ -23,6 +26,12 @@ class ProductRepository(
     /**
      * Active products are the products that should appear in the Sales screen.
      */
+    private fun validateMoney(product: ProductEntity) {
+        require(product.unitPrice in 0..Money.MAX_INPUT_CENTS && product.costPrice in 0..Money.MAX_INPUT_CENTS) {
+            "Prices must be non-negative and within the supported range."
+        }
+    }
+
     val activeProducts: Flow<List<ProductEntity>> = productDao.getActiveProducts()
 
     /**
@@ -43,14 +52,31 @@ class ProductRepository(
     val lowStockCount: Flow<Int> = productDao.getLowStockCount()
     val outOfStockCount: Flow<Int> = productDao.getOutOfStockCount()
 
+    /** Active stock batches for the product editor's expiry management. */
+    fun observeBatchesForProduct(productId: Int): Flow<List<NamedBatch>> =
+        database.stockAlertDao().observeBatches(productId)
+
+    /** Update an expiry date from the inventory product editor. */
+    suspend fun updateBatchExpiry(batchId: Long, expiryDay: Long?) {
+        database.stockAlertDao().updateExpiry(batchId, expiryDay)
+    }
+
     /**
      * Inserts one product into the database and records initial stock if > 0.
      */
-    suspend fun addProduct(product: ProductEntity) {
+    suspend fun addProduct(product: ProductEntity, initialExpiryDay: Long? = null) {
+        validateMoney(product)
         database.withTransaction {
             val productId = productDao.insertProductAndGetId(product).toInt()
-            
+
             if (product.stockQuantity > 0) {
+                database.stockAlertDao().insertBatch(
+                    StockBatch(
+                        productId = productId,
+                        remaining = product.stockQuantity,
+                        expiryDay = initialExpiryDay
+                    )
+                )
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(
                         productId = productId,
@@ -70,7 +96,11 @@ class ProductRepository(
      * Updates an existing product's information (excludes manual stock change).
      */
     suspend fun updateProduct(product: ProductEntity) {
-        productDao.updateProduct(product)
+        validateMoney(product)
+        database.withTransaction {
+            val current = productDao.getProductById(product.productId) ?: return@withTransaction
+            productDao.updateProduct(product.copy(stockQuantity = current.stockQuantity, isActive = current.isActive, legacyHistoryUncertain = current.legacyHistoryUncertain))
+        }
     }
 
     /**
@@ -81,13 +111,14 @@ class ProductRepository(
         productId: Int,
         quantityChange: Int,
         type: InventoryTransactionType,
-        reason: String?
+        reason: String?,
+        expiryDay: Long? = null
     ) {
         database.withTransaction {
             val product = productDao.getProductById(productId) ?: return@withTransaction
             val previousStock = product.stockQuantity
-            val newStock = previousStock + quantityChange
-            
+            val newStock = Math.addExact(previousStock, quantityChange)
+
             if (newStock < 0) throw IllegalArgumentException("Resulting stock cannot be negative")
 
             // Atomic update check
@@ -101,6 +132,8 @@ class ProductRepository(
             }
 
             if (rowsAffected > 0) {
+                if (quantityChange > 0) database.stockAlertDao().insertBatch(StockBatch(productId = productId, remaining = quantityChange, expiryDay = expiryDay))
+                if (quantityChange < 0) database.consumeBatches(productId, -quantityChange, previousStock)
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(
                         productId = productId,
@@ -121,133 +154,29 @@ class ProductRepository(
     /**
      * Deactivates a product.
      */
-    suspend fun deactivateProduct(productId: Int) {
-        val product = productDao.getProductById(productId) ?: return
-        productDao.updateProduct(product.copy(isActive = false))
+    suspend fun canDeleteProduct(productId: Int, role: com.royalcoffee.pos.model.UserRole): Boolean {
+        require(role == com.royalcoffee.pos.model.UserRole.ADMIN) { "Admin access required" }
+        return !productDao.hasHistory(productId)
     }
 
-    /**
-     * Inserts multiple products into the database.
-     */
-    suspend fun insertProducts(products: List<ProductEntity>) {
-        productDao.insertProducts(products)
-    }
-
-    /**
-     * Seeds default products only if the products table is empty.
-     *
-     * This prevents duplicate sample products from being inserted every time
-     * the app starts.
-     */
-    suspend fun seedDefaultProductsIfNeeded() {
-        val productCount = productDao.getProductCount()
-
-        if (productCount == 0) {
-            productDao.insertProducts(
-                defaultProducts()
-            )
+    /** Recheck inside the mutation transaction: a concurrent sale must turn deletion into deactivation. */
+    suspend fun removeProduct(productId: Int, role: com.royalcoffee.pos.model.UserRole, allowPermanentDelete: Boolean): Boolean = database.withTransaction {
+        require(role == com.royalcoffee.pos.model.UserRole.ADMIN) { "Admin access required" }
+        val product = productDao.getProductById(productId) ?: return@withTransaction false
+        if (allowPermanentDelete && !productDao.hasHistory(productId)) {
+            database.stockAlertDao().deleteEmptyProductBatches(productId)
+            productDao.deleteProduct(productId)
+            true
+        } else {
+            productDao.updateProduct(product.copy(isActive = false))
+            false
         }
     }
 
-    /**
-     * Temporary default products for first database setup.
-     *
-     * Later, Admin users will be able to add/edit products from the app.
-     */
-    private fun defaultProducts(): List<ProductEntity> {
-        return listOf(
-            ProductEntity(
-                productName = "Latte",
-                category = "Coffee",
-                unitPrice = 120,
-                costPrice = 45,
-                stockQuantity = 28,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Espresso",
-                category = "Coffee",
-                unitPrice = 95,
-                costPrice = 30,
-                stockQuantity = 35,
-                reorderLevel = 12
-            ),
-
-            ProductEntity(
-                productName = "Black Coffee - small",
-                category = "Coffee",
-                unitPrice = 100,
-                stockQuantity = 20,
-                reorderLevel = 5
-            ),
-
-            ProductEntity(
-                productName = "Croissant",
-                category = "Pastries",
-                unitPrice = 80,
-                costPrice = 35,
-                stockQuantity = 5,
-                reorderLevel = 8
-            ),
-            ProductEntity(
-                productName = "Mocha",
-                category = "Coffee",
-                unitPrice = 135,
-                costPrice = 55,
-                stockQuantity = 18,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Iced Coffee",
-                category = "Cold",
-                unitPrice = 140,
-                costPrice = 50,
-                stockQuantity = 22,
-                reorderLevel = 10
-            ),
-            ProductEntity(
-                productName = "Muffin",
-                category = "Pastries",
-                unitPrice = 75,
-                costPrice = 25,
-                stockQuantity = 3,
-                reorderLevel = 6
-            ),
-            ProductEntity(
-                productName = "Hot Chocolate",
-                category = "Hot",
-                unitPrice = 110,
-                costPrice = 40,
-                stockQuantity = 16,
-                reorderLevel = 8
-            ),
-
-            ProductEntity(
-                productName = "Cappuccino",
-                category = "Coffee",
-                unitPrice = 125,
-                stockQuantity = 20,
-                reorderLevel = 8
-            ),
-
-            ProductEntity(
-                productName = "Royal Coffee Special",
-                category = "Coffee",
-                unitPrice = 125,
-                stockQuantity = 20,
-                reorderLevel = 8
-            ),
-
-            ProductEntity(
-                productName = "Eclaire",
-                category = "Pastries",
-                unitPrice = 75,
-                stockQuantity = 20,
-                reorderLevel = 8
-            ),
-
-
-
-        )
+    suspend fun reactivateProduct(productId: Int, role: com.royalcoffee.pos.model.UserRole) = database.withTransaction {
+        require(role == com.royalcoffee.pos.model.UserRole.ADMIN) { "Admin access required" }
+        val product = productDao.getProductById(productId) ?: return@withTransaction
+        productDao.updateProduct(product.copy(isActive = true))
     }
+
 }

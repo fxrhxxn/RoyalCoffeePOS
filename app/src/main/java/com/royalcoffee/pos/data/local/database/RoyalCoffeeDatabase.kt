@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.data.local.database
 
+import com.royalcoffee.pos.notifications.*
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
@@ -15,6 +16,8 @@ import com.royalcoffee.pos.data.local.entity.ProductEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptDetailEntity
 import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.data.local.entity.UserEntity
+import com.royalcoffee.pos.data.local.dao.CategoryDao
+import com.royalcoffee.pos.data.local.entity.CategoryEntity
 
 /**
  * RoyalCoffeeDatabase is the main Room database for the app.
@@ -31,39 +34,76 @@ import com.royalcoffee.pos.data.local.entity.UserEntity
         ReceiptDetailEntity::class,
         InventoryHistoryEntity::class,
         UserEntity::class,
-        BusinessEntity::class
+        BusinessEntity::class,
+        StockBatch::class,
+        StockAlert::class,
+        CategoryEntity::class
     ],
-    version = 8,
+    version = 12,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
-    /**
-     * Gives access to product-related database operations.
-     */
+    abstract fun stockAlertDao(): StockAlertDao
+
+    // Gives access to product-related database operations.
     abstract fun productDao(): ProductDao
 
-    /**
-     * Gives access to receipt-related database operations.
-     */
+    // Gives access to category-related database operations.
+    abstract fun CategoryDao(): CategoryDao
+
+    // Gives access to receipt-related database operations.
     abstract fun receiptDao(): ReceiptDao
 
-    /**
-     * Gives access to inventory history operations.
-     */
+    // Gives access to inventory history operations.
     abstract fun inventoryHistoryDao(): InventoryHistoryDao
 
-    /**
-     * Gives access to user operations.
-     */
+    // Gives access to user operations.
     abstract fun userDao(): UserDao
 
-    /**
-     * Gives access to business info operations.
-     */
+    // Gives access to business info operations.
     abstract fun businessDao(): BusinessDao
 
+
+
     companion object {
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE products ADD COLUMN legacy_history_uncertain INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE receipt_details ADD COLUMN product_id INTEGER REFERENCES products(product_id) ON UPDATE NO ACTION ON DELETE RESTRICT")
+                db.execSQL("CREATE INDEX index_receipt_details_product_id ON receipt_details(product_id)")
+                // Names alone cannot reliably identify renamed legacy products. Preserve their history conservatively.
+                db.execSQL("UPDATE products SET legacy_history_uncertain = 1 WHERE EXISTS (SELECT 1 FROM receipt_details WHERE product_id IS NULL)")
+                db.execSQL("CREATE TABLE inventory_history_new (history_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, product_id INTEGER NOT NULL, product_name_snapshot TEXT NOT NULL, transaction_type TEXT NOT NULL, quantity_change INTEGER NOT NULL, previous_stock INTEGER NOT NULL, new_stock INTEGER NOT NULL, reason TEXT, timestamp INTEGER NOT NULL, FOREIGN KEY(product_id) REFERENCES products(product_id) ON UPDATE NO ACTION ON DELETE RESTRICT)")
+                db.execSQL("INSERT INTO inventory_history_new SELECT history_id,product_id,product_name_snapshot,transaction_type,quantity_change,previous_stock,new_stock,reason,timestamp FROM inventory_history")
+                db.execSQL("DROP TABLE inventory_history")
+                db.execSQL("ALTER TABLE inventory_history_new RENAME TO inventory_history")
+                db.execSQL("CREATE INDEX index_inventory_history_product_id ON inventory_history(product_id)")
+                db.execSQL("CREATE INDEX index_inventory_history_timestamp ON inventory_history(timestamp)")
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS stock_batches (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, productId INTEGER NOT NULL, remaining INTEGER NOT NULL, expiryDay INTEGER, receivedAt INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_stock_batches_productId ON stock_batches(productId)")
+                db.execSQL("INSERT INTO stock_batches(productId,remaining,expiryDay,receivedAt) SELECT product_id,stock_quantity,NULL,0 FROM products WHERE stock_quantity>0")
+                db.execSQL("CREATE TABLE IF NOT EXISTS stock_alerts (alertKey TEXT NOT NULL PRIMARY KEY, message TEXT NOT NULL, createdAt INTEGER NOT NULL, active INTEGER NOT NULL, delivered INTEGER NOT NULL)")
+            }
+        }
+
+        /** Preserve all historical charges; convert whole rupees to cents exactly once. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE products SET unit_price = unit_price * 100, cost_price = cost_price * 100")
+                db.execSQL("UPDATE receipt_headers SET subtotal = subtotal * 100, discount = discount * 100, tax = tax * 100, total = total * 100, amount_paid = amount_paid * 100, change_given = change_given * 100")
+                db.execSQL("UPDATE receipt_details SET unit_price = unit_price * 100, cost_price = cost_price * 100, line_total = line_total * 100")
+                db.execSQL("ALTER TABLE receipt_headers ADD COLUMN discount_percent INTEGER")
+                db.execSQL("ALTER TABLE receipt_headers ADD COLUMN vat_included INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE receipt_details ADD COLUMN discount_amount INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         /**
          * Migration from version 3 to 4:
          * Adds the 'inventory_history' table.
@@ -134,5 +174,76 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `receipt_details` ADD COLUMN `cost_price` INTEGER")
             }
         }
+
+        /**
+         * Migration from version 8 to 9:
+         *
+         * Adds the categories table.
+         *
+         * Existing category names already stored inside products
+         * are copied into the categories table automatically.
+         *
+         * This allows existing installations to keep their product data
+         * while introducing proper category management.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+
+            override fun migrate(
+                db: SupportSQLiteDatabase
+            ) {
+
+                /*
+                 * 1. Create categories table.
+                 */
+                db.execSQL(
+                    """
+            CREATE TABLE IF NOT EXISTS `categories` (
+                `category_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `category_name` TEXT NOT NULL
+            )
+            """.trimIndent()
+                )
+                /*
+                 * 2. Create a unique index.
+                 *
+                 * Prevents exact duplicate category names.
+                 */
+                db.execSQL(
+                    """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+            `index_categories_category_name`
+            ON `categories` (`category_name`)
+            """.trimIndent()
+                )
+
+
+                /*
+                 * 3. Copy existing categories from products.
+                 *
+                 * For example:
+                 *
+                 * Latte       -> Coffee
+                 * Espresso    -> Coffee
+                 * Croissant   -> Pastries
+                 *
+                 * becomes:
+                 *
+                 * Coffee
+                 * Pastries
+                 *
+                 * inside the categories table.
+                 */
+                db.execSQL(
+                    """
+            INSERT OR IGNORE INTO `categories` (`category_name`)
+            SELECT DISTINCT TRIM(`category`)
+            FROM `products`
+            WHERE TRIM(`category`) <> ''
+            ORDER BY `category`
+            """.trimIndent()
+                )
+            }
+        }
     }
 }
+

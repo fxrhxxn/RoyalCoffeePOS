@@ -5012,3 +5012,86 @@ Farhaan and Christa should coordinate through GitHub using feature branches and 
 This DEV_LOG should be updated after every major feature or debugging checkpoint.
 
 
+
+
+## 2026-10-07 — Pricing and discounts (Room 10)
+
+- Category management was merged into `develop/pos-improvements` through PR #3
+  (`7ed5b14`); pricing work starts from that integration commit.
+- Added Long-cent money handling across products, cart, payments, receipt models,
+  history, PDF/thermal output and dashboard aggregates. Updated seed prices.
+- Removed additional VAT from new sales; added whole-order role-limited discounts
+  (BARISTA 0/5%, ADMIN 0/5/10/15%) and explicit HALF_UP rounding.
+- Persisted receipt percentage/VAT flags and exact line discount allocations for
+  net dashboard reporting. Historical monetary values remain preserved.
+- Registered non-destructive Room 9 -> 10 migration; removed destructive fallback.
+  Legacy migration gaps before version 8 remain documented, not fabricated.
+- Validation: six standalone Kotlin/JUnit tests and two host SQLite migration/query
+  tests passed. Full Gradle build attempted but blocked at distribution download
+  by Java network connectivity. Android/Room/device validation remains pending.
+- See `docs/PRICING.md` for the money contract, upgrade limits and pre-merge checklist.
+  No feature merge is authorized by this entry; owner approval is still required.
+
+## 2026-10-07 — Stock-limit warning
+- Added an acknowledgement dialog on the successful cart transition to available stock,
+  including products with one unit. Further taps at the limit silently do nothing.
+- Quantity-increase actions resolve the latest observed product stock. Final atomic
+  repository stock validation remains in place; acknowledging does not block checkout.
+- Reviewed empty/one-unit/multiple-unit and decrease-then-increase paths; diff check
+  passed. Android build/device validation remains blocked by Gradle download access.
+
+
+## Receipt user details
+
+- Pass a credential-free authenticated identity snapshot from successful login to sales.
+- Save the actual full name on each receipt; historical names remain unchanged when accounts change.
+- Give each login its own sales ViewModel key so a previous session cannot supply its cart or cashier identity. Role-based pricing still uses the authenticated role.
+- Reviewed login/logout and receipt snapshot paths; whitespace checks passed. Android compilation/device verification remains pending because the Gradle distribution cannot be downloaded in this environment.
+
+## Stock notifications and expiry batches
+
+- Room v11 adds persistent alerts and per-receipt-of-stock batches. Migration preserves all existing units with unknown expiry. Initial stock and restocks create batches; sales, waste and reductions consume earliest known expiry first, then undated batches, inside the stock transaction.
+- Optional restock expiry uses YYYY-MM-DD. Admins can correct individual batch dates in Notifications. Both roles can view active/resolved alerts and remaining batches. Expiry warnings start 14 days before expiry; expired batches remain sellable and are clearly marked.
+- Low-stock alerts trigger at or below reorder level, update quantity without repeating notification, resolve after restock and create a new history episode if stock falls again. Alerts are reconciled on observed inventory changes/resume and a persisted six-hour Android job (OS scheduling may defer it).
+- Android delivery respects permission and notification settings; denied delivery leaves in-app history available. Runtime permission UI is the next feature. No network delivery.
+- Prevented inventory metadata edits from overwriting concurrent stock changes. SQLite migration tests (3 total) and git diff --check pass; Android build/device checks remain pending due to unavailable Gradle distribution.
+
+
+## App permissions
+
+- Request the native Android 13+ notification permission when Notifications is first opened; remember the request and provide Android notification settings for later changes. Denial never blocks in-app history or checkout.
+- PDF downloads now use Android CreateDocument on every supported API. No broad storage read/write permissions are needed. PDF writing runs off the UI thread; cancellation is harmless and write errors report failure. Increased page allowance to prevent the existing short-receipt footer clipping.
+- Contacts permission is intentionally just-in-time in the upcoming WhatsApp contact search. No custom permission explanation screen.
+- Reviewed permission-denied and canceled-picker paths; git diff --check passed. Android/device validation remains pending.
+
+
+## WhatsApp receipt sharing
+
+- Added a shared receipt dialog with manual number, +230 normalization for local 7/8-digit input, optional name and live name/number contact search. READ_CONTACTS is requested only by Search contacts; manual entry works after denial. No WRITE_CONTACTS permission.
+- Regenerate a PDF in a narrowly scoped FileProvider cache, grant temporary read access, and launch only com.whatsapp with PDF plus thank-you text. If unavailable, show a modal; never fall back to another app or WhatsApp Business.
+- Documented platform limitation: WhatsApp's public click-to-chat supports number/text but does not document direct PDF attachment targeting. Open chat prepares the numbered chat; Share PDF explicitly asks the cashier to select that recipient in WhatsApp. No undocumented jid extra or claim of automatic sending. References: https://faq.whatsapp.com/5913398998672934 and https://developer.android.com/develop/ui/compose/sharing/send .
+- After returning from the share activity, offer native contact insertion only if an authorized phone lookup found the number absent. Unknown permission state is not mistaken for an absent contact; Save customer is also available manually. Returning never counts as proof of sending.
+- Checked FileProvider scope, read grant/ClipData, package query and all dialog call sites; git diff --check passes. Real-device WhatsApp attachment/recipient behavior remains an integration test requirement.
+
+
+## Historical receipt actions
+
+- Opening a historical receipt now uses the same full receipt preview with Download, WhatsApp and Reprint actions. All actions load persisted receipt amounts/items/cashier; they regenerate PDF content as needed, without requiring a previously saved PDF.
+- Historical previews hide Next Order and never clear or modify the active cart. Reprint uses the existing FakeReceiptPrinter path; hardware printing remains unconfigured as requested.
+- Receipt-load failures show a recoverable message and concurrent taps do not race. Added explicit Flow collect import for stock observation.
+- Reviewed new-sale and historical preview call sites and ran git diff --check. Android UI/device checks remain pending.
+
+## Product lifecycle
+
+- Admin removal first checks related stock/history. Confirm permanent deletion only for an empty, unreferenced product; otherwise deactivate. Recheck transactionally before mutation so concurrent sales preserve history. Reactivate is explicit in the inactive product menu; inventory keeps inactive products visible and labels them Inactive.
+- Room v12 adds nullable product identity to new receipt lines and RESTRICT foreign keys for receipt and inventory history. It retains every old receipt/history row. Legacy receipts cannot reliably identify renamed products, so pre-existing products are conservatively marked ineligible for hard deletion whenever unlinked legacy receipts exist; newly created empty products remain deletable.
+- Metadata edits preserve activation and legacy protection flags. Sales revalidate activation in the save transaction, rejecting products deactivated after cart entry. Removed REPLACE conflict policy from product inserts to avoid delete/reinsert side effects.
+- Five SQLite tests pass, including exact migration execution, unchanged inventory records, legacy safeguards, and foreign-key refusal of destructive deletion. git diff --check passes. Room-generated schema/Android UI verification remains pending in the Android build environment.
+
+## Combined integration review
+
+- All scoped feature branches are integrated into develop/pos-improvements. Added a per-login ViewModelStore to release authenticated state on logout, including inventory ViewModels and pending dialogs.
+- Added a GitHub Actions build/unit-test attempt with read-only repository permissions and a 25-minute timeout, plus docs/INTEGRATION_VALIDATION.md with explicit pending device checks and platform boundaries.
+- Local Android compilation remains blocked before source compilation by Gradle distribution network access. Five SQLite migration tests and whitespace verification pass. Main integration remains pending Android/Room and tablet/WhatsApp verification; no build or device success is implied.
+
+- Hosted validation run 37642106563 passed five SQLite tests and Room/KSP generation, then caught a stock-limit AlertDialog incorrectly nested inside LaunchedEffect. Moved rendering into the composable body and retained only payment-state cleanup in the effect. Rerunning the Android build after this concrete compiler fix.

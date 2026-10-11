@@ -1,6 +1,10 @@
 package com.royalcoffee.pos.data.local.repository
 
+import com.royalcoffee.pos.notifications.consumeBatches
 import androidx.room.withTransaction
+import com.royalcoffee.pos.model.Money
+import com.royalcoffee.pos.model.DiscountPolicy
+import com.royalcoffee.pos.model.UserRole
 import com.royalcoffee.pos.data.local.dao.CategorySales
 import com.royalcoffee.pos.data.local.dao.GrossProfitStats
 import com.royalcoffee.pos.data.local.dao.HourlySales
@@ -99,14 +103,29 @@ class ReceiptRepository(
      * If any part of this process fails (e.g. insufficient stock),
      * the entire transaction is rolled back.
      */
-    suspend fun saveReceipt(receipt: Receipt, cartItems: List<CartItem>) {
+    suspend fun saveReceipt(receipt: Receipt, cartItems: List<CartItem>, userRole: UserRole) {
+        val percent = requireNotNull(receipt.discountPercent)
+        DiscountPolicy.requireAllowed(userRole, percent)
+        val subtotal = Money.sum(cartItems.map { it.lineTotal })
+        require(cartItems.isNotEmpty() && receipt.items.size == cartItems.size)
+        require(receipt.subtotal == subtotal && receipt.discount == Money.discount(subtotal, percent))
+        require(receipt.vatIncluded && receipt.tax == 0L && receipt.total == subtotal - receipt.discount)
+        receipt.items.zip(cartItems).forEach { (item, cart) ->
+            require(item.productName == cart.product.name && item.quantity == cart.quantity &&
+                item.unitPrice == cart.product.price && item.costPrice == cart.product.costPrice)
+        }
+        require(receipt.amountPaid != null && receipt.amountPaid >= receipt.total &&
+            receipt.changeGiven == receipt.amountPaid - receipt.total)
+        val allocations = Money.allocateDiscount(receipt.items.map { it.lineTotal }, receipt.discount)
         database.withTransaction {
             /**
              * 1. Perform a final stock check and gather previous stock values
              * for history records.
              */
             val stockSnapshots = cartItems.map { cartItem ->
-                val currentStock = productDao.getProductStock(cartItem.product.id) ?: 0
+                val currentProduct = productDao.getProductById(cartItem.product.id)
+                check(currentProduct != null && currentProduct.isActive) { "${cartItem.product.name} is no longer available for sale." }
+                val currentStock = currentProduct.stockQuantity
                 if (currentStock < cartItem.quantity) {
                     throw InsufficientStockException(
                         productName = cartItem.product.name,
@@ -135,6 +154,7 @@ class ReceiptRepository(
                     )
                 }
 
+                database.consumeBatches(cartItem.product.id, cartItem.quantity, previousStock)
                 val newStock = previousStock - cartItem.quantity
                 inventoryHistoryDao.insertHistory(
                     InventoryHistoryEntity(
@@ -164,17 +184,21 @@ class ReceiptRepository(
                 paymentMethod = receipt.paymentMethod.name,
                 amountPaid = receipt.amountPaid,
                 changeGiven = receipt.changeGiven,
-                footerMessage = receipt.footerMessage
+                footerMessage = receipt.footerMessage,
+                discountPercent = receipt.discountPercent,
+                vatIncluded = receipt.vatIncluded
             )
 
-            val receiptDetails = receipt.items.map { item ->
+            val receiptDetails = receipt.items.mapIndexed { index, item ->
                 ReceiptDetailEntity(
                     receiptId = 0,
+                    productId = cartItems[index].product.id,
                     productName = item.productName,
                     quantity = item.quantity,
                     unitPrice = item.unitPrice,
                     costPrice = item.costPrice,
-                    lineTotal = item.lineTotal
+                    lineTotal = item.lineTotal,
+                    discountAmount = allocations[index]
                 )
             }
 
@@ -227,7 +251,9 @@ class ReceiptRepository(
             paymentMethod = PaymentMethod.valueOf(header.paymentMethod),
             amountPaid = header.amountPaid,
             changeGiven = header.changeGiven,
-            footerMessage = header.footerMessage
+            footerMessage = header.footerMessage,
+            discountPercent = header.discountPercent,
+            vatIncluded = header.vatIncluded
         )
     }
 
@@ -261,3 +287,4 @@ class ReceiptRepository(
     fun getMostProfitableProducts(start: Long, end: Long, limit: Int = 1): Flow<List<ProfitableProduct>> =
         receiptDao.getMostProfitableProducts(start, end, limit)
 }
+

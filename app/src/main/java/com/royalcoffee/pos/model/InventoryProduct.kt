@@ -33,12 +33,12 @@ data class InventoryProduct(
     /**
      * Selling price of the product.
      */
-    val unitPrice: Int,
+    val unitPrice: Long,
 
     /**
      * Cost price of the product.
      */
-    val costPrice: Int,
+    val costPrice: Long,
 
     /**
      * Current stock quantity available.
@@ -67,5 +67,5 @@ data class InventoryProduct(
      * User-friendly stock status shown in the Inventory screen.
      */
     val stockStatus: String
-        get() = if (isLowStock) "Low Stock" else "In Stock"
+        get() = if (!isActive) "Inactive" else if (isLowStock) "Low Stock" else "In Stock"
 }

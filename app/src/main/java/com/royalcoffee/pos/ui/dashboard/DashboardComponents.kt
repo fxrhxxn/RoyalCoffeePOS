@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.dashboard
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -129,7 +130,7 @@ fun DashboardLineChart(
             val gridLines = 4
             for (i in 0..gridLines) {
                 val y = height - (i * height / gridLines)
-                val value = (maxVal * i / gridLines).toInt()
+                val value = (maxVal * i / gridLines / 100).toLong()
                 drawLine(Color.LightGray.copy(alpha = 0.2f), Offset(0f, y), Offset(width, y), 1.dp.toPx())
                 val label = if (value >= 1000) "${value / 1000}k" else "$value"
                 val textLayoutResult = textMeasurer.measure(AnnotatedString("Rs $label"), TextStyle(fontSize = 10.sp, color = Color.Gray))
@@ -177,8 +178,8 @@ fun DashboardLineChart(
             ) {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Text(rev.dateLabel, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
-                    Text("Revenue: Rs ${rev.totalSales}", color = RoyalGold, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
-                    Text("Gross Profit: Rs $prof", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                    Text("Revenue: Rs ${Money.format(rev.totalSales)}", color = RoyalGold, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                    Text("Gross Profit: Rs ${Money.format(prof)}", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -296,7 +297,7 @@ fun DashboardDonutChart(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Rs ${selectedSlice!!.totalAmount}",
+                        text = "Rs ${Money.format(selectedSlice!!.totalAmount)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -307,7 +308,7 @@ fun DashboardDonutChart(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Text(
-                        text = "Rs $totalAmount",
+                        text = "Rs ${Money.format(totalAmount)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -370,8 +371,8 @@ private fun LegendItem(
 @Composable
 fun DashboardBarChart(
     labels: List<String>,
-    revenueValues: List<Int>,
-    profitValues: List<Int>? = null,
+    revenueValues: List<Long>,
+    profitValues: List<Long>? = null,
     valuePrefix: String = "Rs ",
     modifier: Modifier = Modifier
 ) {
@@ -404,7 +405,7 @@ fun DashboardBarChart(
                 
                 // Revenue Value Label
                 if (profitValues == null) {
-                    val valText = if (rev >= 1000) "${rev / 1000}k" else "$rev"
+                    val valText = Money.format(rev)
                     val valResult = textMeasurer.measure(AnnotatedString("$valuePrefix$valText"), TextStyle(fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold))
                     if (revHeight > 15.dp.toPx()) {
                         drawText(textLayoutResult = valResult, topLeft = Offset(x + (barWidth - valResult.size.width) / 2, revY + 2.dp.toPx()))
@@ -439,3 +440,4 @@ fun DashboardBarChart(
         }
     }
 }
+

@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.payment
 
+import com.royalcoffee.pos.model.Money
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -10,11 +11,11 @@ import com.royalcoffee.pos.model.PaymentMethod
 @Composable
 fun ConfirmPaymentDialog(
     paymentMethod: PaymentMethod,
-    total: Int,
+    total: Long,
     onConfirmPayment: (
         paymentMethod: PaymentMethod,
-        amountPaid: Int,
-        changeGiven: Int
+        amountPaid: Long,
+        changeGiven: Long
     ) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -45,7 +46,7 @@ fun ConfirmPaymentDialog(
         },
         text = {
             Text(
-                text = "$message\n\nAmount due: Rs $total"
+                text = "$message\n\nAmount due: Rs ${Money.format(total)}"
             )
         },
         confirmButton = {

@@ -7,30 +7,38 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.royalcoffee.pos.data.local.repository.BusinessRepository
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
 import com.royalcoffee.pos.model.CartItem
+import com.royalcoffee.pos.model.DiscountPolicy
+import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.model.PaymentMethod
 import com.royalcoffee.pos.model.Product
 import com.royalcoffee.pos.model.Receipt
 import com.royalcoffee.pos.model.ReceiptItem
+import com.royalcoffee.pos.model.UserRole
 import com.royalcoffee.pos.util.InsufficientStockException
-import kotlinx.coroutines.launch
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * SalesViewModel handles the logic for creating and saving receipts,
  * as well as managing the active cart and product filtering.
  *
+ * The BusinessRepository supplies the registered business details
+ * used in the receipt header.
+ *
  * Flow:
- * SalesScreen -> SalesViewModel -> ReceiptRepository -> ReceiptDao -> Room
+ * SalesScreen -> SalesViewModel -> repositories -> Room database
  */
 class SalesViewModel(
-    private val receiptRepository: ReceiptRepository
+    private val receiptRepository: ReceiptRepository,
+    private val businessRepository: BusinessRepository,
+    private val userRole: UserRole
 ) : ViewModel() {
 
     private val _searchText = MutableStateFlow("")
@@ -52,7 +60,7 @@ class SalesViewModel(
         private set
 
     /**
-     * Stores the latest sales-related error (e.g. insufficient stock).
+     * Stores the latest sales-related error, such as insufficient stock.
      */
     var salesError by mutableStateOf<String?>(null)
         private set
@@ -61,25 +69,50 @@ class SalesViewModel(
      * Live cart for the current order.
      */
     private val _cartItems = mutableStateListOf<CartItem>()
-    val cartItems: List<CartItem> get() = _cartItems
+    val cartItems: List<CartItem>
+        get() = _cartItems
 
     /**
      * Basic order calculations.
      */
-    val subtotal: Int get() = _cartItems.sumOf { it.lineTotal }
-    val discount: Int get() = 0 // Fixed at 0 for Step 1
-    val tax: Int get() = (subtotal * 0.15).toInt()
-    val total: Int get() = subtotal - discount + tax
+    val subtotal: Long
+        get() = Money.sum(_cartItems.map { it.lineTotal })
+
+    var discountPercent by mutableStateOf(0)
+        private set
+
+    val discountOptions
+        get() = DiscountPolicy.options(userRole)
+
+    fun selectDiscount(percent: Int) {
+        if (currentReceipt != null || isSaving) return
+
+        DiscountPolicy.requireAllowed(userRole, percent)
+        discountPercent = percent
+    }
+
+    var isSaving by mutableStateOf(false)
+        private set
+
+    val discount: Long
+        get() = Money.discount(subtotal, discountPercent)
+
+    // Selling prices already include VAT.
+    val tax: Long
+        get() = 0L
+
+    val total: Long
+        get() = subtotal - discount + tax
 
     /**
-     * Updates the search text and resets category if needed (optional).
+     * Updates the search text.
      */
     fun updateSearchText(text: String) {
         _searchText.value = text
     }
 
     /**
-     * Updates the selected category.
+     * Updates the selected product category.
      */
     fun updateCategory(category: String) {
         _selectedCategory.value = category
@@ -93,72 +126,85 @@ class SalesViewModel(
     }
 
     /**
-     * Filters the provided products based on current search and category.
+     * Filters products based on the current search text and category.
      */
     fun filterProducts(products: List<Product>): List<Product> {
         return products.filter { product ->
-            val matchesCategory = _selectedCategory.value == "All" || product.category == _selectedCategory.value
-            val matchesSearch = product.name.contains(_searchText.value, ignoreCase = true)
+            val matchesCategory =
+                _selectedCategory.value == "All" ||
+                        product.category == _selectedCategory.value
+
+            val matchesSearch =
+                product.name.contains(
+                    _searchText.value,
+                    ignoreCase = true
+                )
+
             matchesCategory && matchesSearch
         }
     }
 
     /**
-     * Adds a product to the cart if stock allows.
+     * Stores the name of the product when the cart reaches
+     * the available stock limit.
      */
-    fun addProductToCart(product: Product) {
-        if (product.stockQuantity <= 0) return
+    var stockLimitProduct by mutableStateOf<String?>(null)
+        private set
 
-        val existingItemIndex = _cartItems.indexOfFirst {
-            it.product.id == product.id
-        }
-
-        if (existingItemIndex >= 0) {
-            val existingItem = _cartItems[existingItemIndex]
-            if (existingItem.quantity < product.stockQuantity) {
-                _cartItems[existingItemIndex] = existingItem.copy(
-                    quantity = existingItem.quantity + 1
-                )
-            }
-        } else {
-            _cartItems.add(
-                CartItem(
-                    product = product,
-                    quantity = 1
-                )
-            )
-        }
+    fun acknowledgeStockLimit() {
+        stockLimitProduct = null
     }
 
     /**
-     * Increases the quantity of a cart item if stock allows.
+     * Adds one unit of a product to the cart if stock allows it.
      */
-    fun increaseQuantity(product: Product) {
-        val itemIndex = _cartItems.indexOfFirst {
+    fun addProductToCart(product: Product) {
+        if (isSaving || currentReceipt != null) return
+
+        val index = _cartItems.indexOfFirst {
             it.product.id == product.id
         }
 
-        if (itemIndex >= 0) {
-            val item = _cartItems[itemIndex]
-            if (item.quantity < product.stockQuantity) {
-                _cartItems[itemIndex] = item.copy(
-                    quantity = item.quantity + 1
-                )
-            }
+        val quantity =
+            if (index < 0) 0
+            else _cartItems[index].quantity
+
+        // Do not add more than the available stock.
+        if (quantity >= product.stockQuantity) return
+
+        val nextQuantity = quantity + 1
+        val updatedItem = CartItem(product, nextQuantity)
+
+        if (index < 0) {
+            _cartItems.add(updatedItem)
+        } else {
+            _cartItems[index] = updatedItem
         }
+
+        // Warn when the cart reaches the available stock limit.
+        if (nextQuantity == product.stockQuantity) {
+            stockLimitProduct = product.name
+        }
+    }
+
+    fun increaseQuantity(product: Product) {
+        addProductToCart(product)
     }
 
     /**
      * Decreases the quantity of a cart item.
-     * If quantity reaches 0, the item is removed.
+     * Removes it when its quantity reaches zero.
      */
     fun decreaseQuantity(product: Product) {
+        if (isSaving || currentReceipt != null) return
+
         val itemIndex = _cartItems.indexOfFirst {
             it.product.id == product.id
         }
 
         if (itemIndex >= 0) {
             val item = _cartItems[itemIndex]
+
             if (item.quantity > 1) {
                 _cartItems[itemIndex] = item.copy(
                     quantity = item.quantity - 1
@@ -170,54 +216,93 @@ class SalesViewModel(
     }
 
     /**
-     * Removes an item from the cart regardless of quantity.
+     * Removes a product from the cart regardless of its quantity.
      */
     fun removeItem(product: Product) {
-        _cartItems.removeAll { it.product.id == product.id }
+        if (isSaving || currentReceipt != null) return
+
+        _cartItems.removeAll {
+            it.product.id == product.id
+        }
     }
 
     /**
      * Clears the cart/ticket.
      */
     fun clearCart() {
+        if (isSaving) return
+
         _cartItems.clear()
+        stockLimitProduct = null
+        discountPercent = 0
     }
 
     /**
-     * Generates a new receipt, saves it to Room, and opens the preview.
+     * Generates a receipt, saves it to Room, and opens the preview.
      *
-     * Following the required flow:
-     * Payment successful -> Generate number -> Save to Room -> Display receipt
+     * Flow:
+     * Payment successful -> Generate receipt number -> Save to Room
+     * -> Display receipt
      */
     fun processCompletedOrder(
         cartItems: List<CartItem>,
-        subtotal: Int,
-        discount: Int,
-        tax: Int,
-        total: Int,
         paymentMethod: PaymentMethod,
-        amountPaid: Int?,
-        changeGiven: Int?,
+        amountPaid: Long?,
+        changeGiven: Long?,
         cashierName: String,
         footerMessage: String
     ) {
-        /**
-         * If the receipt is already generated for this order, just show it.
-         */
+        // If a receipt was already generated for this order, show it again.
         if (currentReceipt != null) {
             showReceiptPreviewDialog = true
             return
         }
 
+        if (isSaving) return
+
+        // Capture the order before suspending so the totals and stock
+        // refer to the same cart contents.
+        val orderItems = cartItems.toList()
+        val percent = discountPercent
+        val orderSubtotal = Money.sum(orderItems.map { it.lineTotal })
+        val orderDiscount = Money.discount(orderSubtotal, percent)
+        val orderTotal = orderSubtotal - orderDiscount
+
+        if (
+            orderItems.isEmpty() ||
+            amountPaid == null ||
+            amountPaid < orderTotal ||
+            changeGiven != amountPaid - orderTotal
+        ) {
+            salesError = "Payment does not match the order total."
+            return
+        }
+
+        isSaving = true
+
         viewModelScope.launch {
             try {
-                /**
-                 * 1. Get latest sequence and generate number from Room.
+                DiscountPolicy.requireAllowed(userRole, percent)
+
+                /*
+                 * Load the business profile saved during registration.
+                 * This replaces the old hardcoded receipt header values.
                  */
-                val nextReceiptNumber = receiptRepository.generateNextReceiptNumber()
+                val businessInfo =
+                    businessRepository.getBusinessInfoSync()
+                        ?: throw IllegalStateException(
+                            "Business details are unavailable. Please complete registration."
+                        )
+
+                /*
+                 * Generate the next receipt number using the local database.
+                 */
+                val nextReceiptNumber =
+                    receiptRepository.generateNextReceiptNumber()
+
                 val now = LocalDateTime.now()
 
-                val receiptItems = cartItems.map { cartItem ->
+                val receiptItems = orderItems.map { cartItem ->
                     ReceiptItem(
                         productName = cartItem.product.name,
                         quantity = cartItem.quantity,
@@ -226,39 +311,54 @@ class SalesViewModel(
                     )
                 }
 
-                /**
-                 * 2. Create the Receipt model.
+                /*
+                 * Include the registered address and country as separate
+                 * receipt lines. Empty values are left out.
+                 */
+                val businessAddressLines = listOf(
+                    businessInfo.address,
+                    businessInfo.country
+                ).filter { it.isNotBlank() }
+
+                /*
+                 * Create the Receipt model.
+                 *
+                 * Receipt preview, PDF generation, and printer formatting
+                 * read these values from this model.
                  */
                 val receipt = Receipt(
                     receiptNumber = nextReceiptNumber,
                     receiptDateTime = formatReceiptDateTime(now),
-                    storeName = "Royal Coffee",
-                    storeAddressLines = listOf("Phoenix", "Mauritius"),
-                    storePhone = "+230 0000 0000",
+                    // These now come from the registration record.
+                    storeName = businessInfo.businessName,
+                    storeAddressLines = businessAddressLines,
+                    storePhone = businessInfo.phoneNumber,
+
                     cashierName = cashierName,
                     items = receiptItems,
-                    subtotal = subtotal,
-                    discount = discount,
+                    subtotal = orderSubtotal,
+                    discount = orderDiscount,
                     tax = tax,
-                    total = total,
+                    total = orderTotal,
                     paymentMethod = paymentMethod,
                     amountPaid = amountPaid,
                     changeGiven = changeGiven,
-                    footerMessage = footerMessage
+                    footerMessage = footerMessage,
+                    discountPercent = percent,
+                    vatIncluded = true
                 )
 
-                /**
-                 * 3. Save receipt to Room immediately and deduct stock.
-                 *
-                 * This happens in a single atomic transaction.
+                /*
+                 * Save the receipt and deduct stock in one transaction.
                  */
                 receiptRepository.saveReceipt(
                     receipt = receipt,
-                    cartItems = cartItems
+                    cartItems = orderItems,
+                    userRole = userRole
                 )
 
-                /**
-                 * 4. Display the receipt.
+                /*
+                 * Display the receipt preview.
                  */
                 currentReceipt = receipt
                 showReceiptPreviewDialog = true
@@ -268,8 +368,12 @@ class SalesViewModel(
                 // If stock is insufficient, notify the user and abort.
                 salesError = stockException.message
             } catch (exception: Exception) {
-                // Generic error handling
-                salesError = "Unable to complete sale: ${exception.localizedMessage}"
+                // Show a readable error if receipt generation fails.
+                salesError =
+                    "Unable to complete sale: " +
+                            (exception.localizedMessage ?: "Unknown error")
+            } finally {
+                isSaving = false
             }
         }
     }
@@ -283,14 +387,16 @@ class SalesViewModel(
     }
 
     /**
-     * Closes the receipt preview dialog without clearing the receipt.
+     * Closes the receipt preview without clearing the receipt.
      */
     fun closeReceiptPreview() {
         showReceiptPreviewDialog = false
     }
 
     private fun formatReceiptDateTime(dateTime: LocalDateTime): String {
-        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+        val formatter =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+
         return dateTime.format(formatter)
     }
 }
@@ -299,13 +405,21 @@ class SalesViewModel(
  * Factory for creating SalesViewModel with its dependencies.
  */
 class SalesViewModelFactory(
-    private val receiptRepository: ReceiptRepository
+    private val receiptRepository: ReceiptRepository,
+    private val businessRepository: BusinessRepository,
+    private val userRole: UserRole
 ) : ViewModelProvider.Factory {
+
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SalesViewModel::class.java)) {
-            return SalesViewModel(receiptRepository) as T
+            return SalesViewModel(
+                receiptRepository = receiptRepository,
+                businessRepository = businessRepository,
+                userRole = userRole
+            ) as T
         }
+
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

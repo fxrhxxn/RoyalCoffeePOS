@@ -65,25 +65,25 @@ data class ReceiptHeaderEntity(
      * Subtotal before discount and tax.
      */
     @ColumnInfo(name = "subtotal")
-    val subtotal: Int,
+    val subtotal: Long,
 
     /**
      * Discount applied to the order.
      */
     @ColumnInfo(name = "discount")
-    val discount: Int,
+    val discount: Long,
 
     /**
      * Tax amount.
      */
     @ColumnInfo(name = "tax")
-    val tax: Int,
+    val tax: Long,
 
     /**
      * Final total paid by the customer.
      */
     @ColumnInfo(name = "total")
-    val total: Int,
+    val total: Long,
 
     /**
      * Payment method used.
@@ -100,7 +100,7 @@ data class ReceiptHeaderEntity(
      * Mainly useful for cash payments.
      */
     @ColumnInfo(name = "amount_paid")
-    val amountPaid: Int?,
+    val amountPaid: Long?,
 
     /**
      * Change given back to the customer.
@@ -108,11 +108,17 @@ data class ReceiptHeaderEntity(
      * Mainly useful for cash payments.
      */
     @ColumnInfo(name = "change_given")
-    val changeGiven: Int?,
+    val changeGiven: Long?,
 
     /**
      * Footer message used on the receipt.
      */
     @ColumnInfo(name = "footer_message")
-    val footerMessage: String
+    val footerMessage: String,
+
+    @ColumnInfo(name = "discount_percent")
+    val discountPercent: Int? = null,
+
+    @ColumnInfo(name = "vat_included", defaultValue = "0")
+    val vatIncluded: Boolean = false
 )
