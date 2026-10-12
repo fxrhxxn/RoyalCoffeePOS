@@ -13,22 +13,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 object RoyalCoffeeDatabaseProvider {
 
-    /**
-     * Migration from version 2 to 3.
-     *
-     * This migration adds a unique index to the receipt_number column
-     * in the receipt_headers table.
-     */
+    // Migration from version 2 to 3.
+    // This migration adds a unique index to the receipt_number column
+    // in the receipt_headers table.
     private val MIGRATION_2_3 = object : Migration(2, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            /**
-             * Fix existing receipt numbers by re-sequencing them within their year.
-             * This ensures uniqueness while maintaining the RC-YYYY-XXXXXX format
-             * and preserving the order of transactions using receipt_id.
-             *
-             * This correlated subquery counts how many receipts exist for the same year
-             * with an ID less than or equal to the current one, then formats the result.
-             */
+
+            // Ensuring receipt number remains in RC-YYYY-XXXXXX format and preserving order.
             db.execSQL(
                 """
                 UPDATE receipt_headers 
@@ -41,9 +32,7 @@ object RoyalCoffeeDatabaseProvider {
                 """.trimIndent()
             )
 
-            /**
-             * Create a unique index on the receipt_number column now that duplicates are resolved.
-             */
+            // Create a unique index on the receipt_number column now that duplicates are resolved.
             db.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS `index_receipt_headers_receipt_number` " +
                         "ON `receipt_headers` (`receipt_number`)"
@@ -51,15 +40,11 @@ object RoyalCoffeeDatabaseProvider {
         }
     }
 
-    /**
-     * Volatile makes sure changes to INSTANCE are visible across threads.
-     */
+    // Volatile makes sure changes to INSTANCE are visible across threads.
     @Volatile
     private var INSTANCE: RoyalCoffeeDatabase? = null
 
-    /**
-     * Returns the existing database instance or creates one if it does not exist yet.
-     */
+    // Returns the existing database instance or creates one if it does not exist yet.
     fun getDatabase(context: Context): RoyalCoffeeDatabase {
         return INSTANCE ?: synchronized(this) {
             val database = Room.databaseBuilder(

@@ -37,9 +37,6 @@ data class ProductEntity(
 
     /**
      * Product category.
-     *
-     * For now this is stored as text.
-     * Later, we can create a separate categories table if needed.
      */
     @ColumnInfo(name = "category")
     val category: String,

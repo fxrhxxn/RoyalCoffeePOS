@@ -56,21 +56,16 @@ class InventoryViewModel(
 
     private val _searchText =
         MutableStateFlow("")
-
     val searchText: StateFlow<String>
         get() = _searchText
 
-
     private val _selectedCategory =
         MutableStateFlow("All")
-
     val selectedCategory: StateFlow<String>
         get() = _selectedCategory
 
-
     private val _stockFilter =
         MutableStateFlow(StockFilter.ALL)
-
     val stockFilter: StateFlow<StockFilter>
         get() = _stockFilter
 
@@ -99,7 +94,6 @@ class InventoryViewModel(
                 SharingStarted.WhileSubscribed(5000),
                 0
             )
-
 
     val totalStock: StateFlow<Int> =
         productRepository.totalStockUnits
@@ -190,7 +184,6 @@ class InventoryViewModel(
     val filterCategories: StateFlow<List<String>> =
         categoryRepository.allCategories
             .map { categories ->
-
                 listOf("All") +
                         categories.map { category ->
                             category.categoryName
@@ -222,31 +215,23 @@ class InventoryViewModel(
                         search,
                         ignoreCase = true
                     )
-
-
                 val matchesCategory =
                     category == "All" ||
                             product.category.equals(
                                 category,
                                 ignoreCase = true
                             )
-
-
                 val matchesStock =
                     when (filter) {
-
                         StockFilter.ALL ->
                             true
-
                         StockFilter.IN_STOCK ->
                             product.stockQuantity >
                                     product.reorderLevel
-
                         StockFilter.LOW_STOCK ->
                             product.stockQuantity > 0 &&
                                     product.stockQuantity <=
                                     product.reorderLevel
-
                         StockFilter.OUT_OF_STOCK ->
                             product.stockQuantity <= 0
                     }
@@ -274,13 +259,11 @@ class InventoryViewModel(
         _searchText.value = text
     }
 
-
     fun updateCategory(
         category: String
     ) {
         _selectedCategory.value = category
     }
-
 
     fun updateStockFilter(
         filter: StockFilter
@@ -288,11 +271,9 @@ class InventoryViewModel(
         _stockFilter.value = filter
     }
 
-
     fun clearError() {
         inventoryError = null
     }
-
 
     fun clearCategoryError() {
         categoryError = null

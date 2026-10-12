@@ -47,34 +47,24 @@ class SalesViewModel(
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory = _selectedCategory.asStateFlow()
 
-    /**
-     * Holds the currently generated receipt for the active order.
-     */
+    // Holds the currently generated receipt for the active order.
     var currentReceipt by mutableStateOf<Receipt?>(null)
         private set
 
-    /**
-     * Controls the visibility of the receipt preview dialog.
-     */
+    // Controls the visibility of the receipt preview dialog.
     var showReceiptPreviewDialog by mutableStateOf(false)
         private set
 
-    /**
-     * Stores the latest sales-related error, such as insufficient stock.
-     */
+    // Stores the latest sales-related error, such as insufficient stock.
     var salesError by mutableStateOf<String?>(null)
         private set
 
-    /**
-     * Live cart for the current order.
-     */
+    // Live cart for the current order.
     private val _cartItems = mutableStateListOf<CartItem>()
     val cartItems: List<CartItem>
         get() = _cartItems
 
-    /**
-     * Basic order calculations.
-     */
+    // Basic order calculations.
     val subtotal: Long
         get() = Money.sum(_cartItems.map { it.lineTotal })
 
@@ -104,30 +94,22 @@ class SalesViewModel(
     val total: Long
         get() = subtotal - discount + tax
 
-    /**
-     * Updates the search text.
-     */
+    // Updates the search text.
     fun updateSearchText(text: String) {
         _searchText.value = text
     }
 
-    /**
-     * Updates the selected product category.
-     */
+    // Updates the selected product category.
     fun updateCategory(category: String) {
         _selectedCategory.value = category
     }
 
-    /**
-     * Clears any active sales error.
-     */
+    // Clears any active sales error.
     fun clearSalesError() {
         salesError = null
     }
 
-    /**
-     * Filters products based on the current search text and category.
-     */
+    // Filters products based on the current search text and category.
     fun filterProducts(products: List<Product>): List<Product> {
         return products.filter { product ->
             val matchesCategory =
@@ -144,10 +126,7 @@ class SalesViewModel(
         }
     }
 
-    /**
-     * Stores the name of the product when the cart reaches
-     * the available stock limit.
-     */
+    // Stores the name of the product when the cart reaches the available stock limit.
     var stockLimitProduct by mutableStateOf<String?>(null)
         private set
 
@@ -155,9 +134,7 @@ class SalesViewModel(
         stockLimitProduct = null
     }
 
-    /**
-     * Adds one unit of a product to the cart if stock allows it.
-     */
+    // Adds one unit of a product to the cart if stock allows it.
     fun addProductToCart(product: Product) {
         if (isSaving || currentReceipt != null) return
 
@@ -191,10 +168,7 @@ class SalesViewModel(
         addProductToCart(product)
     }
 
-    /**
-     * Decreases the quantity of a cart item.
-     * Removes it when its quantity reaches zero.
-     */
+    // Decreases the quantity of a cart item and removed when quantity is 0
     fun decreaseQuantity(product: Product) {
         if (isSaving || currentReceipt != null) return
 
@@ -215,9 +189,7 @@ class SalesViewModel(
         }
     }
 
-    /**
-     * Removes a product from the cart regardless of its quantity.
-     */
+    // Removes a product from the cart regardless of its quantity.
     fun removeItem(product: Product) {
         if (isSaving || currentReceipt != null) return
 
@@ -226,9 +198,7 @@ class SalesViewModel(
         }
     }
 
-    /**
-     * Clears the cart/ticket.
-     */
+    // Clears the cart/ticket.
     fun clearCart() {
         if (isSaving) return
 
@@ -283,7 +253,6 @@ class SalesViewModel(
         viewModelScope.launch {
             try {
                 DiscountPolicy.requireAllowed(userRole, percent)
-
                 /*
                  * Load the business profile saved during registration.
                  * This replaces the old hardcoded receipt header values.

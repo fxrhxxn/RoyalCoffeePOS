@@ -1,12 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-
-    /**
-     * KSP is used by Room to generate database code at compile time.
-     *
-     * The plugin version is controlled from libs.versions.toml.
-     */
+    // KSP is used by Room to generate database code at compile time.
+    // plugin version is controlled from libs.versions.toml.
     alias(libs.plugins.ksp)
 }
 
@@ -20,7 +16,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -53,9 +48,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    /**
-     * Material icons.
-     */
+    // Material icons
     implementation("androidx.compose.material:material-icons-extended")
 
     /**
@@ -74,7 +67,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     /**
      * ViewModel and lifecycle support for Compose screens.
-     *
      * These allow Compose screens to safely observe database-backed state.
      */
     implementation(libs.androidx.lifecycle.viewmodel.ktx)

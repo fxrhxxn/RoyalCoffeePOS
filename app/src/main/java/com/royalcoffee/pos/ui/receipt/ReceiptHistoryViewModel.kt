@@ -42,26 +42,18 @@ class ReceiptHistoryViewModel(
     private val receiptRepository: ReceiptRepository
 ) : ViewModel() {
 
-    /**
-     * Currently selected date filter.
-     */
+    // Currently selected date filter.
     var currentFilter by mutableStateOf(ReceiptDateFilter.ALL)
         private set
 
-    /**
-     * Selected custom date (only used when filter is CUSTOM).
-     */
+    // Selected custom date (only used when filter is CUSTOM).
     var customDate by mutableStateOf(LocalDate.now())
         private set
 
-    /**
-     * State flow for the current filter and custom date to trigger list updates.
-     */
+    // State flow for the current filter and custom date to trigger list updates.
     private val filterState = MutableStateFlow(Pair(currentFilter, customDate))
 
-    /**
-     * Saved receipt headers shown in the Receipt History screen.
-     */
+    // Saved receipt headers shown in the Receipt History screen.
     @OptIn(ExperimentalCoroutinesApi::class)
     val receiptHistory: StateFlow<List<ReceiptHistoryItem>> =
         filterState.flatMapLatest { (filter, date) ->

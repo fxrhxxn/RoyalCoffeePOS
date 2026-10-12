@@ -18,6 +18,7 @@ import com.royalcoffee.pos.notifications.NamedBatch
  * The UI should not directly depend on SQL queries.
  * Instead, the UI or ViewModel will later talk to this repository.
  */
+
 class ProductRepository(
     private val database: RoyalCoffeeDatabase,
     private val productDao: ProductDao,

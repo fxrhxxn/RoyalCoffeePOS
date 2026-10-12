@@ -826,7 +826,7 @@ private fun OrderSummaryCard(subtotal: Long, discount: Long, discountPercent: In
             SummaryRow("VAT Included", "")
             HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.12f))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("Discounted Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("Rs ${Money.format(total)}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         }

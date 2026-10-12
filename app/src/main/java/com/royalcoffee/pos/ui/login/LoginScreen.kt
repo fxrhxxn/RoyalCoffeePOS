@@ -62,23 +62,18 @@ fun LoginScreen(
     onLoginSuccess: (AuthenticatedUser) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     var username by remember {
         mutableStateOf("")
     }
-
     var pin by remember {
         mutableStateOf("")
     }
-
     var errorMessage by remember {
         mutableStateOf<String?>(null)
     }
-
     LaunchedEffect(Unit) {
         viewModel.resetState()
     }
-
     LaunchedEffect(uiState) {
         when (uiState) {
             is LoginUiState.Success -> onLoginSuccess((uiState as LoginUiState.Success).user)

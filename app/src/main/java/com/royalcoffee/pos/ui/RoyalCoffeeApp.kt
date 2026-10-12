@@ -70,41 +70,32 @@ fun RoyalCoffeeApp() {
         RoyalCoffeeDatabaseProvider.getDatabase(context)
     }
 
-    /*
-     * Repository responsible for users.
-     */
+    // Repository responsible for users.
     val userRepository = remember(database) {
         UserRepository(
             database.userDao()
         )
     }
 
-    /*
-     * Repository responsible for business information.
-     */
+    // Repository responsible for business information.
     val businessRepository = remember(database) {
         BusinessRepository(
             database.businessDao()
         )
     }
 
-    /*
-     * Current application authentication state.
-     */
+    // Current application authentication state.
     var authState by remember {
         mutableStateOf(AppAuthState.CHECKING)
     }
 
-    /*
-     * Stores the identity snapshot of the user who successfully logged in.
-     */
+    // Stores the identity snapshot of the user who successfully logged in.
     var loggedInUser by remember {
         mutableStateOf<AuthenticatedUser?>(null)
     }
 
     /*
      * Runs once when the application starts.
-     *
      * We check whether any user has already been created.
      *
      * No users:
@@ -116,40 +107,25 @@ fun RoyalCoffeeApp() {
      *      Show the Login screen.
      */
     LaunchedEffect(Unit) {
-
         val userCount = userRepository.getUserCount()
-
         authState =
             if (userCount == 0) {
-
                 AppAuthState.WELCOME
-
             } else {
-
                 AppAuthState.LOGIN
             }
     }
 
-    /*
-     * AnimatedContent allows us to animate between the different
-     * authentication/setup screens.
-     *
-     * The Welcome screen slides left while Registration enters
-     * from the right.
-     */
+    // AnimatedContent allows us to animate between the different authentication/setup screens.
+    // The Welcome screen slides left while Registration enters from the right.
     AnimatedContent(
         targetState = authState,
-
         transitionSpec = {
-
-            /*
-             * Moving forward into setup.
-             */
+            // Moving forward into setup.
             if (
                 initialState == AppAuthState.WELCOME &&
                 targetState == AppAuthState.REGISTRATION
             ) {
-
                 (
                         slideInHorizontally(
                             initialOffsetX = { fullWidth ->
@@ -165,10 +141,7 @@ fun RoyalCoffeeApp() {
                     )
 
             } else {
-
-                /*
-                 * Normal transitions between the other application states.
-                 */
+                // Normal transitions between the other application states.
                 fadeIn()
                     .togetherWith(
                         fadeOut()
@@ -181,46 +154,22 @@ fun RoyalCoffeeApp() {
     ) { currentState ->
 
         when (currentState) {
-
-            /*
-             * The app is checking whether first-time setup
-             * has already been completed.
-             *
-             * This normally lasts only for a very short moment.
-             */
+            // The app is checking whether first-time setup has already been completed.
+            // This normally lasts only for a very short moment.
             AppAuthState.CHECKING -> {
-
-                /*
-                 * Blank screen for now.
-                 *
-                 * Later, we could replace this with a small
-                 * Royal Coffee splash/loading screen.
-                 */
+                // Can later be replaced with a loading screen.
             }
-
-            /*
-             * True first-launch screen.
-             */
+            // True first-launch screen.
             AppAuthState.WELCOME -> {
-
                 WelcomeScreen(
                     onGetStarted = {
-
-                        /*
-                         * The user pressed the Get Started button.
-                         *
-                         * Move to the Registration screen.
-                         *
-                         * AnimatedContent handles the transition.
-                         */
+                        // The user pressed the Get Started button and
+                        // moves to the Registration Screen with a smooth animation
                         authState = AppAuthState.REGISTRATION
                     }
                 )
             }
-
-            /*
-             * First-time registration.
-             */
+            // First-time registration.
             AppAuthState.REGISTRATION -> {
 
                 val registrationViewModel: RegistrationViewModel =
@@ -233,15 +182,11 @@ fun RoyalCoffeeApp() {
 
                 RegistrationScreen(
                     viewModel = registrationViewModel,
-
                     onRegistrationComplete = {
-
                         /*
                          * Registration successfully created:
-                         *
                          * - Business profile
                          * - First administrator
-                         *
                          * Move to Login.
                          */
                         authState = AppAuthState.LOGIN
@@ -249,12 +194,8 @@ fun RoyalCoffeeApp() {
                 )
             }
 
-            /*
-             * Normal login screen after setup has already
-             * been completed.
-             */
+            //  Normal login screen after setup has already been completed
             AppAuthState.LOGIN -> {
-
                 val loginViewModel: LoginViewModel =
                     viewModel(
                         factory = LoginViewModelFactory(
@@ -264,17 +205,10 @@ fun RoyalCoffeeApp() {
 
                 LoginScreen(
                     viewModel = loginViewModel,
-
                     onLoginSuccess = { user ->
-
-                        /*
-                         * Keep the authenticated identity in memory.
-                         */
+                        // Keep the authenticated identity in memory.
                         loggedInUser = user
-
-                        /*
-                         * Move into the main POS application.
-                         */
+                        // Move into the main POS application.
                         authState =
                             AppAuthState.AUTHENTICATED
                     }
@@ -285,31 +219,17 @@ fun RoyalCoffeeApp() {
              * User is successfully logged in.
              */
             AppAuthState.AUTHENTICATED -> {
-
                 /*
                  * loggedInUser should always exist here because
                  * AUTHENTICATED can only be reached after successful login.
                  */
                 val user = loggedInUser
-
                 if (user != null) {
-
                     AuthenticatedSession(
                         authenticatedUser = user,
-
                         onLogout = {
-
-                            /*
-                             * Clear the current session.
-                             */
+                            // Clear the current session and return to login screen
                             loggedInUser = null
-
-                            /*
-                             * Return to the Login screen.
-                             *
-                             * We do NOT return to Welcome because
-                             * registration has already been completed.
-                             */
                             authState =
                                 AppAuthState.LOGIN
                         }
