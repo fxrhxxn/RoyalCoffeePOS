@@ -5,7 +5,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +19,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.CardDefaults.cardColors
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +60,7 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
  * - Record waste
  * - Deactivate products
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreen(
     userRole: UserRole,
@@ -124,6 +125,11 @@ fun InventoryScreen(
 
     var adjustmentType by remember {
         mutableStateOf(InventoryTransactionType.RESTOCK)
+    }
+
+    // Controls the Inventory category filter dropdown.
+    var categoryFilterExpanded by remember {
+        mutableStateOf(false)
     }
 
 
@@ -332,30 +338,27 @@ fun InventoryScreen(
                 // SEARCH AND CATEGORY FILTERS
                 // ---------------------------------------------------------
 
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(
-                        16.dp
-                    )
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
 
-                    val focusManager =
-                        LocalFocusManager.current
+                    val focusManager = LocalFocusManager.current
 
-
+                    // Product Search takes the remaining available width.
                     OutlinedTextField(
                         value = searchText,
-
                         onValueChange = {
                             viewModel.updateSearch(it)
                         },
-
                         placeholder = {
                             Text("Search products...")
                         },
-
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .widthIn(min = 280.dp),
 
                         leadingIcon = {
                             Icon(
@@ -363,15 +366,11 @@ fun InventoryScreen(
                                 contentDescription = null
                             )
                         },
-
                         shape = RoundedCornerShape(14.dp),
-
                         singleLine = true,
-
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Search
                         ),
-
                         keyboardActions = KeyboardActions(
                             onSearch = {
                                 focusManager.clearFocus()
@@ -379,35 +378,60 @@ fun InventoryScreen(
                         )
                     )
 
-
-                    /*
-                     * Category filter values come from Room.
-                     *
-                     * "All" is added by the ViewModel.
-                     */
-                    LazyRow(
-                        horizontalArrangement =
-                            Arrangement.spacedBy(8.dp)
+                    // Category filter dropdown.
+                    // Adding more categories does not shrink the search field.
+                    ExposedDropdownMenuBox(
+                        expanded = categoryFilterExpanded,
+                        onExpandedChange = {
+                            categoryFilterExpanded = !categoryFilterExpanded
+                        },
+                        modifier = Modifier.width(220.dp)
                     ) {
 
-                        items(
-                            filterCategories
-                        ) { category ->
+                        OutlinedTextField(
+                            value = selectedCategory,
+                            onValueChange = {
+                                // Read-only field.
+                            },
+                            readOnly = true,
+                            singleLine = true,
+                            placeholder = {
+                                Text("Category")
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = categoryFilterExpanded
+                                )
+                            },
+                            modifier = Modifier
+                                .menuAnchor(
+                                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                    enabled = true
+                                )
+                                .fillMaxWidth()
+                        )
 
-                            FilterChip(
-                                selected =
-                                    selectedCategory == category,
+                        ExposedDropdownMenu(
+                            expanded = categoryFilterExpanded,
+                            onDismissRequest = {
+                                categoryFilterExpanded = false
+                            }
+                        ) {
 
-                                onClick = {
-                                    viewModel.updateCategory(
-                                        category
-                                    )
-                                },
+                            filterCategories.forEach { category ->
 
-                                label = {
-                                    Text(category)
-                                }
-                            )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(category)
+                                    },
+
+                                    onClick = {
+                                        viewModel.updateCategory(category)
+                                        categoryFilterExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -416,7 +440,6 @@ fun InventoryScreen(
                 Spacer(
                     modifier = Modifier.height(24.dp)
                 )
-
 
                 // ---------------------------------------------------------
                 // PRODUCT LIST
@@ -593,14 +616,29 @@ fun InventoryScreen(
         StockBatchManagementDialog(
             product = product,
             batches = batchesForEditing,
+
             onDismiss = { batchEditorProduct = null },
+
             onUpdateExpiry = { batchId, expiryDay ->
                 screenScope.launch {
-                    productRepository.updateBatchExpiry(batchId, expiryDay)
+                    productRepository.updateBatchExpiry(
+                        batchId = batchId, expiryDay = expiryDay
+                    )
                 }
+            },
+
+            onAddBatch = { quantity, expiryDay ->
+                viewModel.adjustStock(
+                    productId = product.productId,
+                    change = quantity,
+                    type = InventoryTransactionType.RESTOCK,
+                    reason = "Stock batch added from product editor",
+                    expiryDay = expiryDay
+                )
             }
         )
     }
+
 
 
     // ---------------------------------------------------------
@@ -729,7 +767,7 @@ private fun SummaryStatCard(
 
         shape = RoundedCornerShape(18.dp),
 
-        colors = CardDefaults.cardColors(
+        colors = cardColors(
             containerColor =
                 when {
 
@@ -831,7 +869,7 @@ private fun InventoryList(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
 
-        colors = CardDefaults.cardColors(
+        colors = cardColors(
             containerColor =
                 MaterialTheme.colorScheme.surface
         ),
@@ -1992,76 +2030,568 @@ private fun StockBatchManagementDialog(
     product: InventoryProduct,
     batches: List<NamedBatch>,
     onDismiss: () -> Unit,
-    onUpdateExpiry: (batchId: Long, expiryDay: Long?) -> Unit
+    onUpdateExpiry: (
+        batchId: Long,
+        expiryDay: Long?
+    ) -> Unit,
+    onAddBatch: (
+        quantity: Int,
+        expiryDay: Long?
+    ) -> Unit
 ) {
-    var editingBatch by remember { mutableStateOf<NamedBatch?>(null) }
-    var expiryText by remember { mutableStateOf("") }
-    var dateError by remember { mutableStateOf<String?>(null) }
+
+    // Batch currently selected for expiry editing.
+    var editingBatch by remember {
+        mutableStateOf<NamedBatch?>(null)
+    }
+
+    // Expiry value used by the edit-expiry dialog.
+    var expiryText by remember {
+        mutableStateOf("")
+    }
+
+    // Validation error for an invalid expiry date.
+    var dateError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    // Controls the Add Stock Batch dialog.
+    var showAddBatchDialog by remember {
+        mutableStateOf(false)
+    }
+
+    // Values used when creating a new stock batch.
+    var newBatchQuantity by remember {
+        mutableStateOf("")
+    }
+
+    var newBatchExpiryText by remember {
+        mutableStateOf("")
+    }
+
+    var newBatchDateError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+
+    // ---------------------------------------------------------
+    // MAIN STOCK BATCH DIALOG
+    // ---------------------------------------------------------
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Stock batches · ${product.name}") },
+
+        title = {
+            Text(
+                text = "Stock Batches · ${product.name}"
+            )
+        },
+
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Edit expiry dates for the remaining stock batches.")
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                Text(
+                    text = "Manage the remaining stock batches and their expiry dates.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+
+                // ---------------------------------------------------------
+                // EXISTING BATCHES
+                // ---------------------------------------------------------
+
                 if (batches.isEmpty()) {
-                    Text("There are no remaining stock batches to edit. Restock the product to create a batch.")
+
+                    Text(
+                        text = "There are no remaining stock batches. Add a stock batch or restock the product.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
                 } else {
+
                     LazyColumn(
-                        modifier = Modifier.heightIn(max = 360.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.heightIn(
+                            max = 360.dp
+                        ),
+
+                        verticalArrangement =
+                            Arrangement.spacedBy(8.dp)
                     ) {
-                        items(batches, key = { it.id }) { batch ->
-                            val expiry = batch.expiryDay?.let(java.time.LocalDate::ofEpochDay)
-                            Card(Modifier.fillMaxWidth()) {
-                                Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                                    Text("Batch ${batch.id} · ${batch.remaining} units")
-                                    Text(expiry?.toString() ?: "Expiry date not set")
-                                    TextButton(onClick = {
-                                        editingBatch = batch
-                                        expiryText = expiry?.toString().orEmpty()
-                                        dateError = null
-                                    }) { Text("Edit expiry") }
+
+                        items(
+                            items = batches,
+                            key = {
+                                it.id
+                            }
+                        ) { batch ->
+
+                            val expiryDate =
+                                batch.expiryDay?.let(
+                                    java.time.LocalDate::ofEpochDay
+                                )
+
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(4.dp)
+                                ) {
+
+                                    Text(
+                                        text = "Batch ${batch.id}",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+
+
+                                    Text(
+                                        text =
+                                            "Remaining quantity: ${batch.remaining}"
+                                    )
+
+
+                                    Text(
+                                        text =
+                                            if (expiryDate != null) {
+                                                "Expiry: $expiryDate"
+                                            } else {
+                                                "Expiry: Not set"
+                                            }
+                                    )
+
+
+                                    TextButton(
+                                        onClick = {
+
+                                            editingBatch =
+                                                batch
+
+                                            expiryText =
+                                                expiryDate
+                                                    ?.toString()
+                                                    .orEmpty()
+
+                                            dateError =
+                                                null
+                                        }
+                                    ) {
+
+                                        Text(
+                                            text = "Edit Expiry"
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+
+                HorizontalDivider()
+
+
+                // ---------------------------------------------------------
+                // ADD STOCK BATCH
+                // ---------------------------------------------------------
+
+                OutlinedButton(
+                    onClick = {
+
+                        newBatchQuantity = ""
+                        newBatchExpiryText = ""
+                        newBatchDateError = null
+
+                        showAddBatchDialog = true
+                    },
+
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+
+                    Text(
+                        text = "Add Stock Batch"
+                    )
+                }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
+
+        confirmButton = {
+
+            TextButton(
+                onClick = onDismiss
+            ) {
+
+                Text(
+                    text = "Done"
+                )
+            }
+        }
     )
 
+
+    // ---------------------------------------------------------
+    // EDIT BATCH EXPIRY DIALOG
+    // ---------------------------------------------------------
+
     editingBatch?.let { batch ->
+
         AlertDialog(
-            onDismissRequest = { editingBatch = null },
-            title = { Text("Edit batch expiry") },
+            onDismissRequest = {
+                editingBatch = null
+            },
+
+            title = {
+                Text(
+                    text = "Edit Batch Expiry"
+                )
+            },
+
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(8.dp)
+                ) {
+
+                    Text(
+                        text =
+                            "Batch ${batch.id} · ${batch.remaining} units"
+                    )
+
+
                     OutlinedTextField(
                         value = expiryText,
-                        onValueChange = { expiryText = it; dateError = null },
-                        label = { Text("YYYY-MM-DD (blank removes date)") },
+
+                        onValueChange = {
+                            expiryText = it
+                            dateError = null
+                        },
+
+                        label = {
+                            Text(
+                                "YYYY-MM-DD"
+                            )
+                        },
+
+                        supportingText = {
+                            Text(
+                                "Leave blank to remove the expiry date."
+                            )
+                        },
+
                         singleLine = true,
-                        isError = dateError != null
+
+                        isError =
+                            dateError != null,
+
+                        modifier =
+                            Modifier.fillMaxWidth()
                     )
-                    dateError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+
+                    dateError?.let { error ->
+
+                        Text(
+                            text = error,
+                            color =
+                                MaterialTheme.colorScheme.error,
+                            style =
+                                MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             },
+
             confirmButton = {
-                TextButton(onClick = {
-                    val day = if (expiryText.isBlank()) null else runCatching {
-                        java.time.LocalDate.parse(expiryText.trim()).toEpochDay()
-                    }.getOrNull()
-                    if (expiryText.isNotBlank() && day == null) {
-                        dateError = "Enter a valid date such as 2026-12-31."
-                    } else {
-                        onUpdateExpiry(batch.id, day)
+
+                TextButton(
+                    onClick = {
+
+                        val expiryDay =
+                            if (
+                                expiryText.isBlank()
+                            ) {
+
+                                null
+
+                            } else {
+
+                                runCatching {
+
+                                    java.time.LocalDate
+                                        .parse(
+                                            expiryText.trim()
+                                        )
+                                        .toEpochDay()
+
+                                }.getOrNull()
+                            }
+
+
+                        if (
+                            expiryText.isNotBlank() &&
+                            expiryDay == null
+                        ) {
+
+                            dateError =
+                                "Enter a valid date such as 2026-12-31."
+
+                        } else {
+
+                            onUpdateExpiry(
+                                batch.id,
+                                expiryDay
+                            )
+
+                            editingBatch =
+                                null
+                        }
+                    }
+                ) {
+
+                    Text(
+                        text = "Save"
+                    )
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
                         editingBatch = null
                     }
-                }) { Text("Save") }
+                ) {
+
+                    Text(
+                        text = "Cancel"
+                    )
+                }
+            }
+        )
+    }
+
+
+    // ---------------------------------------------------------
+    // ADD STOCK BATCH DIALOG
+    // ---------------------------------------------------------
+
+    if (showAddBatchDialog) {
+
+        val newBatchExpiryDay =
+
+            if (
+                newBatchExpiryText.isBlank()
+            ) {
+
+                null
+
+            } else {
+
+                runCatching {
+
+                    java.time.LocalDate
+                        .parse(
+                            newBatchExpiryText.trim()
+                        )
+                        .toEpochDay()
+
+                }.getOrNull()
+            }
+
+
+        AlertDialog(
+            onDismissRequest = {
+                showAddBatchDialog = false
             },
-            dismissButton = { TextButton(onClick = { editingBatch = null }) { Text("Cancel") } }
+
+            title = {
+
+                Text(
+                    text = "Add Stock Batch"
+                )
+            },
+
+            text = {
+
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(12.dp)
+                ) {
+
+                    Text(
+                        text =
+                            "Add stock for ${product.name}. A new batch will be created."
+                    )
+
+
+                    // Batch quantity.
+                    OutlinedTextField(
+                        value =
+                            newBatchQuantity,
+
+                        onValueChange = {
+                                value ->
+
+                            if (
+                                value.all {
+                                    it.isDigit()
+                                }
+                            ) {
+
+                                newBatchQuantity =
+                                    value
+                            }
+                        },
+
+                        label = {
+                            Text(
+                                "Quantity"
+                            )
+                        },
+
+                        keyboardOptions =
+                            KeyboardOptions(
+                                keyboardType =
+                                    KeyboardType.Number
+                            ),
+
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
+                        singleLine = true
+                    )
+
+
+                    // Optional expiry date.
+                    OutlinedTextField(
+                        value =
+                            newBatchExpiryText,
+
+                        onValueChange = {
+
+                            newBatchExpiryText =
+                                it
+
+                            newBatchDateError =
+                                null
+                        },
+
+                        label = {
+                            Text(
+                                "Expiry YYYY-MM-DD (optional)"
+                            )
+                        },
+
+                        supportingText = {
+
+                            Text(
+                                "Leave blank for stock without an expiry date."
+                            )
+                        },
+
+                        isError =
+                            newBatchExpiryText.isNotBlank() &&
+                                    newBatchExpiryDay == null,
+
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
+                        singleLine = true
+                    )
+
+
+                    newBatchDateError?.let {
+                            error ->
+
+                        Text(
+                            text = error,
+                            color =
+                                MaterialTheme.colorScheme.error,
+                            style =
+                                MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+
+            confirmButton = {
+
+                Button(
+                    enabled =
+                        (newBatchQuantity.toIntOrNull()
+                            ?: 0) > 0 &&
+                                (
+                                        newBatchExpiryText.isBlank() ||
+                                                newBatchExpiryDay != null
+                                        ),
+
+                    onClick = {
+
+                        val quantity =
+                            newBatchQuantity
+                                .toIntOrNull()
+                                ?: 0
+
+
+                        if (
+                            newBatchExpiryText.isNotBlank() &&
+                            newBatchExpiryDay == null
+                        ) {
+
+                            newBatchDateError =
+                                "Enter a valid date such as 2026-12-31."
+
+                        } else {
+
+                            onAddBatch(
+                                quantity,
+                                newBatchExpiryDay
+                            )
+
+                            showAddBatchDialog =
+                                false
+                        }
+                    }
+                ) {
+
+                    Text(
+                        text = "Add Batch"
+                    )
+                }
+            },
+
+            dismissButton = {
+
+                TextButton(
+                    onClick = {
+                        showAddBatchDialog = false
+                    }
+                ) {
+
+                    Text(
+                        text = "Cancel"
+                    )
+                }
+            }
         )
     }
 }
