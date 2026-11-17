@@ -1,6 +1,5 @@
 package com.royalcoffee.pos.ui.payment
 
-import com.royalcoffee.pos.model.Money
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,11 +15,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.royalcoffee.pos.model.PaymentMethod
 import androidx.compose.ui.unit.sp
+import com.royalcoffee.pos.R
+import com.royalcoffee.pos.model.Money
+import com.royalcoffee.pos.model.PaymentMethod
 
 @Composable
 fun PaymentMethodDialog(
@@ -32,7 +35,7 @@ fun PaymentMethodDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Select Payment Method",
+                text = stringResource(R.string.payment_select_method),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.titleLarge,
@@ -46,10 +49,10 @@ fun PaymentMethodDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "Amount due:",
+                    text = stringResource(R.string.payment_amount_due),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -65,21 +68,21 @@ fun PaymentMethodDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 PaymentMethodButton(
-                    text = "Cash",
+                    text = stringResource(R.string.payment_cash),
                     onClick = {
                         onPaymentMethodSelected(PaymentMethod.CASH)
                     }
                 )
 
                 PaymentMethodButton(
-                    text = "Card",
+                    text = stringResource(R.string.payment_card),
                     onClick = {
                         onPaymentMethodSelected(PaymentMethod.CARD)
                     }
                 )
 
                 PaymentMethodButton(
-                    text = "Mobile Payment",
+                    text = stringResource(R.string.payment_mobile),
                     onClick = {
                         onPaymentMethodSelected(PaymentMethod.MOBILE)
                     }
@@ -94,7 +97,11 @@ fun PaymentMethodDialog(
                         .height(46.dp),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text(text = "Cancel")
+                    Text(
+                        text = stringResource(R.string.common_cancel),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         },
@@ -117,7 +124,9 @@ private fun PaymentMethodButton(
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

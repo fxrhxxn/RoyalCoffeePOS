@@ -1,6 +1,5 @@
 package com.royalcoffee.pos.ui.sales
 
-import com.royalcoffee.pos.model.Money
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,17 +28,22 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.royalcoffee.pos.R
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
+import com.royalcoffee.pos.data.local.repository.BusinessRepository
+import com.royalcoffee.pos.data.local.repository.CategoryRepository
 import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.data.local.repository.ReceiptRepository
+import com.royalcoffee.pos.data.local.repository.UserRepository
 import com.royalcoffee.pos.model.*
 import com.royalcoffee.pos.printer.FakeReceiptPrinter
 import com.royalcoffee.pos.ui.SettingsViewModel
@@ -57,32 +61,27 @@ import com.royalcoffee.pos.ui.receipt.ReceiptHistoryScreen
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModel
 import com.royalcoffee.pos.ui.receipt.ReceiptHistoryViewModelFactory
 import com.royalcoffee.pos.ui.receipt.ReceiptPreviewDialog
+import com.royalcoffee.pos.ui.receipt.rememberReceiptDownloader
 import com.royalcoffee.pos.ui.receipt.rememberWhatsAppReceiptSharer
-import com.royalcoffee.pos.util.ReceiptPdfGenerator
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 import com.royalcoffee.pos.ui.settings.SettingsScreen
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import com.royalcoffee.pos.data.local.repository.CategoryRepository
-import com.royalcoffee.pos.data.local.dao.CategoryDao
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 fun SalesScreen(
-    authenticatedUser: com.royalcoffee.pos.model.AuthenticatedUser,
+    authenticatedUser: AuthenticatedUser,
     onLogout: () -> Unit
 ) {
     val userRole = authenticatedUser.role
-    var historyPreview by remember { mutableStateOf<com.royalcoffee.pos.model.Receipt?>(null) }
+    var historyPreview by remember { mutableStateOf<Receipt?>(null) }
     var historyLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val downloadReceipt = com.royalcoffee.pos.ui.receipt.rememberReceiptDownloader()
+    val downloadReceipt = rememberReceiptDownloader()
     val shareReceiptViaWhatsApp = rememberWhatsAppReceiptSharer()
-
 
     val database = remember(context) {
         RoyalCoffeeDatabaseProvider.getDatabase(context)
@@ -103,11 +102,11 @@ fun SalesScreen(
     }
 
     val userRepository = remember(database) {
-        com.royalcoffee.pos.data.local.repository.UserRepository(database.userDao())
+        UserRepository(database.userDao())
     }
 
     val businessRepository = remember(database) {
-        com.royalcoffee.pos.data.local.repository.BusinessRepository(database.businessDao())
+        BusinessRepository(database.businessDao())
     }
 
     val receiptRepository = remember(database) {
@@ -126,7 +125,7 @@ fun SalesScreen(
 
     val salesViewModel: SalesViewModel = viewModel(
         key = "sales-${authenticatedUser.sessionId}",
-        factory = SalesViewModelFactory(receiptRepository = receiptRepository, businessRepository = businessRepository ,userRole = userRole)
+        factory = SalesViewModelFactory(receiptRepository = receiptRepository, businessRepository = businessRepository, userRole = userRole)
     )
 
     val productViewModel: ProductViewModel = viewModel(
@@ -194,10 +193,10 @@ fun SalesScreen(
     salesViewModel.stockLimitProduct?.let { productName ->
         AlertDialog(
             onDismissRequest = salesViewModel::acknowledgeStockLimit,
-            title = { Text("Stock limit reached") },
-            text = { Text("$productName: All available units of this product are now in the order. Please restock before adding more.") },
+            title = { Text(stringResource(R.string.sales_stock_limit_title)) },
+            text = { Text(stringResource(R.string.sales_stock_limit_message, productName)) },
             confirmButton = {
-                Button(onClick = salesViewModel::acknowledgeStockLimit) { Text("OK") }
+                Button(onClick = salesViewModel::acknowledgeStockLimit) { Text(stringResource(R.string.common_ok)) }
             }
         )
     }
@@ -329,6 +328,8 @@ fun SalesScreen(
                         )
                     }
                     AppScreen.RECEIPTS -> {
+                        val notFoundMsg = stringResource(R.string.receipt_not_found)
+                        val loadErrMsg = stringResource(R.string.receipt_load_error)
                         ReceiptHistoryScreen(
                             receipts = receiptHistoryItems,
                             selectedReceipt = receiptHistoryViewModel.selectedReceipt,
@@ -341,9 +342,9 @@ fun SalesScreen(
                                     historyLoading = true
                                     try {
                                         historyPreview = receiptRepository.getFullReceipt(selected.receiptId)
-                                        if (historyPreview == null) Toast.makeText(context, "Receipt data not found.", Toast.LENGTH_SHORT).show()
-                                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                                    catch (_: Exception) { Toast.makeText(context, "Unable to load receipt.", Toast.LENGTH_SHORT).show() }
+                                        if (historyPreview == null) Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
+                                    } catch (cancelled: CancellationException) { throw cancelled }
+                                    catch (_: Exception) { Toast.makeText(context, loadErrMsg, Toast.LENGTH_SHORT).show() }
                                     finally { historyLoading = false }
                                 }
                             },
@@ -354,7 +355,7 @@ fun SalesScreen(
                                     if (fullReceipt != null) {
                                         downloadReceipt(fullReceipt)
                                     } else {
-                                        Toast.makeText(context, "Error: Receipt data not found.", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, notFoundMsg, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             },
@@ -434,10 +435,10 @@ fun SalesScreen(
     if (salesError != null) {
         AlertDialog(
             onDismissRequest = { salesViewModel.clearSalesError() },
-            title = { Text("Order Error") },
+            title = { Text(stringResource(R.string.sales_error_title)) },
             text = { Text(salesError) },
             confirmButton = {
-                Button(onClick = { salesViewModel.clearSalesError() }) { Text("OK") }
+                Button(onClick = { salesViewModel.clearSalesError() }) { Text(stringResource(R.string.common_ok)) }
             }
         )
     }
@@ -445,13 +446,13 @@ fun SalesScreen(
     if (showCancelOrderDialog) {
         AlertDialog(
             onDismissRequest = { showCancelOrderDialog = false },
-            title = { Text("Cancel Order?") },
-            text = { Text("This will clear the current ticket and cancel the active order.") },
+            title = { Text(stringResource(R.string.sales_cancel_order_dialog_title)) },
+            text = { Text(stringResource(R.string.sales_cancel_order_dialog_message)) },
             confirmButton = {
-                Button(onClick = { clearCurrentOrder() }) { Text("Cancel Order") }
+                Button(onClick = { clearCurrentOrder() }) { Text(stringResource(R.string.sales_cancel_order_confirm)) }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showCancelOrderDialog = false }) { Text("Keep Order") }
+                OutlinedButton(onClick = { showCancelOrderDialog = false }) { Text(stringResource(R.string.sales_cancel_order_keep)) }
             }
         )
     }
@@ -459,8 +460,8 @@ fun SalesScreen(
     if (showClearTicketConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearTicketConfirmDialog = false },
-            title = { Text("Clear current order?") },
-            text = { Text("All items will be removed from the current ticket.") },
+            title = { Text(stringResource(R.string.sales_clear_ticket_dialog_title)) },
+            text = { Text(stringResource(R.string.sales_clear_ticket_dialog_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -468,10 +469,10 @@ fun SalesScreen(
                         showClearTicketConfirmDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Clear Order") }
+                ) { Text(stringResource(R.string.sales_clear_ticket_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearTicketConfirmDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearTicketConfirmDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }
@@ -533,14 +534,14 @@ private fun SideNavigation(
             ) {
                 Text("RC", color = RoyalGold, fontFamily = CinzelFontFamily, style = MaterialTheme.typography.headlineSmall)
             }
-            NavigationItem("Sales", currentScreen == AppScreen.SALES) { onScreenSelected(AppScreen.SALES) }
+            NavigationItem(stringResource(R.string.sales_nav_sales), currentScreen == AppScreen.SALES) { onScreenSelected(AppScreen.SALES) }
             if (userRole == UserRole.ADMIN) {
-                NavigationItem("Dashboard", currentScreen == AppScreen.DASHBOARD) { onScreenSelected(AppScreen.DASHBOARD) }
-                NavigationItem("Inventory", currentScreen == AppScreen.INVENTORY) { onScreenSelected(AppScreen.INVENTORY) }
+                NavigationItem(stringResource(R.string.sales_nav_dashboard), currentScreen == AppScreen.DASHBOARD) { onScreenSelected(AppScreen.DASHBOARD) }
+                NavigationItem(stringResource(R.string.sales_nav_inventory), currentScreen == AppScreen.INVENTORY) { onScreenSelected(AppScreen.INVENTORY) }
             }
-            NavigationItem("Notifications", currentScreen == AppScreen.NOTIFICATIONS) { onScreenSelected(AppScreen.NOTIFICATIONS) }
-            NavigationItem("Receipts", currentScreen == AppScreen.RECEIPTS) { onScreenSelected(AppScreen.RECEIPTS) }
-            NavigationItem("Settings", currentScreen == AppScreen.SETTINGS) { onScreenSelected(AppScreen.SETTINGS) }
+            NavigationItem(stringResource(R.string.sales_nav_notifications), currentScreen == AppScreen.NOTIFICATIONS) { onScreenSelected(AppScreen.NOTIFICATIONS) }
+            NavigationItem(stringResource(R.string.sales_nav_receipts), currentScreen == AppScreen.RECEIPTS) { onScreenSelected(AppScreen.RECEIPTS) }
+            NavigationItem(stringResource(R.string.sales_nav_settings), currentScreen == AppScreen.SETTINGS) { onScreenSelected(AppScreen.SETTINGS) }
         }
         OutlinedButton(
             onClick = onLogout,
@@ -548,7 +549,12 @@ private fun SideNavigation(
             contentPadding = PaddingValues(horizontal = 4.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
         ) {
-            Text("Logout", style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = stringResource(R.string.sales_nav_logout),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -564,7 +570,15 @@ private fun NavigationItem(text: String, isSelected: Boolean, onClick: () -> Uni
         modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
-            Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = textColor, textAlign = TextAlign.Center)
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -592,10 +606,21 @@ private fun ProductArea(
             Spacer(modifier = Modifier.width(140.dp))
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("royal coffee", fontFamily = CinzelFontFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                Text("Point of Sale", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(stringResource(R.string.sales_pos_subtitle), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
-            OutlinedButton(onClick = onCancelOrderClick, enabled = canCancelOrder, modifier = Modifier.width(140.dp).height(44.dp), shape = RoundedCornerShape(14.dp)) {
-                Text("Cancel Order", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(
+                onClick = onCancelOrderClick,
+                enabled = canCancelOrder,
+                modifier = Modifier.widthIn(min = 140.dp).height(44.dp),
+                shape = RoundedCornerShape(14.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.sales_cancel_order),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
         Spacer(modifier = Modifier.height(20.dp))
@@ -604,7 +629,7 @@ private fun ProductArea(
             OutlinedTextField(
                 value = searchText,
                 onValueChange = onSearchChange,
-                placeholder = { Text("Search products...") },
+                placeholder = { Text(stringResource(R.string.sales_search_placeholder)) },
                 modifier = Modifier.weight(1f).height(56.dp),
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary.copy(0.6f)) },
                 singleLine = true,
@@ -615,10 +640,11 @@ private fun ProductArea(
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End), modifier = Modifier.weight(1.5f)) {
                 lazyRowItems(categories) { category ->
+                    val categoryLabel = if (category == "All") stringResource(R.string.sales_category_all) else category
                     if (category == selectedCategory) {
-                        Button(onClick = { onCategoryClick(category) }) { Text(category) }
+                        Button(onClick = { onCategoryClick(category) }) { Text(categoryLabel) }
                     } else {
-                        OutlinedButton(onClick = { onCategoryClick(category) }) { Text(category) }
+                        OutlinedButton(onClick = { onCategoryClick(category) }) { Text(categoryLabel) }
                     }
                 }
             }
@@ -628,9 +654,9 @@ private fun ProductArea(
             if (products.isEmpty()) {
                 Text(
                     text = if (hasCatalogProducts) {
-                        "No products match this search or category."
+                        stringResource(R.string.sales_no_products_found)
                     } else {
-                        "No products have been added yet. Open Inventory to add products before starting a sale."
+                        stringResource(R.string.sales_no_products_catalog)
                     },
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                     style = MaterialTheme.typography.titleMedium,
@@ -639,7 +665,6 @@ private fun ProductArea(
                     fontFamily = CinzelFontFamily
                 )
             } else {
-                // Using a LazyVerticalGrid to display the products
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Adaptive(productCardMinWidth),
@@ -675,12 +700,19 @@ private fun ProductCard(product: Product, enabled: Boolean, onClick: () -> Unit)
                 Text("Rs ${Money.format(product.price)}", fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(8.dp))
                 if (isOutOfStock) {
-                    Text("OUT OF STOCK", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.sales_out_of_stock), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(8.dp).background(if (isLowStock) Color(0xFFFFA000) else Color(0xFF4CAF50), CircleShape))
                         Spacer(Modifier.width(6.dp))
-                        Text(if (isLowStock) "${product.stockQuantity} left" else "${product.stockQuantity} available", style = MaterialTheme.typography.labelSmall, color = if (isLowStock) Color(0xFFFFA000) else MaterialTheme.colorScheme.onSurface.copy(0.6f))
+                        Text(
+                            text = if (isLowStock)
+                                stringResource(R.string.sales_stock_left, product.stockQuantity)
+                            else
+                                stringResource(R.string.sales_stock_available, product.stockQuantity),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isLowStock) Color(0xFFFFA000) else MaterialTheme.colorScheme.onSurface.copy(0.6f)
+                        )
                     }
                 }
             }
@@ -749,17 +781,17 @@ private fun TicketPanel(
                     enabled = cartItems.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(14.dp)
-                ) { Text("Clear Ticket") }
+                ) { Text(stringResource(R.string.sales_clear_ticket)) }
 
                 Button(
                     onClick = onChargeClick,
                     enabled = cartItems.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp)
-                ) { Text("Charge Rs ${Money.format(total)}") }
+                ) { Text(stringResource(R.string.sales_charge_amount, Money.format(total))) }
             }
         } else {
-            Button(onViewReceiptClick, Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) { Text("View Receipt") }
+            Button(onViewReceiptClick, Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) { Text(stringResource(R.string.sales_view_receipt)) }
         }
     }
 }
@@ -768,11 +800,11 @@ private fun TicketPanel(
 private fun TicketHeader(itemCount: Int) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column {
-            Text("Ticket", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
-            Text("Current Order", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.65f))
+            Text(stringResource(R.string.sales_ticket_title), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.sales_ticket_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.65f))
         }
         Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondary.copy(0.25f), border = androidx.compose.foundation.BorderStroke(1.dp, RoyalGold.copy(0.7f))) {
-            Text("$itemCount item(s)", Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.sales_ticket_item_count, itemCount), Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -781,8 +813,8 @@ private fun TicketHeader(itemCount: Int) {
 private fun EmptyTicketCard() {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(0.55f))) {
         Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("No items added yet", style = MaterialTheme.typography.titleSmall)
-            Text("Select products from the menu to start an order.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.sales_ticket_empty_title), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.sales_ticket_empty_subtitle), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
 }
@@ -794,7 +826,7 @@ private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDe
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {
                     Text(item.product.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                    Text("Rs ${Money.format(item.product.price)} each", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.sales_cart_item_each, Money.format(item.product.price)), style = MaterialTheme.typography.bodySmall)
                 }
                 IconButton(
                     onClick = { onRem() },
@@ -829,13 +861,13 @@ private fun CartItemRow(item: CartItem, locked: Boolean, onInc: () -> Unit, onDe
 private fun OrderSummaryCard(subtotal: Long, discount: Long, discountPercent: Int, total: Long) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant.copy(0.65f)), border = androidx.compose.foundation.BorderStroke(1.dp, RoyalGold.copy(0.35f))) {
         Column(Modifier.padding(16.dp)) {
-            Text("Order Summary", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-            SummaryRow("Subtotal", "Rs ${Money.format(subtotal)}")
-            SummaryRow("Discount ($discountPercent%)", "Rs ${Money.format(discount)}")
-            SummaryRow("VAT Included", "")
+            Text(stringResource(R.string.sales_summary_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            SummaryRow(stringResource(R.string.sales_summary_subtotal), "Rs ${Money.format(subtotal)}")
+            SummaryRow(stringResource(R.string.sales_summary_discount, discountPercent), "Rs ${Money.format(discount)}")
+            SummaryRow(stringResource(R.string.sales_summary_vat_included), "")
             HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurface.copy(0.12f))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.sales_summary_total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("Rs ${Money.format(total)}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         }
@@ -852,12 +884,18 @@ private fun SummaryRow(label: String, value: String) {
 
 @Composable
 private fun PaymentSummaryCard(method: PaymentMethod, paid: Long?, change: Long?) {
+    val methodName = when (method) {
+        PaymentMethod.CASH -> stringResource(R.string.sales_payment_cash)
+        PaymentMethod.CARD -> stringResource(R.string.sales_payment_card)
+        PaymentMethod.MOBILE -> stringResource(R.string.sales_payment_mobile)
+    }
+
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(18.dp), CardDefaults.cardColors(MaterialTheme.colorScheme.primary.copy(0.10f)), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.35f))) {
         Column(Modifier.padding(16.dp)) {
-            Text("Payment Confirmed", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-            SummaryRow("Method", method.name)
-            paid?.let { SummaryRow("Amount Paid", "Rs ${Money.format(it)}") }
-            change?.let { if (it > 0) SummaryRow("Change", "Rs ${Money.format(it)}") }
+            Text(stringResource(R.string.sales_payment_confirmed), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            SummaryRow(stringResource(R.string.sales_payment_method), methodName)
+            paid?.let { SummaryRow(stringResource(R.string.sales_payment_amount_paid), "Rs ${Money.format(it)}") }
+            change?.let { if (it > 0) SummaryRow(stringResource(R.string.sales_payment_change), "Rs ${Money.format(it)}") }
         }
     }
 }

@@ -10,10 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.royalcoffee.pos.R
 import com.royalcoffee.pos.data.local.entity.BusinessEntity
 import com.royalcoffee.pos.data.local.entity.UserEntity
 import com.royalcoffee.pos.model.UserRole
@@ -198,17 +200,48 @@ private fun LanguageSettingsCard(
     selectedLanguage: String,
     onLanguageChange: (String) -> Unit
 ) {
+    var showNotice by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
-            Text(text = "Language", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.language),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
             Spacer(modifier = Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LanguageButton("English", selectedLanguage == "English") { onLanguageChange("English") }
-                LanguageButton("French", selectedLanguage == "French") { onLanguageChange("French") }
+                LanguageButton(stringResource(R.string.english), selectedLanguage == "English") {
+                    if (selectedLanguage != "English") {
+                        onLanguageChange("English")
+                        showNotice = true
+                    }
+                }
+                LanguageButton(stringResource(R.string.french), selectedLanguage == "Français" || selectedLanguage == "French") {
+                    if (selectedLanguage != "Français" && selectedLanguage != "French") {
+                        onLanguageChange("Français")
+                        showNotice = true
+                    }
+                }
+            }
+            if (showNotice) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                ) {
+                    Text(
+                        text = stringResource(R.string.language_change_notice),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
     }

@@ -1,3 +1,97 @@
 <resources>
     <string name="app_name">Royal Coffee POS</string>
+    <string name="welcome">Welcome</string>
+    <string name="login_subtitle">Enter your staff username and PIN to log in.</string>
+    <string name="username">Username</string>
+    <string name="pin">PIN</string>
+    <string name="log_in">Log in</string>
+    <string name="english">English</string>
+    <string name="french">Français</string>
+    <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="language_change_notice">Language change will take effect the next time you log in.</string>
+
+    <!-- Common / Shared -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Cancel</string>
+
+    <!-- Sales Screen Navigation -->
+    <string name="sales_nav_sales">Sales</string>
+    <string name="sales_nav_dashboard">Dashboard</string>
+    <string name="sales_nav_inventory">Inventory</string>
+    <string name="sales_nav_notifications">Notifications</string>
+    <string name="sales_nav_receipts">Receipts</string>
+    <string name="sales_nav_settings">Settings</string>
+    <string name="sales_nav_logout">Logout</string>
+
+    <!-- Sales Screen Header & Product Area -->
+    <string name="sales_pos_subtitle">Point of Sale</string>
+    <string name="sales_cancel_order">Cancel Order</string>
+    <string name="sales_search_placeholder">Search products…</string>
+    <string name="sales_category_all">All</string>
+    <string name="sales_no_products_found">No products match this search or category.</string>
+    <string name="sales_no_products_catalog">No products have been added yet. Open Inventory to add products before starting a sale.</string>
+    <string name="sales_out_of_stock">OUT OF STOCK</string>
+    <string name="sales_stock_left">%1$d left</string>
+    <string name="sales_stock_available">%1$d available</string>
+
+    <!-- Sales Screen Ticket Panel -->
+    <string name="sales_ticket_title">Ticket</string>
+    <string name="sales_ticket_subtitle">Current Order</string>
+    <string name="sales_ticket_item_count">%1$d item(s)</string>
+    <string name="sales_ticket_empty_title">No items added yet</string>
+    <string name="sales_ticket_empty_subtitle">Select products from the menu to start an order.</string>
+    <string name="sales_cart_item_each">Rs %1$s each</string>
+
+    <!-- Sales Screen Summary & Payment -->
+    <string name="sales_summary_title">Order Summary</string>
+    <string name="sales_summary_subtotal">Subtotal</string>
+    <string name="sales_summary_discount">Discount (%1$d%%)</string>
+    <string name="sales_summary_vat_included">VAT Included</string>
+    <string name="sales_summary_total">Total</string>
+
+    <string name="sales_payment_confirmed">Payment Confirmed</string>
+    <string name="sales_payment_method">Method</string>
+    <string name="sales_payment_amount_paid">Amount Paid</string>
+    <string name="sales_payment_change">Change</string>
+
+    <string name="sales_payment_cash">Cash</string>
+    <string name="sales_payment_card">Card</string>
+    <string name="sales_payment_mobile">Mobile Payment / Juice</string>
+
+    <string name="sales_clear_ticket">Clear Ticket</string>
+    <string name="sales_charge_amount">Charge Rs %1$s</string>
+    <string name="sales_view_receipt">View Receipt</string>
+
+    <!-- Sales Screen Dialogs -->
+    <string name="sales_stock_limit_title">Stock limit reached</string>
+    <string name="sales_stock_limit_message">%1$s: All available units of this product are now in the order. Please restock before adding more.</string>
+    <string name="sales_error_title">Order Error</string>
+    <string name="sales_cancel_order_dialog_title">Cancel Order?</string>
+    <string name="sales_cancel_order_dialog_message">This will clear the current ticket and cancel the active order.</string>
+    <string name="sales_cancel_order_confirm">Cancel Order</string>
+    <string name="sales_cancel_order_keep">Keep Order</string>
+    <string name="sales_clear_ticket_dialog_title">Clear current order?</string>
+    <string name="sales_clear_ticket_dialog_message">All items will be removed from the current ticket.</string>
+    <string name="sales_clear_ticket_confirm">Clear Order</string>
+
+    <!-- Payment Dialogs -->
+    <string name="payment_select_method">Select Payment Method</string>
+    <string name="payment_amount_due">Amount due:</string>
+    <string name="payment_cash">Cash</string>
+    <string name="payment_card">Card</string>
+    <string name="payment_mobile">Mobile Payment</string>
+    <string name="payment_cash_title">Cash Payment</string>
+    <string name="payment_amount_received">Amount received</string>
+    <string name="payment_change_format">Change: Rs %1$s</string>
+    <string name="payment_confirm">Confirm Payment</string>
+    <string name="payment_error_enter_amount">Enter amount received</string>
+    <string name="payment_error_insufficient">Amount received is less than total</string>
+    <string name="payment_card_title">Card Payment</string>
+    <string name="payment_mobile_title">Mobile Payment / Juice</string>
+    <string name="payment_card_waiting">Waiting for Card Payment Confirmation.</string>
+    <string name="payment_mobile_waiting">Waiting for Mobile Payment Confirmation</string>
+    <string name="payment_amount_due_format">Amount due: Rs %1$s</string>
+    <string name="receipt_not_found">Receipt data not found.</string>
+    <string name="receipt_load_error">Unable to load receipt.</string>
 </resources>

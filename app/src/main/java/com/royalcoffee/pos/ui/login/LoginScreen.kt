@@ -48,6 +48,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.royalcoffee.pos.R
+import com.royalcoffee.pos.util.LanguageHelper
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
@@ -102,7 +105,10 @@ fun LoginScreen(
     }
     LaunchedEffect(uiState) {
         when (uiState) {
-            is LoginUiState.Success -> onLoginSuccess((uiState as LoginUiState.Success).user)
+            is LoginUiState.Success -> {
+                LanguageHelper.applySavedLanguage(context)
+                onLoginSuccess((uiState as LoginUiState.Success).user)
+            }
             is LoginUiState.Error -> errorMessage = (uiState as LoginUiState.Error).message
             else -> {}
         }
@@ -330,7 +336,7 @@ private fun LoginFormPanel(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Welcome",
+            text = stringResource(R.string.welcome),
             fontFamily = CinzelFontFamily,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.headlineMedium,
@@ -341,7 +347,7 @@ private fun LoginFormPanel(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Enter your staff username and PIN to log in.",
+            text = stringResource(R.string.login_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
             textAlign = TextAlign.Center
@@ -365,7 +371,7 @@ private fun LoginFormPanel(
             value = pin,
             onValueChange = onPinChange,
             label = {
-                Text(text = "PIN")
+                Text(text = stringResource(R.string.pin))
             },
             singleLine = true,
             isError = errorMessage != null,
@@ -421,7 +427,7 @@ private fun LoginFormPanel(
                     strokeWidth = 2.dp
                 )
             } else {
-                Text(text = "Log in")
+                Text(text = stringResource(R.string.log_in))
             }
         }
 
@@ -468,7 +474,7 @@ private fun UsernameDropdownField(
                 onUsernameChange(newValue)
                 expanded = true
             },
-            label = { Text(text = "Username") },
+            label = { Text(text = stringResource(R.string.username)) },
             singleLine = true,
             isError = isError,
             trailingIcon = {

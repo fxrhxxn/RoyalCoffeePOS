@@ -1,11 +1,13 @@
 package com.royalcoffee.pos.ui.payment
 
-import com.royalcoffee.pos.model.Money
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.royalcoffee.pos.R
+import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.model.PaymentMethod
 
 @Composable
@@ -20,24 +22,18 @@ fun ConfirmPaymentDialog(
     onCancel: () -> Unit
 ) {
     val title = when (paymentMethod) {
-        PaymentMethod.CARD -> "Card Payment"
-        PaymentMethod.MOBILE -> "Mobile Payment / Juice"
-        PaymentMethod.CASH -> "Cash Payment"
+        PaymentMethod.CARD -> stringResource(R.string.payment_card_title)
+        PaymentMethod.MOBILE -> stringResource(R.string.payment_mobile_title)
+        PaymentMethod.CASH -> stringResource(R.string.payment_cash_title)
     }
 
     val message = when (paymentMethod) {
-        PaymentMethod.CARD -> {
-            "Waiting for Card Payment Confirmation."
-        }
-
-        PaymentMethod.MOBILE -> {
-            "Waiting for Mobile Payment Confirmation"
-        }
-
-        PaymentMethod.CASH -> {
-            "Confirm cash payment."
-        }
+        PaymentMethod.CARD -> stringResource(R.string.payment_card_waiting)
+        PaymentMethod.MOBILE -> stringResource(R.string.payment_mobile_waiting)
+        PaymentMethod.CASH -> stringResource(R.string.payment_cash_title)
     }
+
+    val amountDueText = stringResource(R.string.payment_amount_due_format, Money.format(total))
 
     AlertDialog(
         onDismissRequest = onCancel,
@@ -46,7 +42,7 @@ fun ConfirmPaymentDialog(
         },
         text = {
             Text(
-                text = "$message\n\nAmount due: Rs ${Money.format(total)}"
+                text = "$message\n\n$amountDueText"
             )
         },
         confirmButton = {
@@ -59,14 +55,14 @@ fun ConfirmPaymentDialog(
                     )
                 }
             ) {
-                Text(text = "Confirm Payment")
+                Text(text = stringResource(R.string.payment_confirm))
             }
         },
         dismissButton = {
             OutlinedButton(
                 onClick = onCancel
             ) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.common_cancel))
             }
         }
     )
