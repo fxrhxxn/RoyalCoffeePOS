@@ -46,6 +46,8 @@ interface StockAlertDao {
     suspend fun activeAlerts(): List<StockAlert>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAlert(alert: StockAlert)
     @Query("DELETE FROM stock_alerts WHERE alertKey=:key") suspend fun resolve(key: String)
+    @Query("DELETE FROM stock_alerts WHERE alertKey=:key") suspend fun deleteAlert(key: String)
+    @Query("DELETE FROM stock_alerts") suspend fun clearAllAlerts()
     @Query("UPDATE stock_alerts SET delivered=1 WHERE alertKey=:key") suspend fun delivered(key: String)
     @Query("SELECT * FROM stock_alerts WHERE active=1 AND delivered=0") suspend fun pending(): List<StockAlert>
 }
