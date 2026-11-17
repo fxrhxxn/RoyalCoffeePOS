@@ -151,8 +151,14 @@ fun SalesScreen(
     val defaultPrinter = remember { PrinterConfig.placeholderBluetoothPrinter() }
     val receiptPrinter = remember { FakeReceiptPrinter() }
 
+    val prefs = remember(context) {
+        context.getSharedPreferences("royal_coffee_prefs", android.content.Context.MODE_PRIVATE)
+    }
+
     var currentScreen by remember { mutableStateOf(AppScreen.SALES) }
-    var selectedLanguage by remember { mutableStateOf("English") }
+    var selectedLanguage by remember {
+        mutableStateOf(prefs.getString("selected_language", "English") ?: "English")
+    }
     var receiptFooterText by remember { mutableStateOf("Thank you for your purchase.") }
 
     val categories = remember(products) {
@@ -370,7 +376,10 @@ fun SalesScreen(
                             viewModel = settingsViewModel,
                             selectedLanguage = selectedLanguage,
                             receiptFooterText = receiptFooterText,
-                            onLanguageChange = { selectedLanguage = it },
+                            onLanguageChange = { newLang ->
+                                selectedLanguage = newLang
+                                prefs.edit().putString("selected_language", newLang).apply()
+                            },
                             onReceiptFooterChange = { receiptFooterText = it },
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )

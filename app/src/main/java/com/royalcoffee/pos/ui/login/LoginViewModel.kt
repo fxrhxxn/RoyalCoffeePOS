@@ -2,18 +2,24 @@ package com.royalcoffee.pos.ui.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.royalcoffee.pos.data.local.entity.UserEntity
 import com.royalcoffee.pos.data.local.repository.UserRepository
 import com.royalcoffee.pos.model.AuthenticatedUser
 import com.royalcoffee.pos.util.HashUtils
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class LoginViewModel(private val userRepository: UserRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    val allUsers: StateFlow<List<UserEntity>> = userRepository.getAllUsers()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun login(username: String, pin: String) {
         viewModelScope.launch {

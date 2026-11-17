@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.ui.login
 
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocalCafe
@@ -26,8 +28,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,28 +48,45 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
-import com.royalcoffee.pos.model.AuthenticatedUser
-import com.royalcoffee.pos.ui.theme.RoyalGold
-import com.royalcoffee.pos.ui.theme.RoyalGreenDark
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.royalcoffee.pos.data.local.entity.UserEntity
+import com.royalcoffee.pos.model.AuthenticatedUser
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
+import com.royalcoffee.pos.ui.theme.RoyalGold
+import com.royalcoffee.pos.ui.theme.RoyalGreenDark
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: (AuthenticatedUser) -> Unit
 ) {
+    val context = LocalContext.current
+    val prefs = remember(context) {
+        context.getSharedPreferences("royal_coffee_prefs", Context.MODE_PRIVATE)
+    }
+    var selectedLanguage by remember {
+        mutableStateOf(prefs.getString("selected_language", "English") ?: "English")
+    }
+
+    val onLanguageChange: (String) -> Unit = { newLang ->
+        selectedLanguage = newLang
+        prefs.edit().putString("selected_language", newLang).apply()
+    }
+
     val uiState by viewModel.uiState.collectAsState()
+    val users by viewModel.allUsers.collectAsStateWithLifecycle()
+
     var username by remember {
         mutableStateOf("")
     }
@@ -71,6 +96,7 @@ fun LoginScreen(
     var errorMessage by remember {
         mutableStateOf<String?>(null)
     }
+
     LaunchedEffect(Unit) {
         viewModel.resetState()
     }
@@ -155,6 +181,9 @@ fun LoginScreen(
                         LoginFormPanel(
                             username = username,
                             pin = pin,
+                            users = users,
+                            selectedLanguage = selectedLanguage,
+                            onLanguageChange = onLanguageChange,
                             errorMessage = errorMessage,
                             uiState = uiState,
                             onUsernameChange = { newValue ->
@@ -186,6 +215,9 @@ fun LoginScreen(
                         LoginFormPanel(
                             username = username,
                             pin = pin,
+                            users = users,
+                            selectedLanguage = selectedLanguage,
+                            onLanguageChange = onLanguageChange,
                             errorMessage = errorMessage,
                             uiState = uiState,
                             onUsernameChange = { newValue ->
@@ -277,6 +309,9 @@ private fun LoginBrandPanel(
 private fun LoginFormPanel(
     username: String,
     pin: String,
+    users: List<UserEntity>,
+    selectedLanguage: String,
+    onLanguageChange: (String) -> Unit,
     errorMessage: String?,
     uiState: LoginUiState,
     onUsernameChange: (String) -> Unit,
@@ -286,6 +321,7 @@ private fun LoginFormPanel(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -311,25 +347,13 @@ private fun LoginFormPanel(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        OutlinedTextField(
-            value = username,
-            onValueChange = onUsernameChange,
-            label = {
-                Text(text = "Username")
-            },
-            singleLine = true,
+        UsernameDropdownField(
+            username = username,
+            users = users,
             isError = errorMessage != null,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }
-            ),
+            onUsernameChange = onUsernameChange,
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 360.dp)
@@ -376,7 +400,7 @@ private fun LoginFormPanel(
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = {
@@ -400,7 +424,121 @@ private fun LoginFormPanel(
                 Text(text = "Log in")
             }
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        LanguageSelectorRow(
+            selectedLanguage = selectedLanguage,
+            onLanguageChange = onLanguageChange
+        )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UsernameDropdownField(
+    username: String,
+    users: List<UserEntity>,
+    isError: Boolean,
+    onUsernameChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val focusManager = LocalFocusManager.current
+    var expanded by remember { mutableStateOf(false) }
 
+    val filteredUsers = remember(users, username) {
+        if (username.isBlank()) {
+            users
+        } else {
+            users.filter {
+                it.username.contains(username, ignoreCase = true) ||
+                it.fullName.contains(username, ignoreCase = true)
+            }
+        }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = username,
+            onValueChange = { newValue ->
+                onUsernameChange(newValue)
+                expanded = true
+            },
+            label = { Text(text = "Username") },
+            singleLine = true,
+            isError = isError,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = {
+                    expanded = false
+                    focusManager.moveFocus(FocusDirection.Down)
+                }
+            ),
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
+                .fillMaxWidth()
+        )
+
+        if (filteredUsers.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                filteredUsers.forEach { user ->
+                    DropdownMenuItem(
+                        text = { Text(text = "${user.fullName} — ${user.username}") },
+                        onClick = {
+                            onUsernameChange(user.username)
+                            expanded = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageSelectorRow(
+    selectedLanguage: String,
+    onLanguageChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val languages = listOf("English", "Français")
+        languages.forEach { lang ->
+            val isSelected = selectedLanguage == lang
+            if (isSelected) {
+                Button(
+                    onClick = { onLanguageChange(lang) },
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text(text = lang)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onLanguageChange(lang) },
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text(text = lang)
+                }
+            }
+        }
+    }
+}
