@@ -3,7 +3,7 @@ package com.royalcoffee.pos.util
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-cd C:\AndroidProjects\RoyalCoffeePOS
+
 object LanguageHelper {
     private const val PREFS_NAME = "royal_coffee_prefs"
     private const val KEY_LANGUAGE = "selected_language"
