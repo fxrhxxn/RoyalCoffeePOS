@@ -30,9 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.royalcoffee.pos.R
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreen
@@ -139,7 +141,7 @@ fun WelcomeScreen(
             )
 
             Text(
-                text = "Welcome",
+                text = stringResource(R.string.welcome),
                 style = MaterialTheme.typography.displayLarge,
                 fontFamily = CinzelFontFamily,
                 fontWeight = FontWeight.Bold,
@@ -165,7 +167,7 @@ fun WelcomeScreen(
             )
 
             Text(
-                text = "Set up your business and create your first administrator account to begin using the point-of-sale system.",
+                text = stringResource(R.string.welcome_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimary.copy(
                     alpha = 0.85f
@@ -189,7 +191,7 @@ fun WelcomeScreen(
                 )
             ) {
                 Text(
-                    text = "Get Started",
+                    text = stringResource(R.string.welcome_get_started),
                     fontWeight = FontWeight.Bold
                 )
 

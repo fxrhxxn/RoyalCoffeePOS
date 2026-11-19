@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.royalcoffee.pos.R
@@ -48,7 +49,7 @@ fun SettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Settings",
+                text = stringResource(R.string.settings),
                 fontFamily = CinzelFontFamily,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.headlineMedium,
@@ -119,15 +120,21 @@ private fun StaffManagementCard(
                 Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Staff Management",
+                    text = stringResource(R.string.settings_staff_management_title),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
+                Spacer(Modifier.width(8.dp))
                 Button(onClick = onAddUserClick) {
                     Icon(Icons.Default.Add, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Add Staff")
+                    Text(
+                        text = stringResource(R.string.settings_add_staff_button),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -137,9 +144,23 @@ private fun StaffManagementCard(
                     Arrangement.SpaceBetween,
                     Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(user.fullName, fontWeight = FontWeight.Bold)
-                        Text("${user.username} • ${user.role}", style = MaterialTheme.typography.bodySmall)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = user.fullName,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val roleText = when (user.role) {
+                            UserRole.ADMIN -> stringResource(R.string.settings_role_admin)
+                            UserRole.BARISTA -> stringResource(R.string.settings_role_barista)
+                        }
+                        Text(
+                            text = stringResource(R.string.settings_staff_user_subtitle, user.username, roleText),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     if (user.role != UserRole.ADMIN || users.count { it.role == UserRole.ADMIN } > 1) {
                         IconButton(onClick = { onDeleteUser(user) }) {
@@ -169,17 +190,32 @@ private fun BusinessProfileCard(
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
             Text(
-                text = "Business Profile",
+                text = stringResource(R.string.settings_business_profile_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Business Name") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.settings_business_name)) },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = address,
+                onValueChange = { address = it },
+                label = { Text(stringResource(R.string.settings_address)) },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(value = vat, onValueChange = { vat = it }, label = { Text("VAT Number") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = vat,
+                onValueChange = { vat = it },
+                label = { Text(stringResource(R.string.settings_vat_number)) },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = {
@@ -189,7 +225,11 @@ private fun BusinessProfileCard(
                 },
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Update Info")
+                Text(
+                    text = stringResource(R.string.settings_update_info_button),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -249,8 +289,8 @@ private fun LanguageSettingsCard(
 
 @Composable
 private fun LanguageButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    if (isSelected) Button(onClick) { Text(text) }
-    else OutlinedButton(onClick) { Text(text) }
+    if (isSelected) Button(onClick) { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    else OutlinedButton(onClick) { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
 }
 
 @Composable
@@ -261,9 +301,20 @@ private fun ReceiptFooterSettingsCard(receiptFooterText: String, onReceiptFooter
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
-            Text(text = "Receipt Footer", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.settings_receipt_footer_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
             Spacer(modifier = Modifier.height(18.dp))
-            OutlinedTextField(value = receiptFooterText, onValueChange = onReceiptFooterChange, label = { Text("Footer message") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+            OutlinedTextField(
+                value = receiptFooterText,
+                onValueChange = onReceiptFooterChange,
+                label = { Text(stringResource(R.string.settings_footer_message)) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
         }
     }
 }
@@ -276,9 +327,17 @@ private fun BaristaAccessInfoCard() {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
-            Text(text = "Limited Access", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.settings_limited_access_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = "You are limited to the available settings. Other Settings are reserved for Admin Users", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = stringResource(R.string.settings_limited_access_message),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
@@ -292,26 +351,59 @@ private fun AddUserDialog(onDismiss: () -> Unit, onConfirm: (String, String, Str
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Staff") },
+        title = { Text(stringResource(R.string.settings_add_user_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Full Name") })
-                OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") })
-                OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("PIN") })
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.settings_full_name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text(stringResource(R.string.username)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { pin = it },
+                    label = { Text(stringResource(R.string.pin)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     RadioButton(selected = role == UserRole.BARISTA, onClick = { role = UserRole.BARISTA })
-                    Text("Barista")
+                    Text(stringResource(R.string.settings_role_barista))
                     Spacer(Modifier.width(16.dp))
                     RadioButton(selected = role == UserRole.ADMIN, onClick = { role = UserRole.ADMIN })
-                    Text("Admin")
+                    Text(stringResource(R.string.settings_role_admin))
                 }
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(name, username, pin, role) }, enabled = name.isNotBlank() && username.isNotBlank() && pin.length >= 4) {
-                Text("Add")
+            Button(
+                onClick = { onConfirm(name, username, pin, role) },
+                enabled = name.isNotBlank() && username.isNotBlank() && pin.length >= 4
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_add_button),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = stringResource(R.string.common_cancel),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     )
 }

@@ -14,6 +14,10 @@
     <!-- Common / Shared -->
     <string name="common_ok">OK</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_close">Close</string>
 
     <!-- Sales Screen Navigation -->
     <string name="sales_nav_sales">Sales</string>
@@ -94,4 +98,98 @@
     <string name="payment_amount_due_format">Amount due: Rs %1$s</string>
     <string name="receipt_not_found">Receipt data not found.</string>
     <string name="receipt_load_error">Unable to load receipt.</string>
+
+    <!-- Stock Notifications Screen -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_subtitle">Stock alerts and expiration history</string>
+    <string name="notifications_clear_all">Clear All</string>
+    <string name="notifications_permission_settings">Android notification settings</string>
+    <string name="notifications_filter_all">All</string>
+    <string name="notifications_filter_low_stock">Low Stock</string>
+    <string name="notifications_filter_expiring_soon">Expiring Soon</string>
+    <string name="notifications_filter_expired_stock">Expired Stock</string>
+    <string name="notifications_category_low_stock">Low Stock</string>
+    <string name="notifications_category_expiring_soon">Expiring Soon</string>
+    <string name="notifications_category_expired_stock">Expired Stock</string>
+    <string name="notifications_filter_chip">%1$s (%2$d)</string>
+    <string name="notifications_empty_title">No notifications</string>
+    <string name="notifications_empty_matching_title">No matching notifications</string>
+    <string name="notifications_empty_subtitle">Your stock status is healthy and up to date.</string>
+    <string name="notifications_empty_matching_subtitle">There are no notifications in the %1$s category.</string>
+    <string name="notifications_clear_all_dialog_title">Clear All Notifications?</string>
+    <string name="notifications_clear_all_dialog_message">Are you sure you want to delete all notification history? This action cannot be undone.</string>
+    <string name="notifications_status_active">Active</string>
+    <string name="notifications_status_resolved">Resolved</string>
+    <string name="notifications_delete_content_description">Delete notification</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_staff_management_title">Staff Management</string>
+    <string name="settings_add_staff_button">Add Staff</string>
+    <string name="settings_staff_user_subtitle">%1$s • %2$s</string>
+    <string name="settings_business_profile_title">Business Profile</string>
+    <string name="settings_business_name">Business Name</string>
+    <string name="settings_address">Address</string>
+    <string name="settings_vat_number">VAT Number</string>
+    <string name="settings_update_info_button">Update Info</string>
+    <string name="settings_receipt_footer_title">Receipt Footer</string>
+    <string name="settings_footer_message">Footer message</string>
+    <string name="settings_limited_access_title">Limited Access</string>
+    <string name="settings_limited_access_message">You are limited to the available settings. Other Settings are reserved for Admin Users</string>
+    <string name="settings_add_user_dialog_title">Add New Staff</string>
+    <string name="settings_full_name">Full Name</string>
+    <string name="settings_role_barista">Barista</string>
+    <string name="settings_role_admin">Admin</string>
+    <string name="settings_add_button">Add</string>
+
+    <!-- Receipt History Screen -->
+    <string name="receipts_title">Receipt History</string>
+    <string name="receipts_subtitle">View completed transactions saved locally on this device.</string>
+    <string name="receipts_filter_all">All Time</string>
+    <string name="receipts_filter_today">Today</string>
+    <string name="receipts_filter_yesterday">Yesterday</string>
+    <string name="receipts_filter_this_week">This Week</string>
+    <string name="receipts_filter_this_month">This Month</string>
+    <string name="receipts_filter_custom">Select Date</string>
+    <string name="receipts_empty_filtered">No receipts match the selected date filter.</string>
+    <string name="receipts_empty_all">No receipts found in history.</string>
+    <string name="receipts_summary_total_sales">Total Sales</string>
+    <string name="receipts_summary_transactions">Transactions</string>
+    <string name="receipts_item_cashier">Cashier: %1$s</string>
+    <string name="receipts_item_payment">Payment: %1$s</string>
+    <string name="receipts_download_pdf">Download PDF</string>
+
+    <!-- Dashboard Screen -->
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_subtitle">Sales performance and business analytics</string>
+    <string name="dashboard_todays_revenue">Today\'s Revenue</string>
+    <string name="dashboard_orders_today">Orders Today</string>
+    <string name="dashboard_avg_order">Average Order Value</string>
+    <string name="dashboard_top_products">Top Selling Products</string>
+    <string name="dashboard_recent_activity">Recent Activity</string>
+    <string name="dashboard_cashier_perf">Cashier Performance</string>
+
+    <!-- Welcome & Registration Screens -->
+    <string name="welcome_title">Welcome to Royal Coffee POS</string>
+    <string name="welcome_tagline">Your elegant, modern café point-of-sale solution.</string>
+    <string name="welcome_get_started">Get Started</string>
+    <string name="registration_title">Business Setup</string>
+    <string name="registration_subtitle">Set up your coffee shop profile and initial administrator account.</string>
+    <string name="registration_business_section">Coffee Shop Profile</string>
+    <string name="registration_admin_section">First Administrator Account</string>
+    <string name="registration_complete_button">Complete Setup</string>
+
+    <!-- Inventory Screen -->
+    <string name="inventory_title">Inventory</string>
+    <string name="inventory_subtitle">Manage products, stock levels, categories, and batches.</string>
+    <string name="inventory_add_product">Add Product</string>
+    <string name="inventory_manage_categories">Categories</string>
+    <string name="inventory_stock_quantity">Stock Quantity</string>
+    <string name="inventory_reorder_level">Reorder Level</string>
+    <string name="inventory_cost_price">Cost Price</string>
+    <string name="inventory_selling_price">Selling Price</string>
+    <string name="inventory_product_name">Product Name</string>
+    <string name="inventory_category">Category</string>
+    <string name="inventory_edit_product_title">Edit Product</string>
+    <string name="inventory_delete_product_title">Delete Product</string>
+    <string name="inventory_delete_product_confirm">Are you sure you want to delete %1$s?</string>
 </resources>

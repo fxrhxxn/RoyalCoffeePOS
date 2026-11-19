@@ -1,5 +1,6 @@
 package com.royalcoffee.pos.notifications
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,10 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.royalcoffee.pos.R
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabase
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import kotlinx.coroutines.launch
@@ -60,33 +64,33 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-enum class NotificationFilterType(val label: String) {
-    ALL("All"),
-    LOW_STOCK("Low Stock"),
-    EXPIRING_SOON("Expiring Soon"),
-    EXPIRED_STOCK("Expired Stock")
+enum class NotificationFilterType(@get:StringRes val labelRes: Int) {
+    ALL(R.string.notifications_filter_all),
+    LOW_STOCK(R.string.notifications_filter_low_stock),
+    EXPIRING_SOON(R.string.notifications_filter_expiring_soon),
+    EXPIRED_STOCK(R.string.notifications_filter_expired_stock)
 }
 
 enum class NotificationCategory(
-    val label: String,
+    @get:StringRes val labelRes: Int,
     val containerColor: Color,
     val contentColor: Color,
     val icon: ImageVector
 ) {
     LOW_STOCK(
-        label = "Low Stock",
+        labelRes = R.string.notifications_category_low_stock,
         containerColor = Color(0xFFFFF3E0),
         contentColor = Color(0xFFE65100),
         icon = Icons.AutoMirrored.Outlined.TrendingDown
     ),
     EXPIRING_SOON(
-        label = "Expiring Soon",
+        labelRes = R.string.notifications_category_expiring_soon,
         containerColor = Color(0xFFFFF8E1),
         contentColor = Color(0xFFF57F17),
         icon = Icons.Outlined.Schedule
     ),
     EXPIRED_STOCK(
-        label = "Expired Stock",
+        labelRes = R.string.notifications_category_expired_stock,
         containerColor = Color(0xFFFFEBEE),
         contentColor = Color(0xFFC62828),
         icon = Icons.Outlined.EventBusy
@@ -141,9 +145,9 @@ fun StockAlertsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Notifications",
+                        text = stringResource(R.string.notifications_title),
                         fontFamily = CinzelFontFamily,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.headlineMedium,
@@ -151,13 +155,14 @@ fun StockAlertsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Stock alerts and expiration history",
+                        text = stringResource(R.string.notifications_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                 }
 
                 if (alerts.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(16.dp))
                     OutlinedButton(
                         onClick = { showClearAllDialog = true },
                         colors = ButtonDefaults.outlinedButtonColors(
@@ -171,7 +176,11 @@ fun StockAlertsScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Clear All")
+                        Text(
+                            text = stringResource(R.string.notifications_clear_all),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -199,7 +208,11 @@ fun StockAlertsScreen(
                         selected = isSelected,
                         onClick = { selectedFilter = filter },
                         label = {
-                            Text("${filter.label} ($count)")
+                            Text(
+                                text = stringResource(R.string.notifications_filter_chip, stringResource(filter.labelRes), count),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -243,7 +256,10 @@ fun StockAlertsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = if (alerts.isEmpty()) "No notifications" else "No matching notifications",
+                            text = if (alerts.isEmpty())
+                                stringResource(R.string.notifications_empty_title)
+                            else
+                                stringResource(R.string.notifications_empty_matching_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -253,9 +269,9 @@ fun StockAlertsScreen(
 
                         Text(
                             text = if (alerts.isEmpty())
-                                "Your stock status is healthy and up to date."
+                                stringResource(R.string.notifications_empty_subtitle)
                             else
-                                "There are no notifications in the ${selectedFilter.label} category.",
+                                stringResource(R.string.notifications_empty_matching_subtitle, stringResource(selectedFilter.labelRes)),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                             textAlign = TextAlign.Center
@@ -286,10 +302,10 @@ fun StockAlertsScreen(
         AlertDialog(
             onDismissRequest = { showClearAllDialog = false },
             title = {
-                Text(text = "Clear All Notifications?")
+                Text(text = stringResource(R.string.notifications_clear_all_dialog_title))
             },
             text = {
-                Text(text = "Are you sure you want to delete all notification history? This action cannot be undone.")
+                Text(text = stringResource(R.string.notifications_clear_all_dialog_message))
             },
             confirmButton = {
                 TextButton(
@@ -303,14 +319,14 @@ fun StockAlertsScreen(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text(text = "Clear All")
+                    Text(text = stringResource(R.string.notifications_clear_all))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showClearAllDialog = false }
                 ) {
-                    Text(text = "Cancel")
+                    Text(text = stringResource(R.string.common_cancel))
                 }
             }
         )
@@ -323,7 +339,7 @@ private fun NotificationCard(
     onDelete: () -> Unit
 ) {
     val category = alert.getCategory()
-    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM d, yyyy Â· h:mm a", Locale.getDefault()) }
     val formattedTime = remember(alert.createdAt) { dateFormat.format(Date(alert.createdAt)) }
 
     Card(
@@ -353,7 +369,7 @@ private fun NotificationCard(
                 ) {
                     Icon(
                         imageVector = category.icon,
-                        contentDescription = category.label,
+                        contentDescription = stringResource(category.labelRes),
                         tint = category.contentColor,
                         modifier = Modifier.size(24.dp)
                     )
@@ -375,11 +391,13 @@ private fun NotificationCard(
                         color = category.containerColor
                     ) {
                         Text(
-                            text = category.label,
+                            text = stringResource(category.labelRes),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = category.contentColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -391,13 +409,18 @@ private fun NotificationCard(
                             MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
-                            text = if (alert.active) "Active" else "Resolved",
+                            text = if (alert.active)
+                                stringResource(R.string.notifications_status_active)
+                            else
+                                stringResource(R.string.notifications_status_resolved),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (alert.active)
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -428,7 +451,7 @@ private fun NotificationCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Delete notification",
+                    contentDescription = stringResource(R.string.notifications_delete_content_description),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

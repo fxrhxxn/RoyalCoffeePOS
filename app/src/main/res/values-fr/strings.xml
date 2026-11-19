@@ -14,6 +14,10 @@
     <!-- Common / Shared -->
     <string name="common_ok">OK</string>
     <string name="common_cancel">Annuler</string>
+    <string name="common_save">Enregistrer</string>
+    <string name="common_delete">Supprimer</string>
+    <string name="common_edit">Modifier</string>
+    <string name="common_close">Fermer</string>
 
     <!-- Sales Screen Navigation -->
     <string name="sales_nav_sales">Ventes</string>
@@ -94,4 +98,98 @@
     <string name="payment_amount_due_format">Montant dû : Rs %1$s</string>
     <string name="receipt_not_found">Données du reçu introuvables.</string>
     <string name="receipt_load_error">Impossible de charger le reçu.</string>
+
+    <!-- Stock Notifications Screen -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_subtitle">Alertes de stock et historique d\'expiration</string>
+    <string name="notifications_clear_all">Tout effacer</string>
+    <string name="notifications_permission_settings">Paramètres de notification Android</string>
+    <string name="notifications_filter_all">Tous</string>
+    <string name="notifications_filter_low_stock">Stock faible</string>
+    <string name="notifications_filter_expiring_soon">Expire bientôt</string>
+    <string name="notifications_filter_expired_stock">Stock expiré</string>
+    <string name="notifications_category_low_stock">Stock faible</string>
+    <string name="notifications_category_expiring_soon">Expire bientôt</string>
+    <string name="notifications_category_expired_stock">Stock expiré</string>
+    <string name="notifications_filter_chip">%1$s (%2$d)</string>
+    <string name="notifications_empty_title">Aucune notification</string>
+    <string name="notifications_empty_matching_title">Aucune notification correspondante</string>
+    <string name="notifications_empty_subtitle">L\'état de votre stock est bon et à jour.</string>
+    <string name="notifications_empty_matching_subtitle">Il n\'y a aucune notification dans la catégorie %1$s.</string>
+    <string name="notifications_clear_all_dialog_title">Effacer toutes les notifications ?</string>
+    <string name="notifications_clear_all_dialog_message">Voulez-vous vraiment supprimer tout l\'historique des notifications ? Cette action est irréversible.</string>
+    <string name="notifications_status_active">Actif</string>
+    <string name="notifications_status_resolved">Résolu</string>
+    <string name="notifications_delete_content_description">Supprimer la notification</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_staff_management_title">Gestion du personnel</string>
+    <string name="settings_add_staff_button">Ajouter du personnel</string>
+    <string name="settings_staff_user_subtitle">%1$s • %2$s</string>
+    <string name="settings_business_profile_title">Profil de l\'entreprise</string>
+    <string name="settings_business_name">Nom de l\'entreprise</string>
+    <string name="settings_address">Adresse</string>
+    <string name="settings_vat_number">Numéro de TVA</string>
+    <string name="settings_update_info_button">Mettre à jour les informations</string>
+    <string name="settings_receipt_footer_title">Pied de page du reçu</string>
+    <string name="settings_footer_message">Message de pied de page</string>
+    <string name="settings_limited_access_title">Accès restreint</string>
+    <string name="settings_limited_access_message">Vos réglages sont limités. Les autres paramètres sont réservés aux administrateurs.</string>
+    <string name="settings_add_user_dialog_title">Ajouter un nouveau membre du personnel</string>
+    <string name="settings_full_name">Nom complet</string>
+    <string name="settings_role_barista">Barista</string>
+    <string name="settings_role_admin">Administrateur</string>
+    <string name="settings_add_button">Ajouter</string>
+
+    <!-- Receipt History Screen -->
+    <string name="receipts_title">Historique des reçus</string>
+    <string name="receipts_subtitle">Consultez les transactions terminées enregistrées localement sur cet appareil.</string>
+    <string name="receipts_filter_all">Tout l\'historique</string>
+    <string name="receipts_filter_today">Aujourd\'hui</string>
+    <string name="receipts_filter_yesterday">Hier</string>
+    <string name="receipts_filter_this_week">Cette semaine</string>
+    <string name="receipts_filter_this_month">Ce mois-ci</string>
+    <string name="receipts_filter_custom">Sélectionner une date</string>
+    <string name="receipts_empty_filtered">Aucun reçu ne correspond au filtre de date sélectionné.</string>
+    <string name="receipts_empty_all">Aucun reçu trouvé dans l\'historique.</string>
+    <string name="receipts_summary_total_sales">Ventes totales</string>
+    <string name="receipts_summary_transactions">Transactions</string>
+    <string name="receipts_item_cashier">Caissier : %1$s</string>
+    <string name="receipts_item_payment">Paiement : %1$s</string>
+    <string name="receipts_download_pdf">Télécharger le PDF</string>
+
+    <!-- Dashboard Screen -->
+    <string name="dashboard_title">Tableau de bord</string>
+    <string name="dashboard_subtitle">Performance des ventes et analyses commerciales</string>
+    <string name="dashboard_todays_revenue">Chiffre d\'affaires du jour</string>
+    <string name="dashboard_orders_today">Commandes aujourd\'hui</string>
+    <string name="dashboard_avg_order">Panier moyen</string>
+    <string name="dashboard_top_products">Meilleures ventes</string>
+    <string name="dashboard_recent_activity">Activité récente</string>
+    <string name="dashboard_cashier_perf">Performance des caissiers</string>
+
+    <!-- Welcome & Registration Screens -->
+    <string name="welcome_title">Bienvenue sur Royal Coffee POS</string>
+    <string name="welcome_tagline">Votre solution élégante et moderne de point de vente pour café.</string>
+    <string name="welcome_get_started">Commencer</string>
+    <string name="registration_title">Configuration de l\'entreprise</string>
+    <string name="registration_subtitle">Configurez le profil de votre café et le compte administrateur initial.</string>
+    <string name="registration_business_section">Profil du café</string>
+    <string name="registration_admin_section">Premier compte administrateur</string>
+    <string name="registration_complete_button">Terminer la configuration</string>
+
+    <!-- Inventory Screen -->
+    <string name="inventory_title">Inventaire</string>
+    <string name="inventory_subtitle">Gérez les produits, les niveaux de stock, les catégories et les lots.</string>
+    <string name="inventory_add_product">Ajouter un produit</string>
+    <string name="inventory_manage_categories">Catégories</string>
+    <string name="inventory_stock_quantity">Quantité en stock</string>
+    <string name="inventory_reorder_level">Niveau de réapprovisionnement</string>
+    <string name="inventory_cost_price">Prix d\'achat</string>
+    <string name="inventory_selling_price">Prix de vente</string>
+    <string name="inventory_product_name">Nom du produit</string>
+    <string name="inventory_category">Catégorie</string>
+    <string name="inventory_edit_product_title">Modifier le produit</string>
+    <string name="inventory_delete_product_title">Supprimer le produit</string>
+    <string name="inventory_delete_product_confirm">Voulez-vous vraiment supprimer %1$s ?</string>
 </resources>

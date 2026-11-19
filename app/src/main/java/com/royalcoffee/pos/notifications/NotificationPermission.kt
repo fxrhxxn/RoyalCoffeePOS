@@ -10,6 +10,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.royalcoffee.pos.R
 import kotlinx.coroutines.launch
 
 @Composable
@@ -28,5 +30,5 @@ fun NotificationPermission() {
     }
     TextButton(onClick = {
         context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
-    }) { Text("Android notification settings") }
+    }) { Text(stringResource(R.string.notifications_permission_settings)) }
 }
