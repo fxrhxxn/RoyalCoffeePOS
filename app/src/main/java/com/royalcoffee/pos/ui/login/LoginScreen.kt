@@ -1,6 +1,5 @@
 package com.royalcoffee.pos.ui.login
 
-import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -75,16 +75,14 @@ fun LoginScreen(
     onLoginSuccess: (AuthenticatedUser) -> Unit
 ) {
     val context = LocalContext.current
-    val prefs = remember(context) {
-        context.getSharedPreferences("royal_coffee_prefs", Context.MODE_PRIVATE)
-    }
-    var selectedLanguage by remember {
-        mutableStateOf(prefs.getString("selected_language", "English") ?: "English")
-    }
+    var selectedLanguage by remember { mutableStateOf(
+        LanguageHelper.getSavedLanguage(context)
+    ) }
 
     val onLanguageChange: (String) -> Unit = { newLang ->
         selectedLanguage = newLang
-        prefs.edit().putString("selected_language", newLang).apply()
+        LanguageHelper.saveLanguage(context, newLang)
+        LanguageHelper.applyLanguage(newLang)
     }
 
     val uiState by viewModel.uiState.collectAsState()
@@ -328,115 +326,127 @@ private fun LoginFormPanel(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 32.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = stringResource(R.string.welcome),
-            fontFamily = CinzelFontFamily,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
-        )
+        val horizontalPadding = when {
+            maxWidth < 360.dp -> 16.dp
+            maxWidth < 420.dp -> 20.dp
+            else -> 32.dp
+        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = stringResource(R.string.login_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        UsernameDropdownField(
-            username = username,
-            users = users,
-            isError = errorMessage != null,
-            onUsernameChange = onUsernameChange,
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 360.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = pin,
-            onValueChange = onPinChange,
-            label = {
-                Text(text = stringResource(R.string.pin))
-            },
-            singleLine = true,
-            isError = errorMessage != null,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.NumberPassword,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-
-                    if (username.isNotBlank() && pin.isNotBlank()) {
-                        onLoginClick()
-                    }
-                }
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 360.dp)
-        )
-
-        if (errorMessage != null) {
-            Spacer(modifier = Modifier.height(10.dp))
-
+                .fillMaxHeight()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = horizontalPadding, vertical = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
+                text = stringResource(R.string.welcome),
+                fontFamily = CinzelFontFamily,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Button(
-            onClick = {
-                keyboardController?.hide()
-                focusManager.clearFocus()
-                onLoginClick()
-            },
-            enabled = username.isNotBlank() && pin.isNotBlank() && uiState !is LoginUiState.Loading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 360.dp)
-                .height(48.dp)
-        ) {
-            if (uiState is LoginUiState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp
+            Text(
+                text = stringResource(R.string.login_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            UsernameDropdownField(
+                username = username,
+                users = users,
+                isError = errorMessage != null,
+                onUsernameChange = onUsernameChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = pin,
+                onValueChange = onPinChange,
+                label = {
+                    Text(text = stringResource(R.string.pin))
+                },
+                singleLine = true,
+                isError = errorMessage != null,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.NumberPassword,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+
+                        if (username.isNotBlank() && pin.isNotBlank()) {
+                            onLoginClick()
+                        }
+                    }
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+            )
+
+            if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
                 )
-            } else {
-                Text(text = stringResource(R.string.log_in))
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                    onLoginClick()
+                },
+                enabled = username.isNotBlank() && pin.isNotBlank() && uiState !is LoginUiState.Loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+                    .height(48.dp)
+            ) {
+                if (uiState is LoginUiState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(text = stringResource(R.string.log_in))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            LanguageSelectorRow(
+                selectedLanguage = selectedLanguage,
+                onLanguageChange = onLanguageChange
+            )
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        LanguageSelectorRow(
-            selectedLanguage = selectedLanguage,
-            onLanguageChange = onLanguageChange
-        )
     }
 }
 

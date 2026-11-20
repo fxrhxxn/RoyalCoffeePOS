@@ -9,11 +9,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 @Composable
-fun NotificationPermission() {
+fun NotificationPermission(
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val preferences = remember { context.getSharedPreferences("permissions", 0) }
@@ -26,7 +29,12 @@ fun NotificationPermission() {
             launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    TextButton(onClick = {
-        context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
-    }) { Text("Android notification settings") }
+    TextButton(
+        onClick = {
+            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+        },
+        modifier = modifier
+    ) {
+        Text("Android notification settings")
+    }
 }

@@ -1,12 +1,16 @@
 package com.royalcoffee.pos.ui.payment
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -43,65 +47,75 @@ fun PaymentMethodDialog(
             )
         },
         text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.payment_amount_due),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val availableWidth = maxWidth
+                val fontSize = if (availableWidth < 340.dp) 30.sp else 38.sp
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Rs ${Money.format(total)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 50.sp
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                PaymentMethodButton(
-                    text = stringResource(R.string.payment_cash),
-                    onClick = {
-                        onPaymentMethodSelected(PaymentMethod.CASH)
-                    }
-                )
-
-                PaymentMethodButton(
-                    text = stringResource(R.string.payment_card),
-                    onClick = {
-                        onPaymentMethodSelected(PaymentMethod.CARD)
-                    }
-                )
-
-                PaymentMethodButton(
-                    text = stringResource(R.string.payment_mobile),
-                    onClick = {
-                        onPaymentMethodSelected(PaymentMethod.MOBILE)
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = onDismiss,
+                Column(
                     modifier = Modifier
-                        .width(180.dp)
-                        .height(46.dp),
-                    shape = RoundedCornerShape(14.dp)
+                        .fillMaxWidth()
+                        .heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.common_cancel),
+                        text = stringResource(R.string.payment_amount_due),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Text(
+                        text = "Rs ${Money.format(total)}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = fontSize,
+                        textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    PaymentMethodButton(
+                        text = stringResource(R.string.payment_cash),
+                        onClick = {
+                            onPaymentMethodSelected(PaymentMethod.CASH)
+                        }
+                    )
+
+                    PaymentMethodButton(
+                        text = stringResource(R.string.payment_card),
+                        onClick = {
+                            onPaymentMethodSelected(PaymentMethod.CARD)
+                        }
+                    )
+
+                    PaymentMethodButton(
+                        text = stringResource(R.string.payment_mobile),
+                        onClick = {
+                            onPaymentMethodSelected(PaymentMethod.MOBILE)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 220.dp)
+                            .height(46.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.common_cancel),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         },
@@ -118,8 +132,9 @@ private fun PaymentMethodButton(
     Button(
         onClick = onClick,
         modifier = Modifier
-            .width(260.dp)
-            .height(58.dp),
+            .fillMaxWidth()
+            .widthIn(max = 280.dp)
+            .height(54.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Text(
