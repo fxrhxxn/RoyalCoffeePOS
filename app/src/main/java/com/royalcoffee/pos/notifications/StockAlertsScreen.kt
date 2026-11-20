@@ -3,6 +3,7 @@ package com.royalcoffee.pos.notifications
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -130,152 +131,212 @@ fun StockAlertsScreen(
         modifier = modifier.fillMaxHeight(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp)
-        ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Notifications",
-                        fontFamily = CinzelFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Stock alerts and expiration history",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val availableWidth = maxWidth
+            val availableHeight = maxHeight
 
-                if (alerts.isNotEmpty()) {
-                    OutlinedButton(
-                        onClick = { showClearAllDialog = true },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.DeleteSweep,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Clear All")
-                    }
-                }
+            val horizontalPadding = when {
+                availableWidth < 700.dp -> 12.dp
+                availableWidth < 1000.dp -> 18.dp
+                else -> 28.dp
             }
+            val verticalPadding = if (availableHeight < 600.dp) 12.dp else 24.dp
+            val sectionSpacing = if (availableHeight < 600.dp) 12.dp else 16.dp
 
-            Spacer(modifier = Modifier.height(16.dp))
+            val compactLayout = availableWidth < 650.dp
 
-            NotificationPermission()
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Filter Chips
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             ) {
-                items(NotificationFilterType.entries.toTypedArray()) { filter ->
-                    val count = when (filter) {
-                        NotificationFilterType.ALL -> alerts.size
-                        NotificationFilterType.LOW_STOCK -> lowStockCount
-                        NotificationFilterType.EXPIRING_SOON -> expiringSoonCount
-                        NotificationFilterType.EXPIRED_STOCK -> expiredCount
-                    }
-                    val isSelected = selectedFilter == filter
-
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { selectedFilter = filter },
-                        label = {
-                            Text("${filter.label} ($count)")
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Notification List or Empty State
-            if (filteredAlerts.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                // Header Row / Column
+                if (compactLayout) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Surface(
-                            modifier = Modifier.size(80.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (alerts.isEmpty()) Icons.Outlined.CheckCircleOutline else Icons.Outlined.NotificationsOff,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            }
+                        Column {
+                            Text(
+                                text = "Notifications",
+                                fontFamily = CinzelFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Stock alerts and expiration history",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        if (alerts.isNotEmpty()) {
+                            OutlinedButton(
+                                onClick = { showClearAllDialog = true },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.DeleteSweep,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Clear All")
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Notifications",
+                                fontFamily = CinzelFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Stock alerts and expiration history",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
 
-                        Text(
-                            text = if (alerts.isEmpty()) "No notifications" else "No matching notifications",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        if (alerts.isNotEmpty()) {
+                            OutlinedButton(
+                                onClick = { showClearAllDialog = true },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.DeleteSweep,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Clear All")
+                            }
+                        }
+                    }
+                }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(sectionSpacing))
 
-                        Text(
-                            text = if (alerts.isEmpty())
-                                "Your stock status is healthy and up to date."
-                            else
-                                "There are no notifications in the ${selectedFilter.label} category.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
-                            textAlign = TextAlign.Center
+                NotificationPermission()
+
+                Spacer(modifier = Modifier.height(sectionSpacing))
+
+                // Filter Chips
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(NotificationFilterType.entries.toTypedArray()) { filter ->
+                        val count = when (filter) {
+                            NotificationFilterType.ALL -> alerts.size
+                            NotificationFilterType.LOW_STOCK -> lowStockCount
+                            NotificationFilterType.EXPIRING_SOON -> expiringSoonCount
+                            NotificationFilterType.EXPIRED_STOCK -> expiredCount
+                        }
+                        val isSelected = selectedFilter == filter
+
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedFilter = filter },
+                            label = {
+                                Text("${filter.label} ($count)")
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         )
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredAlerts, key = { it.alertKey }) { alert ->
-                        NotificationCard(
-                            alert = alert,
-                            onDelete = {
-                                scope.launch {
-                                    database.stockAlertDao().deleteAlert(alert.alertKey)
+
+                Spacer(modifier = Modifier.height(sectionSpacing))
+
+                // Notification List or Empty State
+                if (filteredAlerts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(80.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (alerts.isEmpty()) Icons.Outlined.CheckCircleOutline else Icons.Outlined.NotificationsOff,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(40.dp)
+                                    )
                                 }
                             }
-                        )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = if (alerts.isEmpty()) "No notifications" else "No matching notifications",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = if (alerts.isEmpty())
+                                    "Your stock status is healthy and up to date."
+                                else
+                                    "There are no notifications in the ${selectedFilter.label} category.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(filteredAlerts, key = { it.alertKey }) { alert ->
+                            NotificationCard(
+                                alert = alert,
+                                compactLayout = compactLayout,
+                                onDelete = {
+                                    scope.launch {
+                                        database.stockAlertDao().deleteAlert(alert.alertKey)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -320,6 +381,7 @@ fun StockAlertsScreen(
 @Composable
 private fun NotificationCard(
     alert: StockAlert,
+    compactLayout: Boolean,
     onDelete: () -> Unit
 ) {
     val category = alert.getCategory()
@@ -335,102 +397,201 @@ private fun NotificationCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icon Badge
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = category.containerColor
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = category.icon,
-                        contentDescription = category.label,
-                        tint = category.contentColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Text Details
+        if (compactLayout) {
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
             ) {
+                // Top row: Icon, Category & Active/Resolved badges, Delete button
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(10.dp),
                         color = category.containerColor
                     ) {
-                        Text(
-                            text = category.label,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = category.contentColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = category.icon,
+                                contentDescription = category.label,
+                                tint = category.contentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (alert.active)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text(
-                            text = if (alert.active) "Active" else "Resolved",
-                            style = MaterialTheme.typography.labelSmall,
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = category.containerColor
+                        ) {
+                            Text(
+                                text = category.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = category.contentColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
                             color = if (alert.active)
-                                MaterialTheme.colorScheme.onPrimaryContainer
+                                MaterialTheme.colorScheme.primaryContainer
                             else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = if (alert.active) "Active" else "Resolved",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (alert.active)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Delete notification",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
+                // Alert Message (untruncated, natural wrapping)
                 Text(
                     text = alert.message,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
+                // Timestamp
                 Text(
                     text = formattedTime,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Delete Action
-            IconButton(
-                onClick = onDelete
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Delete notification",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Icon Badge
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = category.containerColor
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = category.icon,
+                            contentDescription = category.label,
+                            tint = category.contentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Text Details
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = category.containerColor
+                        ) {
+                            Text(
+                                text = category.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = category.contentColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (alert.active)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = if (alert.active) "Active" else "Resolved",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (alert.active)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = alert.message,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Delete Action
+                IconButton(
+                    onClick = onDelete
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Delete notification",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

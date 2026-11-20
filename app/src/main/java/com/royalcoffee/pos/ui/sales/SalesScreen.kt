@@ -244,12 +244,43 @@ fun SalesScreen(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            val sideNavWidth = (maxWidth * 0.08f).coerceIn(104.dp, 132.dp)
-            val ticketPanelWidth = (maxWidth * 0.26f).coerceIn(290.dp, 390.dp)
-            val productCardMinWidth = (maxWidth * 0.12f).coerceIn(130.dp, 180.dp)
-            val productAreaPadding = (maxWidth * 0.015f).coerceIn(14.dp, 24.dp)
-            val ticketPanelPadding = (maxWidth * 0.015f).coerceIn(14.dp, 24.dp)
-            val navLogoSize = if (maxHeight < 650.dp) 46.dp else 56.dp
+            val sideNavWidth = when {
+                maxWidth < 900.dp -> 112.dp
+                maxWidth < 1200.dp -> 120.dp
+                else -> 132.dp
+            }
+
+            val ticketPanelWidth = when {
+                maxWidth < 900.dp -> 260.dp
+                maxWidth < 1100.dp -> 280.dp
+                maxWidth < 1400.dp -> 320.dp
+                else -> 370.dp
+            }
+
+            val productCardMinWidth = when {
+                maxWidth < 900.dp -> 130.dp
+                maxWidth < 1200.dp -> 145.dp
+                else -> 165.dp
+            }
+
+            val productAreaPadding = when {
+                maxWidth < 900.dp -> 10.dp
+                maxWidth < 1200.dp -> 14.dp
+                else -> 20.dp
+            }
+
+            val ticketPanelPadding = when {
+                maxWidth < 900.dp -> 12.dp
+                maxWidth < 1200.dp -> 14.dp
+                else -> 20.dp
+            }
+
+            val navLogoSize =
+                if (maxHeight < 650.dp) {
+                    46.dp
+                } else {
+                    56.dp
+                }
 
             Row(modifier = Modifier.fillMaxSize()) {
                 SideNavigation(
@@ -576,7 +607,7 @@ private fun NavigationItem(text: String, isSelected: Boolean, onClick: () -> Uni
                 fontWeight = FontWeight.SemiBold,
                 color = textColor,
                 textAlign = TextAlign.Center,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -601,81 +632,226 @@ private fun ProductArea(
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
-    Column(modifier = modifier.fillMaxHeight().padding(contentPadding)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(modifier = Modifier.width(140.dp))
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("royal coffee", fontFamily = CinzelFontFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                Text(stringResource(R.string.sales_pos_subtitle), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-            }
-            OutlinedButton(
-                onClick = onCancelOrderClick,
-                enabled = canCancelOrder,
-                modifier = Modifier.widthIn(min = 140.dp).height(44.dp),
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.sales_cancel_order),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+    val focusManager = LocalFocusManager.current
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxHeight()
+    ) {
+        val useStackedControls = maxWidth < 620.dp
+
+        val sectionSpacing = when {
+            maxHeight < 600.dp -> 12.dp
+            else -> 20.dp
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            val focusManager = LocalFocusManager.current
-            OutlinedTextField(
-                value = searchText,
-                onValueChange = onSearchChange,
-                placeholder = { Text(stringResource(R.string.sales_search_placeholder)) },
-                modifier = Modifier.weight(1f).height(56.dp),
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary.copy(0.6f)) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                colors = TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface)
-            )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End), modifier = Modifier.weight(1.5f)) {
-                lazyRowItems(categories) { category ->
-                    val categoryLabel = if (category == "All") stringResource(R.string.sales_category_all) else category
-                    if (category == selectedCategory) {
-                        Button(onClick = { onCategoryClick(category) }) { Text(categoryLabel) }
-                    } else {
-                        OutlinedButton(onClick = { onCategoryClick(category) }) { Text(categoryLabel) }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = "royal coffee",
+                        fontFamily = CinzelFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Start
+                    )
+
+                    Text(
+                        text = stringResource(R.string.sales_pos_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Start
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onCancelOrderClick,
+                    enabled = canCancelOrder,
+                    modifier = Modifier
+                        .widthIn(min = 120.dp, max = 150.dp)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.sales_cancel_order),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(sectionSpacing))
+
+            if (useStackedControls) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = onSearchChange,
+                        placeholder = {
+                            Text(stringResource(R.string.sales_search_placeholder))
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary.copy(0.6f)
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { focusManager.clearFocus() }
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    CategorySelectorRow(
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        onCategoryClick = onCategoryClick,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = onSearchChange,
+                        placeholder = {
+                            Text(stringResource(R.string.sales_search_placeholder))
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary.copy(0.6f)
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { focusManager.clearFocus() }
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    CategorySelectorRow(
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        onCategoryClick = onCategoryClick,
+                        modifier = Modifier.weight(1.5f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(sectionSpacing))
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (products.isEmpty()) {
+                    Text(
+                        text = if (hasCatalogProducts) {
+                            stringResource(R.string.sales_no_products_found)
+                        } else {
+                            stringResource(R.string.sales_no_products_catalog)
+                        },
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(24.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
+                        fontFamily = CinzelFontFamily
+                    )
+                } else {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Adaptive(productCardMinWidth),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 60.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(products) { product ->
+                            ProductCard(product, !isOrderLocked) {
+                                onProductClick(product)
+                            }
+                        }
                     }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        Box(modifier = Modifier.weight(1f)) {
-            if (products.isEmpty()) {
-                Text(
-                    text = if (hasCatalogProducts) {
-                        stringResource(R.string.sales_no_products_found)
-                    } else {
-                        stringResource(R.string.sales_no_products_catalog)
-                    },
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center,
-                    fontFamily = CinzelFontFamily
-                )
-            } else {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Adaptive(productCardMinWidth),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 60.dp),
-                    modifier = Modifier.fillMaxSize()
+    }
+}
+
+@Composable
+private fun CategorySelectorRow(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategoryClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        lazyRowItems(categories) { category ->
+            val categoryLabel =
+                if (category == "All") {
+                    stringResource(R.string.sales_category_all)
+                } else {
+                    category
+                }
+
+            if (category == selectedCategory) {
+                Button(
+                    onClick = { onCategoryClick(category) }
                 ) {
-                    items(products) { product ->
-                        ProductCard(product, !isOrderLocked) { onProductClick(product) }
-                    }
+                    Text(categoryLabel)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onCategoryClick(category) }
+                ) {
+                    Text(categoryLabel)
                 }
             }
         }
@@ -695,7 +871,13 @@ private fun ProductCard(product: Product, enabled: Boolean, onClick: () -> Unit)
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(product.name, textAlign = TextAlign.Center, fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 2)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(product.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(0.5f))
+                Text(
+                    text = product.category,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Rs ${Money.format(product.price)}", fontFamily = CinzelFontFamily, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -756,8 +938,8 @@ private fun TicketPanel(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    discountOptions.forEach { percent ->
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    lazyRowItems(discountOptions) { percent ->
                         FilterChip(
                             selected = discountPercent == percent,
                             onClick = { onDiscountSelected(percent) },
@@ -804,7 +986,13 @@ private fun TicketHeader(itemCount: Int) {
             Text(stringResource(R.string.sales_ticket_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(0.65f))
         }
         Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondary.copy(0.25f), border = androidx.compose.foundation.BorderStroke(1.dp, RoyalGold.copy(0.7f))) {
-            Text(stringResource(R.string.sales_ticket_item_count, itemCount), Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = stringResource(R.string.sales_ticket_item_count, itemCount),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

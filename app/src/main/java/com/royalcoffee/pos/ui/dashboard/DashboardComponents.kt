@@ -8,6 +8,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -21,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.royalcoffee.pos.data.local.dao.PaymentBreakdown
@@ -56,7 +59,9 @@ fun MetricCardWithTrend(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -66,23 +71,28 @@ fun MetricCardWithTrend(
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                fontFamily = CinzelFontFamily
+                fontFamily = CinzelFontFamily,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = trend,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isPositive) TrendUp else TrendDown
+                    color = if (isPositive) TrendUp else TrendDown,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = comparisonLabel,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -319,20 +329,19 @@ fun DashboardDonutChart(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Legend
-        Row(
+        // Legend (Horizontally scrollable LazyRow to prevent overflow on smaller screens)
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            data.forEachIndexed { index, item ->
+            itemsIndexed(data) { index, item ->
                 LegendItem(
                     label = item.paymentMethod,
                     color = colors[index % colors.size],
                     isSelected = selectedSlice?.paymentMethod == item.paymentMethod,
                     onClick = { selectedSlice = if (selectedSlice == item) null else item }
                 )
-                if (index < data.size - 1) Spacer(modifier = Modifier.width(16.dp))
             }
         }
     }
@@ -440,4 +449,3 @@ fun DashboardBarChart(
         }
     }
 }
-

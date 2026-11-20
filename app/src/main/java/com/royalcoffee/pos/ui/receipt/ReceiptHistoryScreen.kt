@@ -4,12 +4,14 @@ import com.royalcoffee.pos.model.Money
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -45,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
@@ -61,7 +64,6 @@ import java.time.format.DateTimeFormatter
  * - Allows Admin to tap a receipt and view product details.
  * - Added date filtering.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiptHistoryScreen(
     receipts: List<ReceiptHistoryItem>,
@@ -80,61 +82,81 @@ fun ReceiptHistoryScreen(
     var showDatePicker by remember { mutableStateOf(false) }
 
     Surface(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Receipt History",
-                fontFamily = CinzelFontFamily,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
-            )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val availableWidth = maxWidth
+            val availableHeight = maxHeight
 
-            Text(
-                text = "View completed transactions saved locally on this device.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            val horizontalPadding = when {
+                availableWidth < 700.dp -> 12.dp
+                availableWidth < 1000.dp -> 18.dp
+                else -> 28.dp
+            }
+            val verticalPadding = if (availableHeight < 600.dp) 12.dp else 24.dp
+            val sectionSpacing = if (availableHeight < 600.dp) 14.dp else 24.dp
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Filter Chips
-            ReceiptFilterBar(
-                currentFilter = currentFilter,
-                customDate = customDate,
-                onFilterClick = { filter ->
-                    if (filter == ReceiptDateFilter.CUSTOM) {
-                        showDatePicker = true
-                    } else {
-                        onFilterChange(filter)
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
+            val compactLayout = availableWidth < 650.dp
 
             Column(
-                modifier = Modifier.widthIn(max = 960.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (receipts.isEmpty()) {
-                    EmptyReceiptHistoryCard(
-                        isFiltered = currentFilter != ReceiptDateFilter.ALL
-                    )
-                } else {
-                    ReceiptHistoryListCard(
-                        receipts = receipts,
-                        onReceiptClick = onReceiptClick
-                    )
+                Text(
+                    text = "Receipt History",
+                    fontFamily = CinzelFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "View completed transactions saved locally on this device.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(sectionSpacing))
+
+                // Filter Chips
+                ReceiptFilterBar(
+                    currentFilter = currentFilter,
+                    customDate = customDate,
+                    onFilterClick = { filter ->
+                        if (filter == ReceiptDateFilter.CUSTOM) {
+                            showDatePicker = true
+                        } else {
+                            onFilterChange(filter)
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(sectionSpacing))
+
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 960.dp)
+                        .weight(1f)
+                ) {
+                    if (receipts.isEmpty()) {
+                        EmptyReceiptHistoryCard(
+                            isFiltered = currentFilter != ReceiptDateFilter.ALL,
+                            compactLayout = compactLayout
+                        )
+                    } else {
+                        ReceiptHistoryListCard(
+                            receipts = receipts,
+                            compactLayout = compactLayout,
+                            onReceiptClick = onReceiptClick,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
@@ -197,9 +219,9 @@ private fun ReceiptFilterBar(
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
-        items(ReceiptDateFilter.values()) { filter ->
+        items(ReceiptDateFilter.entries.toTypedArray()) { filter ->
             val isSelected = currentFilter == filter
             val label = if (filter == ReceiptDateFilter.CUSTOM && isSelected) {
                 "Date: ${customDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}"
@@ -246,8 +268,11 @@ private fun ReceiptFilterBar(
 
 @Composable
 private fun EmptyReceiptHistoryCard(
-    isFiltered: Boolean
+    isFiltered: Boolean,
+    compactLayout: Boolean
 ) {
+    val cardPadding = if (compactLayout) 16.dp else 28.dp
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -262,7 +287,7 @@ private fun EmptyReceiptHistoryCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(28.dp),
+                .padding(cardPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -276,9 +301,9 @@ private fun EmptyReceiptHistoryCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (isFiltered) 
-                    "Try selecting a different date range or filter." 
-                else 
+                text = if (isFiltered)
+                    "Try selecting a different date range or filter."
+                else
                     "Complete an order and tap Next Order to save a receipt.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
@@ -291,10 +316,14 @@ private fun EmptyReceiptHistoryCard(
 @Composable
 private fun ReceiptHistoryListCard(
     receipts: List<ReceiptHistoryItem>,
-    onReceiptClick: (ReceiptHistoryItem) -> Unit
+    compactLayout: Boolean,
+    onReceiptClick: (ReceiptHistoryItem) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val cardPadding = if (compactLayout) 14.dp else 22.dp
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -305,7 +334,9 @@ private fun ReceiptHistoryListCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(22.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(cardPadding)
         ) {
             Text(
                 text = "Saved Receipts",
@@ -327,10 +358,13 @@ private fun ReceiptHistoryListCard(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
 
-            LazyColumn {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
                 items(receipts) { receipt ->
                     ReceiptHistoryRow(
                         receipt = receipt,
+                        compactLayout = compactLayout,
                         onClick = {
                             onReceiptClick(receipt)
                         }
@@ -348,56 +382,126 @@ private fun ReceiptHistoryListCard(
 @Composable
 private fun ReceiptHistoryRow(
     receipt: ReceiptHistoryItem,
+    compactLayout: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                onClick()
-            }
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    if (compactLayout) {
         Column(
-            modifier = Modifier.weight(1.5f)
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(vertical = 12.dp, horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = receipt.receiptNumber,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = receipt.receiptNumber,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Rs ${Money.format(receipt.total)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             Text(
                 text = receipt.receiptDateTime,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Cashier: ${receipt.cashierName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Payment: ${receipt.paymentMethod}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1.5f)
+            ) {
+                Text(
+                    text = receipt.receiptNumber,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = receipt.receiptDateTime,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Text(
+                text = receipt.cashierName,
+                modifier = Modifier.weight(0.9f),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = receipt.paymentMethod,
+                modifier = Modifier.weight(0.9f),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = "Rs ${Money.format(receipt.total)}",
+                modifier = Modifier.weight(0.9f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.End
             )
         }
-
-        Text(
-            text = receipt.cashierName,
-            modifier = Modifier.weight(0.9f),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = receipt.paymentMethod,
-            modifier = Modifier.weight(0.9f),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = "Rs ${Money.format(receipt.total)}",
-            modifier = Modifier.weight(0.9f),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.End
-        )
     }
 }
 
@@ -411,68 +515,99 @@ private fun ReceiptDetailDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = receipt.receiptNumber,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Button(
-                    onClick = onDownload,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Download PDF")
+            BoxWithConstraints {
+                val isCompactDialog = maxWidth < 450.dp
+                if (isCompactDialog) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = receipt.receiptNumber,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Button(
+                            onClick = onDownload,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Download PDF")
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = receipt.receiptNumber,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Button(
+                            onClick = onDownload,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Download PDF")
+                        }
+                    }
                 }
             }
         },
         text = {
-            Column(
-                modifier = Modifier.widthIn(max = 680.dp)
-            ) {
-                Text(
-                    text = "${receipt.receiptDateTime} • ${receipt.paymentMethod} • Rs ${Money.format(receipt.total)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+            BoxWithConstraints(modifier = Modifier.widthIn(max = 680.dp)) {
+                val isCompactDialog = maxWidth < 450.dp
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                DetailHeaderRow(
-                    first = "Product",
-                    second = "Qty",
-                    third = "Line Total"
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-
-                if (details.isEmpty()) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "No receipt line details found.",
+                        text = "${receipt.receiptDateTime} • ${receipt.paymentMethod} • Rs ${Money.format(receipt.total)}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                } else {
-                    details.forEach { detail ->
-                        DetailDataRow(
-                            first = "${detail.productName}\nRs ${Money.format(detail.unitPrice)} each",
-                            second = detail.quantity.toString(),
-                            third = "Rs ${Money.format(detail.lineTotal)}"
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    if (!isCompactDialog) {
+                        DetailHeaderRow(
+                            first = "Product",
+                            second = "Qty",
+                            third = "Line Total"
                         )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+
+                    if (details.isEmpty()) {
+                        Text(
+                            text = "No receipt line details found.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 300.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(details) { detail ->
+                                DetailDataRow(
+                                    detail = detail,
+                                    isCompact = isCompactDialog
+                                )
+                            }
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = onDismiss
-            ) {
+            Button(onClick = onDismiss) {
                 Text(text = "Close")
             }
         }
@@ -518,37 +653,78 @@ private fun DetailHeaderRow(
 
 @Composable
 private fun DetailDataRow(
-    first: String,
-    second: String,
-    third: String
+    detail: ReceiptDetailItem,
+    isCompact: Boolean
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = first,
-            modifier = Modifier.weight(1.5f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
+    if (isCompact) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = detail.productName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Rs ${Money.format(detail.unitPrice)} each × ${detail.quantity}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = "Rs ${Money.format(detail.lineTotal)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${detail.productName}\nRs ${Money.format(detail.unitPrice)} each",
+                modifier = Modifier.weight(1.5f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
 
-        Text(
-            text = second,
-            modifier = Modifier.weight(0.5f),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
+            Text(
+                text = detail.quantity.toString(),
+                modifier = Modifier.weight(0.5f),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
 
-        Text(
-            text = third,
-            modifier = Modifier.weight(0.8f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.End
-        )
+            Text(
+                text = "Rs ${Money.format(detail.lineTotal)}",
+                modifier = Modifier.weight(0.8f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.End
+            )
+        }
     }
 }

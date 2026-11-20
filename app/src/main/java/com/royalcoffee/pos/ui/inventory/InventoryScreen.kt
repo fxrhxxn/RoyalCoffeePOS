@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,7 +50,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 
-
 /**
  * Main Inventory screen.
  *
@@ -60,7 +61,6 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
  * - Record waste
  * - Deactivate products
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreen(
     userRole: UserRole,
@@ -68,7 +68,6 @@ fun InventoryScreen(
     categoryRepository: CategoryRepository,
     modifier: Modifier = Modifier
 ) {
-
     // Create the ViewModel with both repositories.
     val viewModel: InventoryViewModel = viewModel(
         factory = InventoryViewModelFactory(
@@ -96,21 +95,11 @@ fun InventoryScreen(
     val inventoryError = viewModel.inventoryError
 
     // Dialog states.
-    var showAddDialog by remember {
-        mutableStateOf(false)
-    }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var showCategoryDialog by remember { mutableStateOf(false) }
+    var editingProduct by remember { mutableStateOf<InventoryProduct?>(null) }
 
-    var showCategoryDialog by remember {
-        mutableStateOf(false)
-    }
-
-    var editingProduct by remember {
-        mutableStateOf<InventoryProduct?>(null)
-    }
-
-    var batchEditorProduct by remember {
-        mutableStateOf<InventoryProduct?>(null)
-    }
+    var batchEditorProduct by remember { mutableStateOf<InventoryProduct?>(null) }
     val batchEditorProductId = batchEditorProduct?.productId
     val batchFlow = remember(batchEditorProductId) {
         batchEditorProductId?.let(productRepository::observeBatchesForProduct)
@@ -119,433 +108,198 @@ fun InventoryScreen(
     val batchesForEditing by batchFlow.collectAsStateWithLifecycle(emptyList())
     val screenScope = rememberCoroutineScope()
 
-    var adjustingProduct by remember {
-        mutableStateOf<InventoryProduct?>(null)
-    }
-
-    var adjustmentType by remember {
-        mutableStateOf(InventoryTransactionType.RESTOCK)
-    }
-
-    // Controls the Inventory category filter dropdown.
-    var categoryFilterExpanded by remember {
-        mutableStateOf(false)
-    }
-
+    var adjustingProduct by remember { mutableStateOf<InventoryProduct?>(null) }
+    var adjustmentType by remember { mutableStateOf(InventoryTransactionType.RESTOCK) }
 
     Surface(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val availableWidth = maxWidth
+            val availableHeight = maxHeight
 
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            // ---------------------------------------------------------
-            // HEADER
-            // ---------------------------------------------------------
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                /*
-                 * Empty spacer helps keep the title visually centred.
-                 */
-                Spacer(
-                    modifier = Modifier.width(160.dp)
-                )
-
-                Text(
-                    text = "Inventory",
-                    fontFamily = CinzelFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                /*
-                 * Only Admin users can manage inventory.
-                 */
-                if (userRole == UserRole.ADMIN) {
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        // Manage Categories button.
-                        OutlinedButton(
-                            onClick = {
-                                showCategoryDialog = true
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 10.dp
-                            )
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Default.Category,
-                                contentDescription = null
-                            )
-
-                            Spacer(
-                                modifier = Modifier.width(8.dp)
-                            )
-
-                            Text(
-                                text = "Manage Categories"
-                            )
-                        }
-
-
-                        // Add Product button.
-                        Button(
-                            onClick = {
-                                showAddDialog = true
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 10.dp
-                            )
-                        ) {
-
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null
-                            )
-
-                            Spacer(
-                                modifier = Modifier.width(8.dp)
-                            )
-
-                            Text(
-                                text = "Add Product"
-                            )
-                        }
-                    }
-
-                } else {
-
-                    Spacer(
-                        modifier = Modifier.width(160.dp)
-                    )
-                }
+            val horizontalPadding = when {
+                availableWidth < 700.dp -> 12.dp
+                availableWidth < 1000.dp -> 18.dp
+                else -> 28.dp
             }
+            val verticalPadding = if (availableHeight < 600.dp) 12.dp else 24.dp
+            val headerSpacing = if (availableHeight < 600.dp) 14.dp else 24.dp
+            val sectionSpacing = if (availableHeight < 600.dp) 14.dp else 24.dp
 
-
-            Text(
-                text = "Manage products, stock levels, categories, and audit history.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(
-                    alpha = 0.7f
-                ),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(
-                    top = 8.dp
-                )
-            )
-
-
-            Spacer(
-                modifier = Modifier.height(28.dp)
-            )
-
+            val isCompactHeader = availableWidth < 700.dp
 
             Column(
-                modifier = Modifier.widthIn(
-                    max = 1000.dp
-                )
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
                 // ---------------------------------------------------------
-                // INVENTORY SUMMARY
+                // HEADER
                 // ---------------------------------------------------------
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        16.dp
-                    )
-                ) {
-
-                    SummaryStatCard(
-                        title = "Total Products",
-                        value = totalProducts.toString(),
-                        isSelected = stockFilter == StockFilter.ALL,
-                        onClick = {
-                            viewModel.updateStockFilter(
-                                StockFilter.ALL
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-
-                    SummaryStatCard(
-                        title = "Total Stock",
-                        value = totalStock.toString(),
-                        modifier = Modifier.weight(1f)
-                    )
-
-
-                    SummaryStatCard(
-                        title = "Low Stock",
-                        value = lowStockCount.toString(),
-                        isWarning = lowStockCount > 0,
-                        isSelected =
-                            stockFilter == StockFilter.LOW_STOCK,
-                        onClick = {
-                            viewModel.updateStockFilter(
-                                StockFilter.LOW_STOCK
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-
-                    SummaryStatCard(
-                        title = "Out of Stock",
-                        value = outOfStockCount.toString(),
-                        isWarning = outOfStockCount > 0,
-                        isSelected =
-                            stockFilter == StockFilter.OUT_OF_STOCK,
-                        onClick = {
-                            viewModel.updateStockFilter(
-                                StockFilter.OUT_OF_STOCK
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-
-                Spacer(
-                    modifier = Modifier.height(24.dp)
-                )
-
-
-                // ---------------------------------------------------------
-                // SEARCH AND CATEGORY FILTERS
-                // ---------------------------------------------------------
-
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-
-                    val focusManager = LocalFocusManager.current
-
-                    // Product Search takes the remaining available width.
-                    OutlinedTextField(
-                        value = searchText,
-                        onValueChange = {
-                            viewModel.updateSearch(it)
-                        },
-                        placeholder = {
-                            Text("Search products...")
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .widthIn(min = 280.dp),
-
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null
-                            )
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Search
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                focusManager.clearFocus()
-                            }
-                        )
-                    )
-
-                    // Category filter dropdown.
-                    // Adding more categories does not shrink the search field.
-                    ExposedDropdownMenuBox(
-                        expanded = categoryFilterExpanded,
-                        onExpandedChange = {
-                            categoryFilterExpanded = !categoryFilterExpanded
-                        },
-                        modifier = Modifier.width(220.dp)
+                if (isCompactHeader) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-
-                        OutlinedTextField(
-                            value = selectedCategory,
-                            onValueChange = {
-                                // Read-only field.
-                            },
-                            readOnly = true,
-                            singleLine = true,
-                            placeholder = {
-                                Text("Category")
-                            },
-                            shape = RoundedCornerShape(14.dp),
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(
-                                    expanded = categoryFilterExpanded
-                                )
-                            },
-                            modifier = Modifier
-                                .menuAnchor(
-                                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                    enabled = true
-                                )
-                                .fillMaxWidth()
+                        Text(
+                            text = "Inventory",
+                            fontFamily = CinzelFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
                         )
-
-                        ExposedDropdownMenu(
-                            expanded = categoryFilterExpanded,
-                            onDismissRequest = {
-                                categoryFilterExpanded = false
-                            }
-                        ) {
-
-                            filterCategories.forEach { category ->
-
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(category)
-                                    },
-
-                                    onClick = {
-                                        viewModel.updateCategory(category)
-                                        categoryFilterExpanded = false
-                                    }
-                                )
-                            }
+                        if (userRole == UserRole.ADMIN) {
+                            AdminActionButtons(
+                                onManageCategories = { showCategoryDialog = true },
+                                onAddProduct = { showAddDialog = true },
+                                isCompact = true
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Inventory",
+                            fontFamily = CinzelFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (userRole == UserRole.ADMIN) {
+                            AdminActionButtons(
+                                onManageCategories = { showCategoryDialog = true },
+                                onAddProduct = { showAddDialog = true },
+                                isCompact = false
+                            )
                         }
                     }
                 }
 
-
-                Spacer(
-                    modifier = Modifier.height(24.dp)
+                Text(
+                    text = "Manage products, stock levels, categories, and audit history.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
                 )
 
-                // ---------------------------------------------------------
-                // PRODUCT LIST
-                // ---------------------------------------------------------
+                Spacer(modifier = Modifier.height(headerSpacing))
 
-                InventoryList(
-                    products = products,
-                    userRole = userRole,
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 1100.dp)
+                        .weight(1f)
+                ) {
+                    // ---------------------------------------------------------
+                    // INVENTORY SUMMARY
+                    // ---------------------------------------------------------
+                    InventorySummaryCards(
+                        totalProducts = totalProducts,
+                        totalStock = totalStock,
+                        lowStockCount = lowStockCount,
+                        outOfStockCount = outOfStockCount,
+                        stockFilter = stockFilter,
+                        onUpdateStockFilter = { viewModel.updateStockFilter(it) },
+                        availableWidth = availableWidth
+                    )
 
-                    onEdit = {
-                        editingProduct = it
-                    },
+                    Spacer(modifier = Modifier.height(sectionSpacing))
 
-                    onAdjust = {
-                            product,
-                            type ->
+                    // ---------------------------------------------------------
+                    // SEARCH AND CATEGORY FILTERS
+                    // ---------------------------------------------------------
+                    SearchAndCategoryFilters(
+                        searchText = searchText,
+                        onSearchChange = { viewModel.updateSearch(it) },
+                        selectedCategory = selectedCategory,
+                        filterCategories = filterCategories,
+                        onCategorySelect = { viewModel.updateCategory(it) },
+                        availableWidth = availableWidth
+                    )
 
-                        adjustingProduct =
-                            product
+                    Spacer(modifier = Modifier.height(sectionSpacing))
 
-                        adjustmentType =
-                            type
-                    },
-
-                    onReactivate = { viewModel.reactivateProduct(it.productId) },
-                    onDeactivate = { viewModel.requestRemoval(it) }
-                )
+                    // ---------------------------------------------------------
+                    // PRODUCT LIST
+                    // ---------------------------------------------------------
+                    InventoryList(
+                        products = products,
+                        userRole = userRole,
+                        availableWidth = availableWidth,
+                        onEdit = { editingProduct = it },
+                        onAdjust = { product, type ->
+                            adjustingProduct = product
+                            adjustmentType = type
+                        },
+                        onReactivate = { viewModel.reactivateProduct(it.productId) },
+                        onDeactivate = { viewModel.requestRemoval(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                }
             }
         }
     }
 
-
     // ---------------------------------------------------------
-    // INVENTORY ERROR
+    // REMOVAL CONFIRMATION & LIFECYCLE MESSAGES
     // ---------------------------------------------------------
-
     viewModel.removalCandidate?.let { product ->
-        AlertDialog(onDismissRequest = { viewModel.cancelRemoval() },
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelRemoval() },
             title = { Text(if (viewModel.removalPermanent) "Permanently delete product?" else "Deactivate product?") },
-            text = { Text(if (viewModel.removalPermanent) "Delete ${product.name}? This cannot be undone. If related history is added before confirmation, it will be deactivated instead."
-                else "${product.name} has stock or related history, or legacy history cannot be ruled out. It will remain in inventory and can be reactivated.") },
+            text = {
+                Text(
+                    if (viewModel.removalPermanent)
+                        "Delete ${product.name}? This cannot be undone. If related history is added before confirmation, it will be deactivated instead."
+                    else
+                        "${product.name} has stock or related history, or legacy history cannot be ruled out. It will remain in inventory and can be reactivated."
+                )
+            },
             confirmButton = { TextButton(onClick = { viewModel.confirmRemoval() }) { Text(if (viewModel.removalPermanent) "Delete permanently" else "Deactivate") } },
-            dismissButton = { TextButton(onClick = { viewModel.cancelRemoval() }) { Text("Cancel") } })
+            dismissButton = { TextButton(onClick = { viewModel.cancelRemoval() }) { Text("Cancel") } }
+        )
     }
+
     viewModel.lifecycleMessage?.let { message ->
-        AlertDialog(onDismissRequest = { viewModel.clearLifecycleMessage() }, title = { Text("Product updated") },
-            text = { Text(message) }, confirmButton = { TextButton(onClick = { viewModel.clearLifecycleMessage() }) { Text("OK") } })
+        AlertDialog(
+            onDismissRequest = { viewModel.clearLifecycleMessage() },
+            title = { Text("Product updated") },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { viewModel.clearLifecycleMessage() }) { Text("OK") } }
+        )
     }
 
     if (inventoryError != null) {
-
         AlertDialog(
-            onDismissRequest = {
-                viewModel.clearError()
-            },
-
-            title = {
-                Text("Inventory Error")
-            },
-
-            text = {
-                Text(inventoryError)
-            },
-
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text("Inventory Error") },
+            text = { Text(inventoryError) },
             confirmButton = {
-
-                Button(
-                    onClick = {
-                        viewModel.clearError()
-                    }
-                ) {
-
-                    Text("OK")
-                }
+                Button(onClick = { viewModel.clearError() }) { Text("OK") }
             }
         )
     }
 
-
     // ---------------------------------------------------------
     // ADD PRODUCT DIALOG
     // ---------------------------------------------------------
-
     if (showAddDialog) {
-
         ProductFormDialog(
             userRole = userRole,
-
-            /*
-             * Categories now come from Room.
-             */
             categories = productCategories,
-
-            onDismiss = {
-                showAddDialog = false
-            },
-
-            onConfirm = {
-                    name,
-                    category,
-                    price,
-                    cost,
-                    stock,
-                    reorder,
-                    expiryDay ->
-
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, category, price, cost, stock, reorder, expiryDay ->
                 viewModel.addProduct(
                     name = name,
                     category = category,
@@ -555,54 +309,30 @@ fun InventoryScreen(
                     reorder = reorder,
                     expiryDay = expiryDay
                 )
-
                 showAddDialog = false
             }
         )
     }
 
-
     // ---------------------------------------------------------
     // EDIT PRODUCT DIALOG
     // ---------------------------------------------------------
-
     if (editingProduct != null) {
-
         ProductFormDialog(
             userRole = userRole,
             product = editingProduct,
             categories = productCategories,
-
-            onDismiss = {
-                editingProduct = null
-            },
-
-            onConfirm = {
-                    name,
-                    category,
-                    price,
-                    cost,
-                    _,
-                    reorder,
-                    _ ->
-
+            onDismiss = { editingProduct = null },
+            onConfirm = { name, category, price, cost, _, reorder, _ ->
                 viewModel.updateProduct(
-                    productId =
-                        editingProduct!!.productId,
-
+                    productId = editingProduct!!.productId,
                     name = name,
-
                     category = category,
-
                     price = price,
-
                     cost = cost,
-
                     reorder = reorder,
-
                     active = editingProduct!!.isActive
                 )
-
                 editingProduct = null
             },
             onManageBatches = {
@@ -616,9 +346,7 @@ fun InventoryScreen(
         StockBatchManagementDialog(
             product = product,
             batches = batchesForEditing,
-
             onDismiss = { batchEditorProduct = null },
-
             onUpdateExpiry = { batchId, expiryDay ->
                 screenScope.launch {
                     productRepository.updateBatchExpiry(
@@ -626,7 +354,6 @@ fun InventoryScreen(
                     )
                 }
             },
-
             onAddBatch = { quantity, expiryDay ->
                 viewModel.adjustStock(
                     productId = product.productId,
@@ -639,104 +366,334 @@ fun InventoryScreen(
         )
     }
 
-
-
     // ---------------------------------------------------------
     // STOCK ADJUSTMENT DIALOG
     // ---------------------------------------------------------
-
     if (adjustingProduct != null) {
-
         StockActionDialog(
-            product =
-                adjustingProduct!!,
-
-            type =
-                adjustmentType,
-
-            onDismiss = {
-                adjustingProduct = null
-            },
-
-            onConfirm = {
-                    quantity,
-                    reason, expiryDay ->
-
-                val change =
-                    if (
-                        adjustmentType ==
-                        InventoryTransactionType.RESTOCK
-                    ) {
-
-                        quantity
-
-                    } else {
-
-                        -quantity
-                    }
-
-
+            product = adjustingProduct!!,
+            type = adjustmentType,
+            onDismiss = { adjustingProduct = null },
+            onConfirm = { quantity, reason, expiryDay ->
+                val change = if (adjustmentType == InventoryTransactionType.RESTOCK) {
+                    quantity
+                } else {
+                    -quantity
+                }
                 viewModel.adjustStock(
-                    productId =
-                        adjustingProduct!!.productId,
-
-                    change =
-                        change,
-
-                    type =
-                        adjustmentType,
-
+                    productId = adjustingProduct!!.productId,
+                    change = change,
+                    type = adjustmentType,
                     reason = reason,
                     expiryDay = expiryDay
                 )
-
-
                 adjustingProduct = null
             }
         )
     }
-
 
     // ---------------------------------------------------------
     // CATEGORY MANAGEMENT DIALOG
     // ---------------------------------------------------------
-
     if (showCategoryDialog) {
-
         ManageCategoriesDialog(
-            categories =
-                categoryEntities,
-
-            errorMessage =
-                viewModel.categoryError,
-
-            onAddCategory = {
-                    categoryName ->
-
-                viewModel.addCategory(
-                    categoryName
-                )
-            },
-
-            onRemoveCategory = {
-                    category ->
-
-                viewModel.removeCategory(
-                    category
-                )
-            },
-
-            onClearError = {
-                viewModel.clearCategoryError()
-            },
-
-            onDismiss = {
-                showCategoryDialog = false
-            }
+            categories = categoryEntities,
+            errorMessage = viewModel.categoryError,
+            onAddCategory = { categoryName -> viewModel.addCategory(categoryName) },
+            onRemoveCategory = { category -> viewModel.removeCategory(category) },
+            onClearError = { viewModel.clearCategoryError() },
+            onDismiss = { showCategoryDialog = false }
         )
     }
 }
 
+/**
+ * Admin action buttons (Manage Categories & Add Product).
+ */
+@Composable
+private fun AdminActionButtons(
+    onManageCategories: () -> Unit,
+    onAddProduct: () -> Unit,
+    isCompact: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (isCompact) {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = onManageCategories,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Categories", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Button(
+                onClick = onAddProduct,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Add Product", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    } else {
+        Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = onManageCategories,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Icon(Icons.Default.Category, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Manage Categories")
+            }
+            Button(
+                onClick = onAddProduct,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Add Product")
+            }
+        }
+    }
+}
+
+/**
+ * Summary cards container. Switches between 1 row and 2x2 grid based on available width.
+ */
+@Composable
+private fun InventorySummaryCards(
+    totalProducts: Int,
+    totalStock: Int,
+    lowStockCount: Int,
+    outOfStockCount: Int,
+    stockFilter: StockFilter,
+    onUpdateStockFilter: (StockFilter) -> Unit,
+    availableWidth: Dp,
+    modifier: Modifier = Modifier
+) {
+    val compactSummary = availableWidth < 800.dp
+
+    if (compactSummary) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SummaryStatCard(
+                    title = "Total Products",
+                    value = totalProducts.toString(),
+                    isSelected = stockFilter == StockFilter.ALL,
+                    onClick = { onUpdateStockFilter(StockFilter.ALL) },
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryStatCard(
+                    title = "Total Stock",
+                    value = totalStock.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SummaryStatCard(
+                    title = "Low Stock",
+                    value = lowStockCount.toString(),
+                    isWarning = lowStockCount > 0,
+                    isSelected = stockFilter == StockFilter.LOW_STOCK,
+                    onClick = { onUpdateStockFilter(StockFilter.LOW_STOCK) },
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryStatCard(
+                    title = "Out of Stock",
+                    value = outOfStockCount.toString(),
+                    isWarning = outOfStockCount > 0,
+                    isSelected = stockFilter == StockFilter.OUT_OF_STOCK,
+                    onClick = { onUpdateStockFilter(StockFilter.OUT_OF_STOCK) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SummaryStatCard(
+                title = "Total Products",
+                value = totalProducts.toString(),
+                isSelected = stockFilter == StockFilter.ALL,
+                onClick = { onUpdateStockFilter(StockFilter.ALL) },
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatCard(
+                title = "Total Stock",
+                value = totalStock.toString(),
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatCard(
+                title = "Low Stock",
+                value = lowStockCount.toString(),
+                isWarning = lowStockCount > 0,
+                isSelected = stockFilter == StockFilter.LOW_STOCK,
+                onClick = { onUpdateStockFilter(StockFilter.LOW_STOCK) },
+                modifier = Modifier.weight(1f)
+            )
+            SummaryStatCard(
+                title = "Out of Stock",
+                value = outOfStockCount.toString(),
+                isWarning = outOfStockCount > 0,
+                isSelected = stockFilter == StockFilter.OUT_OF_STOCK,
+                onClick = { onUpdateStockFilter(StockFilter.OUT_OF_STOCK) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+/**
+ * Search field and category filter dropdown. Switches between side-by-side and stacked layout.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchAndCategoryFilters(
+    searchText: String,
+    onSearchChange: (String) -> Unit,
+    selectedCategory: String,
+    filterCategories: List<String>,
+    onCategorySelect: (String) -> Unit,
+    availableWidth: Dp,
+    modifier: Modifier = Modifier
+) {
+    val focusManager = LocalFocusManager.current
+    var categoryFilterExpanded by remember { mutableStateOf(false) }
+    val isStacked = availableWidth < 650.dp
+
+    if (isStacked) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = onSearchChange,
+                placeholder = { Text("Search products...") },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = categoryFilterExpanded,
+                onExpandedChange = { categoryFilterExpanded = !categoryFilterExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory,
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    placeholder = { Text("Category") },
+                    shape = RoundedCornerShape(14.dp),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryFilterExpanded) },
+                    modifier = Modifier
+                        .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                        .fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = categoryFilterExpanded,
+                    onDismissRequest = { categoryFilterExpanded = false }
+                ) {
+                    filterCategories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category) },
+                            onClick = {
+                                onCategorySelect(category)
+                                categoryFilterExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = onSearchChange,
+                placeholder = { Text("Search products...") },
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(min = 280.dp),
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = categoryFilterExpanded,
+                onExpandedChange = { categoryFilterExpanded = !categoryFilterExpanded },
+                modifier = Modifier.width(220.dp)
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory,
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    placeholder = { Text("Category") },
+                    shape = RoundedCornerShape(14.dp),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryFilterExpanded) },
+                    modifier = Modifier
+                        .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                        .fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = categoryFilterExpanded,
+                    onDismissRequest = { categoryFilterExpanded = false }
+                ) {
+                    filterCategories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category) },
+                            onClick = {
+                                onCategorySelect(category)
+                                categoryFilterExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * Small card used for inventory summary statistics.
@@ -750,443 +707,311 @@ private fun SummaryStatCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-
     Card(
         modifier = modifier.then(
-            if (onClick != null) {
-
-                Modifier.clickable {
-                    onClick()
-                }
-
-            } else {
-
-                Modifier
+            if (onClick != null) Modifier.clickable { onClick() } else Modifier
+        ),
+        shape = RoundedCornerShape(18.dp),
+        colors = cardColors(
+            containerColor = when {
+                isSelected -> RoyalGold.copy(alpha = 0.15f)
+                isWarning -> MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+                else -> MaterialTheme.colorScheme.surface
             }
         ),
-
-        shape = RoundedCornerShape(18.dp),
-
-        colors = cardColors(
-            containerColor =
-                when {
-
-                    isSelected ->
-                        RoyalGold.copy(
-                            alpha = 0.15f
-                        )
-
-                    isWarning ->
-                        MaterialTheme.colorScheme.error.copy(
-                            alpha = 0.05f
-                        )
-
-                    else ->
-                        MaterialTheme.colorScheme.surface
-                }
-        ),
-
         border = BorderStroke(
-            width =
-                if (isSelected) {
-                    2.dp
-                } else {
-                    1.dp
-                },
-
-            color =
-                when {
-
-                    isSelected ->
-                        RoyalGold
-
-                    isWarning ->
-                        MaterialTheme.colorScheme.error.copy(
-                            alpha = 0.3f
-                        )
-
-                    else ->
-                        Color.LightGray.copy(
-                            alpha = 0.2f
-                        )
-                }
+            width = if (isSelected) 2.dp else 1.dp,
+            color = when {
+                isSelected -> RoyalGold
+                isWarning -> MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+                else -> Color.LightGray.copy(alpha = 0.2f)
+            }
         )
     ) {
-
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(14.dp)
                 .fillMaxWidth(),
-
-            horizontalAlignment =
-                Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Text(
                 text = title,
-                style =
-                    MaterialTheme.typography.labelMedium,
-                color = Color.Gray
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
-                style =
-                    MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color =
-                    if (isWarning) {
-
-                        MaterialTheme.colorScheme.error
-
-                    } else {
-
-                        MaterialTheme.colorScheme.primary
-                    }
+                color = if (isWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
-
 /**
- * Displays the inventory products.
+ * Displays the inventory products list.
  */
 @Composable
 private fun InventoryList(
     products: List<InventoryProduct>,
     userRole: UserRole,
+    availableWidth: Dp,
     onEdit: (InventoryProduct) -> Unit,
-    onAdjust: (
-        InventoryProduct,
-        InventoryTransactionType
-    ) -> Unit,
+    onAdjust: (InventoryProduct, InventoryTransactionType) -> Unit,
     onDeactivate: (InventoryProduct) -> Unit,
-    onReactivate: (InventoryProduct) -> Unit
+    onReactivate: (InventoryProduct) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val isCompactList = availableWidth < 650.dp
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         shape = RoundedCornerShape(22.dp),
-
-        colors = cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.surface
-        ),
-
-        border = BorderStroke(
-            1.dp,
-            Color.LightGray.copy(
-                alpha = 0.1f
-            )
-        )
+        colors = cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.1f))
     ) {
-
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-
-            // Table header.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        bottom = 12.dp
-                    ),
-
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Text(
-                    text = "Product",
-                    modifier = Modifier.weight(1.5f),
-                    fontWeight = FontWeight.Bold,
-                    style =
-                        MaterialTheme.typography.labelLarge
-                )
-
-                Text(
-                    text = "Stock",
-                    modifier = Modifier.weight(0.8f),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    style =
-                        MaterialTheme.typography.labelLarge
-                )
-
-                Text(
-                    text = "Reorder",
-                    modifier = Modifier.weight(0.8f),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    style =
-                        MaterialTheme.typography.labelLarge
-                )
-
-                Text(
-                    text = "Status",
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    style =
-                        MaterialTheme.typography.labelLarge
-                )
-
-                if (userRole == UserRole.ADMIN) {
-
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            if (products.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "Actions",
-                        modifier = Modifier.weight(1.2f),
-                        textAlign = TextAlign.End,
-                        fontWeight = FontWeight.Bold,
-                        style =
-                            MaterialTheme.typography.labelLarge
+                        text = "No products found.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
                     )
                 }
-            }
-
-
-            HorizontalDivider(
-                color =
-                    Color.LightGray.copy(
-                        alpha = 0.2f
-                    )
-            )
-
-
-            LazyColumn {
-
-                items(
-                    products,
-                    key = {
-                        it.productId
-                    }
-                ) { product ->
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                vertical = 12.dp
-                            )
-                            .alpha(
-                                if (product.isActive) {
-                                    1f
-                                } else {
-                                    0.5f
-                                }
-                            ),
-
-                        verticalAlignment =
-                            Alignment.CenterVertically
-                    ) {
-
-                        Column(
-                            modifier =
-                                Modifier.weight(1.5f)
+            } else if (isCompactList) {
+                // Compact list layout (Cards per item)
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(products, key = { it.productId }) { product ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .alpha(if (product.isActive) 1f else 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                         ) {
-
-                            Text(
-                                text = product.name,
-                                fontWeight =
-                                    FontWeight.SemiBold
-                            )
-
-                            Text(
-                                text = product.category,
-                                style =
-                                    MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
-                        }
-
-
-                        Text(
-                            text =
-                                product.stockQuantity.toString(),
-                            modifier =
-                                Modifier.weight(0.8f),
-                            textAlign =
-                                TextAlign.Center
-                        )
-
-
-                        Text(
-                            text =
-                                product.reorderLevel.toString(),
-                            modifier =
-                                Modifier.weight(0.8f),
-                            textAlign =
-                                TextAlign.Center
-                        )
-
-
-                        Box(
-                            modifier =
-                                Modifier.weight(1f),
-
-                            contentAlignment =
-                                Alignment.Center
-                        ) {
-
-                            StatusChip(
-                                product
-                            )
-                        }
-
-
-                        if (
-                            userRole ==
-                            UserRole.ADMIN
-                        ) {
-
-                            Row(
-                                modifier =
-                                    Modifier.weight(1.2f),
-
-                                horizontalArrangement =
-                                    Arrangement.End
-                            ) {
-
-                                IconButton(
-                                    onClick = {
-                                        onEdit(
-                                            product
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = product.name,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = product.category,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    StatusChip(product)
+                                    if (userRole == UserRole.ADMIN) {
+                                        IconButton(onClick = { onEdit(product) }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = "Edit",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        ProductActionMenu(
+                                            isActive = product.isActive,
+                                            onReactivate = { onReactivate(product) },
+                                            onRestock = { onAdjust(product, InventoryTransactionType.RESTOCK) },
+                                            onAdjust = { onAdjust(product, InventoryTransactionType.ADJUSTMENT) },
+                                            onWaste = { onAdjust(product, InventoryTransactionType.WASTE) },
+                                            onDeactivate = { onDeactivate(product) }
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-
-                                    Icon(
-                                        imageVector =
-                                            Icons.Default.Edit,
-                                        contentDescription =
-                                            "Edit",
-                                        tint =
-                                            MaterialTheme
-                                                .colorScheme
-                                                .primary
+                                    Text(
+                                        text = "Stock: ${product.stockQuantity}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = "Reorder: ${product.reorderLevel}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        text = "Rs ${Money.format(product.unitPrice)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-
-
-                                ProductActionMenu(
-                                    isActive = product.isActive,
-                                    onReactivate = { onReactivate(product) },
-                                    onRestock = {
-                                        onAdjust(
-                                            product,
-                                            InventoryTransactionType
-                                                .RESTOCK
-                                        )
-                                    },
-
-                                    onAdjust = {
-                                        onAdjust(
-                                            product,
-                                            InventoryTransactionType
-                                                .ADJUSTMENT
-                                        )
-                                    },
-
-                                    onWaste = {
-                                        onAdjust(
-                                            product,
-                                            InventoryTransactionType
-                                                .WASTE
-                                        )
-                                    },
-
-                                    onDeactivate = {
-                                        onDeactivate(
-                                            product
-                                        )
-                                    }
-                                )
                             }
                         }
                     }
-
-
-                    HorizontalDivider(
-                        color =
-                            Color.LightGray.copy(
-                                alpha = 0.1f
-                            )
+                }
+            } else {
+                // Table layout
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Product",
+                        modifier = Modifier.weight(1.5f),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Text(
+                        text = "Stock",
+                        modifier = Modifier.weight(0.8f),
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Text(
+                        text = "Reorder",
+                        modifier = Modifier.weight(0.8f),
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Text(
+                        text = "Status",
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    if (userRole == UserRole.ADMIN) {
+                        Text(
+                            text = "Actions",
+                            modifier = Modifier.weight(1.2f),
+                            textAlign = TextAlign.End,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(products, key = { it.productId }) { product ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp)
+                                .alpha(if (product.isActive) 1f else 0.5f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1.5f)) {
+                                Text(
+                                    text = product.name,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = product.category,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = product.stockQuantity.toString(),
+                                modifier = Modifier.weight(0.8f),
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = product.reorderLevel.toString(),
+                                modifier = Modifier.weight(0.8f),
+                                textAlign = TextAlign.Center
+                            )
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                StatusChip(product)
+                            }
+                            if (userRole == UserRole.ADMIN) {
+                                Row(
+                                    modifier = Modifier.weight(1.2f),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    IconButton(onClick = { onEdit(product) }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    ProductActionMenu(
+                                        isActive = product.isActive,
+                                        onReactivate = { onReactivate(product) },
+                                        onRestock = { onAdjust(product, InventoryTransactionType.RESTOCK) },
+                                        onAdjust = { onAdjust(product, InventoryTransactionType.ADJUSTMENT) },
+                                        onWaste = { onAdjust(product, InventoryTransactionType.WASTE) },
+                                        onDeactivate = { onDeactivate(product) }
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.1f))
+                    }
                 }
             }
         }
     }
 }
 
-
 /**
- * Shows whether a product is:
- * - In stock
- * - Low stock
- * - Out of stock
+ * Shows whether a product is In stock, Low stock, or Out of stock.
  */
 @Composable
-fun StatusChip(
-    product: InventoryProduct
-) {
-
-    val color =
-        when {
-
-            product.stockQuantity <= 0 ->
-                MaterialTheme.colorScheme.error
-
-            product.stockQuantity <=
-                    product.reorderLevel ->
-                Color(0xFFFFA000)
-
-            else ->
-                Color(0xFF4CAF50)
-        }
-
+fun StatusChip(product: InventoryProduct) {
+    val color = when {
+        product.stockQuantity <= 0 -> MaterialTheme.colorScheme.error
+        product.stockQuantity <= product.reorderLevel -> Color(0xFFFFA000)
+        else -> Color(0xFF4CAF50)
+    }
 
     Surface(
-        color =
-            color.copy(
-                alpha = 0.1f
-            ),
-
-        shape =
-            RoundedCornerShape(50),
-
-        border =
-            BorderStroke(
-                1.dp,
-                color.copy(
-                    alpha = 0.4f
-                )
-            )
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.4f))
     ) {
-
         Text(
-            text =
-                product.stockStatus.uppercase(),
-
-            modifier =
-                Modifier.padding(
-                    horizontal = 8.dp,
-                    vertical = 4.dp
-                ),
-
-            style =
-                MaterialTheme.typography.labelSmall,
-
-            color =
-                color,
-
-            fontWeight =
-                FontWeight.Bold
+            text = product.stockStatus.uppercase(),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Bold
         )
     }
 }
-
 
 /**
  * Menu containing stock and product actions.
@@ -1200,86 +1025,58 @@ fun ProductActionMenu(
     isActive: Boolean,
     onReactivate: () -> Unit
 ) {
-
-    var expanded by remember {
-        mutableStateOf(false)
-    }
-
+    var expanded by remember { mutableStateOf(false) }
 
     Box {
-
-        IconButton(
-            onClick = {
-                expanded = true
-            }
-        ) {
-
+        IconButton(onClick = { expanded = true }) {
             Icon(
-                imageVector =
-                    Icons.Default.MoreVert,
-                contentDescription =
-                    "Product actions"
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Product actions"
             )
         }
 
-
         DropdownMenu(
             expanded = expanded,
-
-            onDismissRequest = {
-                expanded = false
-            }
+            onDismissRequest = { expanded = false }
         ) {
-
             DropdownMenuItem(
-                text = {
-                    Text("Restock")
-                },
-
+                text = { Text("Restock") },
                 onClick = {
                     onRestock()
                     expanded = false
                 }
             )
-
-
             DropdownMenuItem(
-                text = {
-                    Text("Adjust Stock")
-                },
-
+                text = { Text("Adjust Stock") },
                 onClick = {
                     onAdjust()
                     expanded = false
                 }
             )
-
-
             DropdownMenuItem(
-                text = {
-                    Text("Record Waste")
-                },
-
+                text = { Text("Record Waste") },
                 onClick = {
                     onWaste()
                     expanded = false
                 }
             )
-
-
-            if (!isActive) DropdownMenuItem(text = { Text("Reactivate") }, onClick = { onReactivate(); expanded = false })
+            if (!isActive) {
+                DropdownMenuItem(
+                    text = { Text("Reactivate") },
+                    onClick = {
+                        onReactivate()
+                        expanded = false
+                    }
+                )
+            }
             HorizontalDivider()
-
-
             DropdownMenuItem(
                 text = {
-
                     Text(
                         text = "Delete / Deactivate",
                         color = Color.Red
                     )
                 },
-
                 onClick = {
                     onDeactivate()
                     expanded = false
@@ -1289,11 +1086,8 @@ fun ProductActionMenu(
     }
 }
 
-
 /**
  * Dialog used to add or edit products.
- *
- * Product categories are selected from the database.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1313,338 +1107,134 @@ fun ProductFormDialog(
     ) -> Unit,
     onManageBatches: (() -> Unit)? = null
 ) {
+    var name by remember { mutableStateOf(product?.name ?: "") }
+    var category by remember { mutableStateOf(product?.category ?: "") }
+    var categoryDropdownExpanded by remember { mutableStateOf(false) }
+    var price by remember { mutableStateOf(product?.unitPrice?.let(Money::format) ?: "") }
+    var cost by remember { mutableStateOf(product?.costPrice?.let(Money::format) ?: "0") }
+    var stock by remember { mutableStateOf(product?.stockQuantity?.toString() ?: "0") }
+    var reorder by remember { mutableStateOf(product?.reorderLevel?.toString() ?: "5") }
 
-    var name by remember {
-        mutableStateOf(
-            product?.name ?: ""
-        )
-    }
-
-
-    var category by remember {
-        mutableStateOf(
-            product?.category ?: ""
-        )
-    }
-
-
-    var categoryDropdownExpanded by remember {
-        mutableStateOf(false)
-    }
-
-
-    var price by remember {
-        mutableStateOf(
-            product?.unitPrice?.let(Money::format)
-                ?: ""
-        )
-    }
-
-
-    var cost by remember {
-        mutableStateOf(
-            product?.costPrice?.let(Money::format)
-                ?: "0"
-        )
-    }
-
-
-    var stock by remember {
-        mutableStateOf(
-            product?.stockQuantity?.toString()
-                ?: "0"
-        )
-    }
-
-
-    var reorder by remember {
-        mutableStateOf(
-            product?.reorderLevel?.toString()
-                ?: "5"
-        )
-    }
-
-    var initialExpiryText by remember {
-        mutableStateOf("")
-    }
+    var initialExpiryText by remember { mutableStateOf("") }
     val initialExpiryDay = initialExpiryText.trim().takeIf(String::isNotEmpty)
         ?.let { runCatching { java.time.LocalDate.parse(it).toEpochDay() }.getOrNull() }
 
-
     AlertDialog(
-        onDismissRequest =
-            onDismiss,
-
+        onDismissRequest = onDismiss,
         title = {
-
             Text(
-                text =
-                    if (product == null) {
-                        "Add Product"
-                    } else {
-                        "Edit Product"
-                    }
+                text = if (product == null) "Add Product" else "Edit Product",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         },
-
         text = {
-
             Column(
-                modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement =
-                    Arrangement.spacedBy(10.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
                 // Product name.
                 OutlinedTextField(
-                    value =
-                        name,
-
-                    onValueChange = {
-                        name = it
-                    },
-
-                    label = {
-                        Text("Name")
-                    },
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
-
                 // Category dropdown.
                 ExposedDropdownMenuBox(
-                    expanded =
-                        categoryDropdownExpanded,
-
+                    expanded = categoryDropdownExpanded,
                     onExpandedChange = {
-
-                        if (
-                            categories.isNotEmpty()
-                        ) {
-
-                            categoryDropdownExpanded =
-                                !categoryDropdownExpanded
+                        if (categories.isNotEmpty()) {
+                            categoryDropdownExpanded = !categoryDropdownExpanded
                         }
                     }
                 ) {
-
                     OutlinedTextField(
-                        value =
-                            category,
-
-                        onValueChange = {
-                            // Read-only field.
-                        },
-
+                        value = category,
+                        onValueChange = {},
                         readOnly = true,
-
-                        label = {
-                            Text("Category")
-                        },
-
-                        placeholder = {
-                            Text(
-                                "Select a category"
-                            )
-                        },
-
+                        label = { Text("Category") },
+                        placeholder = { Text("Select a category") },
                         trailingIcon = {
-
-                            ExposedDropdownMenuDefaults
-                                .TrailingIcon(
-                                    expanded =
-                                        categoryDropdownExpanded
-                                )
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryDropdownExpanded)
                         },
-
                         modifier = Modifier
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = true
-                            )
+                            .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
                             .fillMaxWidth(),
-
                         supportingText = {
-
-                            if (
-                                categories.isEmpty()
-                            ) {
-
-                                Text(
-                                    "Create a category first."
-                                )
-
+                            if (categories.isEmpty()) {
+                                Text("Create a category first.")
                             } else {
-
-                                Text(
-                                    "Select from saved categories."
-                                )
+                                Text("Select from saved categories.")
                             }
                         }
                     )
 
-
                     ExposedDropdownMenu(
-                        expanded =
-                            categoryDropdownExpanded,
-
-                        onDismissRequest = {
-                            categoryDropdownExpanded =
-                                false
-                        }
+                        expanded = categoryDropdownExpanded,
+                        onDismissRequest = { categoryDropdownExpanded = false }
                     ) {
-
-                        categories.forEach {
-                                categoryOption ->
-
+                        categories.forEach { categoryOption ->
                             DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        categoryOption
-                                    )
-                                },
-
+                                text = { Text(categoryOption) },
                                 onClick = {
-
-                                    category =
-                                        categoryOption
-
-                                    categoryDropdownExpanded =
-                                        false
+                                    category = categoryOption
+                                    categoryDropdownExpanded = false
                                 }
                             )
                         }
                     }
                 }
 
-
                 // Selling price.
                 OutlinedTextField(
-                    value =
-                        price,
-
-                    onValueChange = {
-                            value ->
-
-                        if (
-                            value.all {
-                                it.isDigit() || it == '.'
-                            }
-                        ) {
-
+                    value = price,
+                    onValueChange = { value ->
+                        if (value.all { it.isDigit() || it == '.' }) {
                             price = value
                         }
                     },
-
-                    label = {
-                        Text(
-                            "Selling Price (Rs)"
-                        )
-                    },
-
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType =
-                                KeyboardType.Decimal
-                        ),
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
+                    label = { Text("Selling Price (Rs)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
-
                 // Cost price.
-                if (
-                    userRole ==
-                    UserRole.ADMIN
-                ) {
-
+                if (userRole == UserRole.ADMIN) {
                     OutlinedTextField(
-                        value =
-                            cost,
-
-                        onValueChange = {
-                                value ->
-
-                            if (
-                                value.all {
-                                    it.isDigit() || it == '.'
-                                }
-                            ) {
-
+                        value = cost,
+                        onValueChange = { value ->
+                            if (value.all { it.isDigit() || it == '.' }) {
                                 cost = value
                             }
                         },
-
-                        label = {
-                            Text(
-                                "Cost Price (Rs)"
-                            )
-                        },
-
-                        supportingText = {
-                            Text(
-                                "Used for gross profit calculations."
-                            )
-                        },
-
-                        keyboardOptions =
-                            KeyboardOptions(
-                                keyboardType =
-                                    KeyboardType.Decimal
-                            ),
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
+                        label = { Text("Cost Price (Rs)") },
+                        supportingText = { Text("Used for gross profit calculations.") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
                 }
 
-
-                // Initial stock is shown only when adding a product.
-                if (
-                    product == null
-                ) {
-
+                // Initial stock.
+                if (product == null) {
                     OutlinedTextField(
-                        value =
-                            stock,
-
-                        onValueChange = {
-                                value ->
-
-                            if (
-                                value.all {
-                                    it.isDigit()
-                                }
-                            ) {
-
+                        value = stock,
+                        onValueChange = { value ->
+                            if (value.all { it.isDigit() }) {
                                 stock = value
                             }
                         },
-
-                        label = {
-                            Text(
-                                "Initial Stock"
-                            )
-                        },
-
-                        keyboardOptions =
-                            KeyboardOptions(
-                                keyboardType =
-                                    KeyboardType.Number
-                            ),
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
+                        label = { Text("Initial Stock") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
 
@@ -1659,40 +1249,17 @@ fun ProductFormDialog(
                     )
                 }
 
-
                 // Reorder level.
                 OutlinedTextField(
-                    value =
-                        reorder,
-
-                    onValueChange = {
-                            value ->
-
-                        if (
-                            value.all {
-                                it.isDigit()
-                            }
-                        ) {
-
+                    value = reorder,
+                    onValueChange = { value ->
+                        if (value.all { it.isDigit() }) {
                             reorder = value
                         }
                     },
-
-                    label = {
-                        Text(
-                            "Reorder Level"
-                        )
-                    },
-
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType =
-                                KeyboardType.Number
-                        ),
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
+                    label = { Text("Reorder Level") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
@@ -1706,58 +1273,37 @@ fun ProductFormDialog(
                 }
             }
         },
-
         confirmButton = {
-
             Button(
-                enabled =
-                    name.isNotBlank() &&
-                            category.isNotBlank() &&
-                            Money.parse(price) != null &&
-                            Money.parse(cost) != null &&
-                            reorder.toIntOrNull() != null &&
-                            (initialExpiryText.isBlank() || initialExpiryDay != null) &&
-                            (initialExpiryText.isBlank() || (stock.toIntOrNull() ?: 0) > 0),
-
+                enabled = name.isNotBlank() &&
+                        category.isNotBlank() &&
+                        Money.parse(price) != null &&
+                        Money.parse(cost) != null &&
+                        reorder.toIntOrNull() != null &&
+                        (initialExpiryText.isBlank() || initialExpiryDay != null) &&
+                        (initialExpiryText.isBlank() || (stock.toIntOrNull() ?: 0) > 0),
                 onClick = {
-
                     onConfirm(
                         name.trim(),
                         category,
-                        Money.parse(price)
-                            ?: 0,
-                        Money.parse(cost)
-                            ?: 0,
-                        stock.toIntOrNull()
-                            ?: 0,
-                        reorder.toIntOrNull()
-                            ?: 5,
+                        Money.parse(price) ?: 0,
+                        Money.parse(cost) ?: 0,
+                        stock.toIntOrNull() ?: 0,
+                        reorder.toIntOrNull() ?: 5,
                         initialExpiryDay
                     )
                 }
             ) {
-
-                Text(
-                    "Save"
-                )
+                Text("Save")
             }
         },
-
         dismissButton = {
-
-            TextButton(
-                onClick =
-                    onDismiss
-            ) {
-
-                Text(
-                    "Cancel"
-                )
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )
 }
-
 
 /**
  * Dialog used by Admin users to create and remove categories.
@@ -1771,232 +1317,126 @@ fun ManageCategoriesDialog(
     onClearError: () -> Unit,
     onDismiss: () -> Unit
 ) {
-
-    var newCategoryName by remember {
-        mutableStateOf("")
-    }
-
+    var newCategoryName by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = {
-
             onClearError()
             onDismiss()
         },
-
         title = {
-
-            Row(
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Icon(
-                    imageVector =
-                        Icons.Default.Category,
-                    contentDescription =
-                        null
-                )
-
-                Spacer(
-                    modifier =
-                        Modifier.width(8.dp)
-                )
-
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.Category, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text =
-                        "Manage Categories"
+                    text = "Manage Categories",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         },
-
         text = {
-
-            Column(
-                verticalArrangement =
-                    Arrangement.spacedBy(16.dp)
-            ) {
-
-                Text(
-                    text =
-                        "Create categories used when adding products.",
-                    style =
-                        MaterialTheme.typography.bodyMedium
-                )
-
-
-                // Add a new category.
-                Row(
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    verticalAlignment =
-                        Alignment.CenterVertically,
-
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
+            BoxWithConstraints {
+                val isNarrowDialog = maxWidth < 380.dp
+                Column(
+                    modifier = Modifier.imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-
-                    OutlinedTextField(
-                        value =
-                            newCategoryName,
-
-                        onValueChange = {
-
-                            newCategoryName =
-                                it
-                        },
-
-                        label = {
-                            Text(
-                                "New Category"
-                            )
-                        },
-
-                        singleLine =
-                            true,
-
-                        modifier =
-                            Modifier.weight(1f)
+                    Text(
+                        text = "Create categories used when adding products.",
+                        style = MaterialTheme.typography.bodyMedium
                     )
 
-
-                    Button(
-                        enabled =
-                            newCategoryName
-                                .isNotBlank(),
-
-                        onClick = {
-
-                            onAddCategory(
-                                newCategoryName
+                    if (isNarrowDialog) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = newCategoryName,
+                                onValueChange = { newCategoryName = it },
+                                label = { Text("New Category") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
                             )
-
-                            newCategoryName =
-                                ""
+                            Button(
+                                enabled = newCategoryName.isNotBlank(),
+                                onClick = {
+                                    onAddCategory(newCategoryName)
+                                    newCategoryName = ""
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Add")
+                            }
                         }
-                    ) {
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = newCategoryName,
+                                onValueChange = { newCategoryName = it },
+                                label = { Text("New Category") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                enabled = newCategoryName.isNotBlank(),
+                                onClick = {
+                                    onAddCategory(newCategoryName)
+                                    newCategoryName = ""
+                                }
+                            ) {
+                                Text("Add")
+                            }
+                        }
+                    }
 
+                    if (errorMessage != null) {
                         Text(
-                            "Add"
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
-                }
 
+                    HorizontalDivider()
 
-                // Show category-management errors.
-                if (
-                    errorMessage != null
-                ) {
-
-                    Text(
-                        text =
-                            errorMessage,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .error,
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall
-                    )
-                }
-
-
-                HorizontalDivider()
-
-
-                // List existing categories.
-                if (
-                    categories.isEmpty()
-                ) {
-
-                    Text(
-                        text =
-                            "No categories have been created yet.",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodyMedium,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurfaceVariant
-                    )
-
-                } else {
-
-                    LazyColumn(
-                        modifier =
-                            Modifier.heightIn(
-                                max = 300.dp
-                            ),
-
-                        verticalArrangement =
-                            Arrangement.spacedBy(
-                                4.dp
-                            )
-                    ) {
-
-                        items(
-                            items =
-                                categories,
-
-                            key = {
-                                it.categoryId
-                            }
+                    if (categories.isEmpty()) {
+                        Text(
+                            text = "No categories have been created yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                                category ->
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        vertical = 6.dp
-                                    ),
-
-                                verticalAlignment =
-                                    Alignment.CenterVertically
-                            ) {
-
-                                Text(
-                                    text =
-                                        category.categoryName,
-
-                                    modifier =
-                                        Modifier.weight(1f),
-
-                                    fontWeight =
-                                        FontWeight.Medium
-                                )
-
-
-                                IconButton(
-                                    onClick = {
-
-                                        onRemoveCategory(
-                                            category
+                            items(items = categories, key = { it.categoryId }) { category ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = category.categoryName,
+                                        modifier = Modifier.weight(1f),
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    IconButton(onClick = { onRemoveCategory(category) }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Remove ${category.categoryName}",
+                                            tint = MaterialTheme.colorScheme.error
                                         )
                                     }
-                                ) {
-
-                                    Icon(
-                                        imageVector =
-                                            Icons.Default.Delete,
-
-                                        contentDescription =
-                                            "Remove ${category.categoryName}",
-
-                                        tint =
-                                            MaterialTheme
-                                                .colorScheme
-                                                .error
-                                    )
                                 }
                             }
                         }
@@ -2004,191 +1444,96 @@ fun ManageCategoriesDialog(
                 }
             }
         },
-
         confirmButton = {
-
             TextButton(
                 onClick = {
-
                     onClearError()
                     onDismiss()
                 }
             ) {
-
-                Text(
-                    "Done"
-                )
+                Text("Done")
             }
         }
     )
 }
 
-
-/** Batch expiry maintenance is exposed from Edit Product, not Notifications. */
+/** Batch expiry maintenance. */
 @Composable
 private fun StockBatchManagementDialog(
     product: InventoryProduct,
     batches: List<NamedBatch>,
     onDismiss: () -> Unit,
-    onUpdateExpiry: (
-        batchId: Long,
-        expiryDay: Long?
-    ) -> Unit,
-    onAddBatch: (
-        quantity: Int,
-        expiryDay: Long?
-    ) -> Unit
+    onUpdateExpiry: (batchId: Long, expiryDay: Long?) -> Unit,
+    onAddBatch: (quantity: Int, expiryDay: Long?) -> Unit
 ) {
+    var editingBatch by remember { mutableStateOf<NamedBatch?>(null) }
+    var expiryText by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf<String?>(null) }
 
-    // Batch currently selected for expiry editing.
-    var editingBatch by remember {
-        mutableStateOf<NamedBatch?>(null)
-    }
-
-    // Expiry value used by the edit-expiry dialog.
-    var expiryText by remember {
-        mutableStateOf("")
-    }
-
-    // Validation error for an invalid expiry date.
-    var dateError by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    // Controls the Add Stock Batch dialog.
-    var showAddBatchDialog by remember {
-        mutableStateOf(false)
-    }
-
-    // Values used when creating a new stock batch.
-    var newBatchQuantity by remember {
-        mutableStateOf("")
-    }
-
-    var newBatchExpiryText by remember {
-        mutableStateOf("")
-    }
-
-    var newBatchDateError by remember {
-        mutableStateOf<String?>(null)
-    }
-
-
-    // ---------------------------------------------------------
-    // MAIN STOCK BATCH DIALOG
-    // ---------------------------------------------------------
+    var showAddBatchDialog by remember { mutableStateOf(false) }
+    var newBatchQuantity by remember { mutableStateOf("") }
+    var newBatchExpiryText by remember { mutableStateOf("") }
+    var newBatchDateError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-
         title = {
             Text(
-                text = "Stock Batches · ${product.name}"
+                text = "Stock Batches · ${product.name}",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         },
-
         text = {
-
             Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 440.dp)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 Text(
                     text = "Manage the remaining stock batches and their expiry dates.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-
-                // ---------------------------------------------------------
-                // EXISTING BATCHES
-                // ---------------------------------------------------------
-
                 if (batches.isEmpty()) {
-
                     Text(
                         text = "There are no remaining stock batches. Add a stock batch or restock the product.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                 } else {
-
                     LazyColumn(
-                        modifier = Modifier.heightIn(
-                            max = 360.dp
-                        ),
-
-                        verticalArrangement =
-                            Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.heightIn(max = 300.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-
-                        items(
-                            items = batches,
-                            key = {
-                                it.id
-                            }
-                        ) { batch ->
-
-                            val expiryDate =
-                                batch.expiryDay?.let(
-                                    java.time.LocalDate::ofEpochDay
-                                )
-
-
-                            Card(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-
+                        items(items = batches, key = { it.id }) { batch ->
+                            val expiryDate = batch.expiryDay?.let(java.time.LocalDate::ofEpochDay)
+                            Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(12.dp),
-
-                                    verticalArrangement =
-                                        Arrangement.spacedBy(4.dp)
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-
                                     Text(
                                         text = "Batch ${batch.id}",
                                         fontWeight = FontWeight.SemiBold
                                     )
-
-
+                                    Text(text = "Remaining quantity: ${batch.remaining}")
                                     Text(
-                                        text =
-                                            "Remaining quantity: ${batch.remaining}"
+                                        text = if (expiryDate != null) "Expiry: $expiryDate" else "Expiry: Not set"
                                     )
-
-
-                                    Text(
-                                        text =
-                                            if (expiryDate != null) {
-                                                "Expiry: $expiryDate"
-                                            } else {
-                                                "Expiry: Not set"
-                                            }
-                                    )
-
-
                                     TextButton(
                                         onClick = {
-
-                                            editingBatch =
-                                                batch
-
-                                            expiryText =
-                                                expiryDate
-                                                    ?.toString()
-                                                    .orEmpty()
-
-                                            dateError =
-                                                null
+                                            editingBatch = batch
+                                            expiryText = expiryDate?.toString().orEmpty()
+                                            dateError = null
                                         }
                                     ) {
-
-                                        Text(
-                                            text = "Edit Expiry"
-                                        )
+                                        Text(text = "Edit Expiry")
                                     }
                                 }
                             }
@@ -2196,410 +1541,181 @@ private fun StockBatchManagementDialog(
                     }
                 }
 
-
                 HorizontalDivider()
-
-
-                // ---------------------------------------------------------
-                // ADD STOCK BATCH
-                // ---------------------------------------------------------
 
                 OutlinedButton(
                     onClick = {
-
                         newBatchQuantity = ""
                         newBatchExpiryText = ""
                         newBatchDateError = null
-
                         showAddBatchDialog = true
                     },
-
                     modifier = Modifier.fillMaxWidth()
                 ) {
-
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(8.dp)
-                    )
-
-                    Text(
-                        text = "Add Stock Batch"
-                    )
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Add Stock Batch")
                 }
             }
         },
-
         confirmButton = {
-
-            TextButton(
-                onClick = onDismiss
-            ) {
-
-                Text(
-                    text = "Done"
-                )
+            TextButton(onClick = onDismiss) {
+                Text(text = "Done")
             }
         }
     )
 
-
-    // ---------------------------------------------------------
-    // EDIT BATCH EXPIRY DIALOG
-    // ---------------------------------------------------------
-
+    // Edit batch expiry dialog
     editingBatch?.let { batch ->
-
         AlertDialog(
-            onDismissRequest = {
-                editingBatch = null
-            },
-
-            title = {
-                Text(
-                    text = "Edit Batch Expiry"
-                )
-            },
-
+            onDismissRequest = { editingBatch = null },
+            title = { Text(text = "Edit Batch Expiry", maxLines = 1, overflow = TextOverflow.Ellipsis) },
             text = {
-
                 Column(
-                    verticalArrangement =
-                        Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-
-                    Text(
-                        text =
-                            "Batch ${batch.id} · ${batch.remaining} units"
-                    )
-
-
+                    Text(text = "Batch ${batch.id} · ${batch.remaining} units")
                     OutlinedTextField(
                         value = expiryText,
-
                         onValueChange = {
                             expiryText = it
                             dateError = null
                         },
-
-                        label = {
-                            Text(
-                                "YYYY-MM-DD"
-                            )
-                        },
-
-                        supportingText = {
-                            Text(
-                                "Leave blank to remove the expiry date."
-                            )
-                        },
-
+                        label = { Text("YYYY-MM-DD") },
+                        supportingText = { Text("Leave blank to remove the expiry date.") },
                         singleLine = true,
-
-                        isError =
-                            dateError != null,
-
-                        modifier =
-                            Modifier.fillMaxWidth()
+                        isError = dateError != null,
+                        modifier = Modifier.fillMaxWidth()
                     )
-
-
                     dateError?.let { error ->
-
                         Text(
                             text = error,
-                            color =
-                                MaterialTheme.colorScheme.error,
-                            style =
-                                MaterialTheme.typography.bodySmall
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
             },
-
             confirmButton = {
-
                 TextButton(
                     onClick = {
-
-                        val expiryDay =
-                            if (
-                                expiryText.isBlank()
-                            ) {
-
-                                null
-
-                            } else {
-
-                                runCatching {
-
-                                    java.time.LocalDate
-                                        .parse(
-                                            expiryText.trim()
-                                        )
-                                        .toEpochDay()
-
-                                }.getOrNull()
-                            }
-
-
-                        if (
-                            expiryText.isNotBlank() &&
-                            expiryDay == null
-                        ) {
-
-                            dateError =
-                                "Enter a valid date such as 2026-12-31."
-
+                        val expiryDay = if (expiryText.isBlank()) {
+                            null
                         } else {
+                            runCatching {
+                                java.time.LocalDate.parse(expiryText.trim()).toEpochDay()
+                            }.getOrNull()
+                        }
 
-                            onUpdateExpiry(
-                                batch.id,
-                                expiryDay
-                            )
-
-                            editingBatch =
-                                null
+                        if (expiryText.isNotBlank() && expiryDay == null) {
+                            dateError = "Enter a valid date such as 2026-12-31."
+                        } else {
+                            onUpdateExpiry(batch.id, expiryDay)
+                            editingBatch = null
                         }
                     }
                 ) {
-
-                    Text(
-                        text = "Save"
-                    )
+                    Text(text = "Save")
                 }
             },
-
             dismissButton = {
-
-                TextButton(
-                    onClick = {
-                        editingBatch = null
-                    }
-                ) {
-
-                    Text(
-                        text = "Cancel"
-                    )
+                TextButton(onClick = { editingBatch = null }) {
+                    Text(text = "Cancel")
                 }
             }
         )
     }
 
-
-    // ---------------------------------------------------------
-    // ADD STOCK BATCH DIALOG
-    // ---------------------------------------------------------
-
+    // Add stock batch dialog
     if (showAddBatchDialog) {
-
-        val newBatchExpiryDay =
-
-            if (
-                newBatchExpiryText.isBlank()
-            ) {
-
-                null
-
-            } else {
-
-                runCatching {
-
-                    java.time.LocalDate
-                        .parse(
-                            newBatchExpiryText.trim()
-                        )
-                        .toEpochDay()
-
-                }.getOrNull()
-            }
-
+        val newBatchExpiryDay = if (newBatchExpiryText.isBlank()) {
+            null
+        } else {
+            runCatching {
+                java.time.LocalDate.parse(newBatchExpiryText.trim()).toEpochDay()
+            }.getOrNull()
+        }
 
         AlertDialog(
-            onDismissRequest = {
-                showAddBatchDialog = false
-            },
-
-            title = {
-
-                Text(
-                    text = "Add Stock Batch"
-                )
-            },
-
+            onDismissRequest = { showAddBatchDialog = false },
+            title = { Text(text = "Add Stock Batch", maxLines = 1, overflow = TextOverflow.Ellipsis) },
             text = {
-
                 Column(
-                    verticalArrangement =
-                        Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Text(text = "Add stock for ${product.name}. A new batch will be created.")
 
-                    Text(
-                        text =
-                            "Add stock for ${product.name}. A new batch will be created."
-                    )
-
-
-                    // Batch quantity.
                     OutlinedTextField(
-                        value =
-                            newBatchQuantity,
-
-                        onValueChange = {
-                                value ->
-
-                            if (
-                                value.all {
-                                    it.isDigit()
-                                }
-                            ) {
-
-                                newBatchQuantity =
-                                    value
+                        value = newBatchQuantity,
+                        onValueChange = { value ->
+                            if (value.all { it.isDigit() }) {
+                                newBatchQuantity = value
                             }
                         },
-
-                        label = {
-                            Text(
-                                "Quantity"
-                            )
-                        },
-
-                        keyboardOptions =
-                            KeyboardOptions(
-                                keyboardType =
-                                    KeyboardType.Number
-                            ),
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
+                        label = { Text("Quantity") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
 
-
-                    // Optional expiry date.
                     OutlinedTextField(
-                        value =
-                            newBatchExpiryText,
-
+                        value = newBatchExpiryText,
                         onValueChange = {
-
-                            newBatchExpiryText =
-                                it
-
-                            newBatchDateError =
-                                null
+                            newBatchExpiryText = it
+                            newBatchDateError = null
                         },
-
-                        label = {
-                            Text(
-                                "Expiry YYYY-MM-DD (optional)"
-                            )
-                        },
-
-                        supportingText = {
-
-                            Text(
-                                "Leave blank for stock without an expiry date."
-                            )
-                        },
-
-                        isError =
-                            newBatchExpiryText.isNotBlank() &&
-                                    newBatchExpiryDay == null,
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
+                        label = { Text("Expiry YYYY-MM-DD (optional)") },
+                        supportingText = { Text("Leave blank for stock without an expiry date.") },
+                        isError = newBatchExpiryText.isNotBlank() && newBatchExpiryDay == null,
+                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
 
-
-                    newBatchDateError?.let {
-                            error ->
-
+                    newBatchDateError?.let { error ->
                         Text(
                             text = error,
-                            color =
-                                MaterialTheme.colorScheme.error,
-                            style =
-                                MaterialTheme.typography.bodySmall
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
             },
-
             confirmButton = {
-
                 Button(
-                    enabled =
-                        (newBatchQuantity.toIntOrNull()
-                            ?: 0) > 0 &&
-                                (
-                                        newBatchExpiryText.isBlank() ||
-                                                newBatchExpiryDay != null
-                                        ),
-
+                    enabled = (newBatchQuantity.toIntOrNull() ?: 0) > 0 &&
+                            (newBatchExpiryText.isBlank() || newBatchExpiryDay != null),
                     onClick = {
-
-                        val quantity =
-                            newBatchQuantity
-                                .toIntOrNull()
-                                ?: 0
-
-
-                        if (
-                            newBatchExpiryText.isNotBlank() &&
-                            newBatchExpiryDay == null
-                        ) {
-
-                            newBatchDateError =
-                                "Enter a valid date such as 2026-12-31."
-
+                        val quantity = newBatchQuantity.toIntOrNull() ?: 0
+                        if (newBatchExpiryText.isNotBlank() && newBatchExpiryDay == null) {
+                            newBatchDateError = "Enter a valid date such as 2026-12-31."
                         } else {
-
-                            onAddBatch(
-                                quantity,
-                                newBatchExpiryDay
-                            )
-
-                            showAddBatchDialog =
-                                false
+                            onAddBatch(quantity, newBatchExpiryDay)
+                            showAddBatchDialog = false
                         }
                     }
                 ) {
-
-                    Text(
-                        text = "Add Batch"
-                    )
+                    Text(text = "Add Batch")
                 }
             },
-
             dismissButton = {
-
-                TextButton(
-                    onClick = {
-                        showAddBatchDialog = false
-                    }
-                ) {
-
-                    Text(
-                        text = "Cancel"
-                    )
+                TextButton(onClick = { showAddBatchDialog = false }) {
+                    Text(text = "Cancel")
                 }
             }
         )
     }
 }
 
-
 /**
- * Dialog for stock operations such as restocking,
- * manual adjustment and waste.
+ * Dialog for stock operations such as restocking, manual adjustment and waste.
  */
 @Composable
 fun StockActionDialog(
@@ -2612,177 +1728,90 @@ fun StockActionDialog(
         expiryDay: Long?
     ) -> Unit
 ) {
-
     var expiryText by remember { mutableStateOf("") }
     val expiryDay = runCatching { java.time.LocalDate.parse(expiryText.trim()).toEpochDay() }.getOrNull()
-    var qty by remember {
-        mutableStateOf("")
-    }
-
-    var reason by remember {
-        mutableStateOf("")
-    }
-
+    var qty by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("") }
 
     AlertDialog(
-        onDismissRequest =
-            onDismiss,
-
+        onDismissRequest = onDismiss,
         title = {
-
-            val actionName =
-                type.name
-                    .lowercase()
-                    .replaceFirstChar {
-
-                        if (it.isLowerCase()) {
-
-                            it.titlecase(
-                                Locale.getDefault()
-                            )
-
-                        } else {
-
-                            it.toString()
-                        }
-                    }
-
-
+            val actionName = type.name.lowercase().replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+            }
             Text(
-                "$actionName - ${product.name}"
+                text = "$actionName - ${product.name}",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         },
-
         text = {
-
             Column(
-                verticalArrangement =
-                    Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
                 Text(
-                    text =
-                        "Current Stock: ${product.stockQuantity}",
-                    style =
-                        MaterialTheme.typography.bodyMedium
+                    text = "Current Stock: ${product.stockQuantity}",
+                    style = MaterialTheme.typography.bodyMedium
                 )
-
 
                 OutlinedTextField(
-                    value =
-                        qty,
-
-                    onValueChange = {
-                            value ->
-
-                        if (
-                            value.all {
-                                it.isDigit()
-                            }
-                        ) {
-
-                            qty =
-                                value
+                    value = qty,
+                    onValueChange = { value ->
+                        if (value.all { it.isDigit() }) {
+                            qty = value
                         }
                     },
-
-                    label = {
-                        Text(
-                            "Quantity"
-                        )
-                    },
-
-                    keyboardOptions =
-                        KeyboardOptions(
-                            keyboardType =
-                                KeyboardType.Number
-                        ),
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    singleLine =
-                        true
+                    label = { Text("Quantity") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
 
-
                 if (type == InventoryTransactionType.RESTOCK) {
-                    OutlinedTextField(value = expiryText, onValueChange = { expiryText = it },
-                        label = { Text("Expiry YYYY-MM-DD (optional)") }, singleLine = true,
-                        isError = expiryText.isNotBlank() && expiryDay == null)
-                }
-                /*
-                 * Restocking does not require an explanation.
-                 *
-                 * Manual adjustments and waste should include a reason.
-                 */
-                if (
-                    type !=
-                    InventoryTransactionType.RESTOCK
-                ) {
-
                     OutlinedTextField(
-                        value =
-                            reason,
+                        value = expiryText,
+                        onValueChange = { expiryText = it },
+                        label = { Text("Expiry YYYY-MM-DD (optional)") },
+                        singleLine = true,
+                        isError = expiryText.isNotBlank() && expiryDay == null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-                        onValueChange = {
-                            reason = it
-                        },
-
-                        label = {
-                            Text(
-                                "Reason"
-                            )
-                        },
-
-                        modifier =
-                            Modifier.fillMaxWidth()
+                if (type != InventoryTransactionType.RESTOCK) {
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text("Reason") },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         },
-
         confirmButton = {
-
             Button(
-                enabled =
-                    (expiryText.isBlank() || expiryDay != null) && qty.toIntOrNull() != null &&
-                            (qty.toIntOrNull()
-                                ?: 0) > 0 &&
-                            (
-                                    type ==
-                                            InventoryTransactionType.RESTOCK ||
-                                            reason.isNotBlank()
-                                    ),
-
+                enabled = (expiryText.isBlank() || expiryDay != null) &&
+                        qty.toIntOrNull() != null &&
+                        (qty.toIntOrNull() ?: 0) > 0 &&
+                        (type == InventoryTransactionType.RESTOCK || reason.isNotBlank()),
                 onClick = {
-
                     onConfirm(
-                        qty.toIntOrNull()
-                            ?: 0,
-
+                        qty.toIntOrNull() ?: 0,
                         reason.trim(),
                         expiryDay
                     )
                 }
             ) {
-
-                Text(
-                    "Submit"
-                )
+                Text("Submit")
             }
         },
-
         dismissButton = {
-
-            TextButton(
-                onClick =
-                    onDismiss
-            ) {
-
-                Text(
-                    "Cancel"
-                )
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )

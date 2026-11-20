@@ -1,10 +1,9 @@
 package com.royalcoffee.pos.ui.dashboard
 
 import com.royalcoffee.pos.model.Money
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -16,8 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.royalcoffee.pos.data.local.dao.TopProduct
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 
@@ -51,21 +53,30 @@ fun DashboardScreen(
                 }
             }
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                DashboardHeader(
-                    selectedRange = state.selectedRange,
-                    onRangeSelected = { viewModel.updateRange(it) }
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val horizontalPadding = when {
+                    maxWidth < 700.dp -> 12.dp
+                    maxWidth < 1000.dp -> 18.dp
+                    else -> 24.dp
+                }
+                val verticalSpacing = if (maxHeight < 600.dp) 16.dp else 24.dp
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = horizontalPadding, vertical = verticalSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    DashboardHeader(
+                        selectedRange = state.selectedRange,
+                        onRangeSelected = { viewModel.updateRange(it) }
+                    )
 
-                DashboardContent(state = state)
+                    Spacer(modifier = Modifier.height(verticalSpacing))
+
+                    DashboardContent(state = state)
+                }
             }
         }
     }
@@ -101,22 +112,21 @@ private fun DashboardHeader(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RangeSelector(
     selectedRange: DashboardRange,
     onRangeSelected: (DashboardRange) -> Unit
 ) {
-    Row(
+    LazyRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        DashboardRange.values().forEach { range ->
+        items(DashboardRange.entries) { range ->
             FilterChip(
                 selected = selectedRange == range,
                 onClick = { onRangeSelected(range) },
                 label = { Text(range.label) },
-                modifier = Modifier.padding(horizontal = 4.dp),
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = RoyalGold,
                     selectedLabelColor = Color.White
@@ -135,189 +145,411 @@ private fun DashboardContent(state: DashboardState) {
         DashboardRange.MONTH -> "vs last month"
     }
 
-    Column(
-        modifier = Modifier.widthIn(max = 1200.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        // Data Completeness Info
-        if (state.profitDataCompleteness.isNotEmpty()) {
-            Text(
-                text = "ℹ ${state.profitDataCompleteness}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-        }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val contentWidth = maxWidth
+        val compactLayout = contentWidth < 850.dp
+        val veryCompactLayout = contentWidth < 620.dp
 
-        // 1. Summary Metrics
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            MetricCardWithTrend(
-                title = "Total Revenue",
-                value = "Rs ${Money.format(state.totalRevenue)}",
-                trend = state.revenueTrendPercentage,
-                isPositive = state.isRevenueTrendPositive,
-                comparisonLabel = compLabel,
-                modifier = Modifier.weight(1f)
-            )
-            MetricCardWithTrend(
-                title = "Gross Profit",
-                value = "Rs ${Money.format(state.grossProfit)}",
-                trend = state.profitTrendPercentage,
-                isPositive = state.isProfitTrendPositive,
-                comparisonLabel = compLabel,
-                modifier = Modifier.weight(1f)
-            )
-            MetricCardWithTrend(
-                title = "Orders",
-                value = state.totalOrders.toString(),
-                trend = state.ordersTrendPercentage,
-                isPositive = state.isOrdersTrendPositive,
-                comparisonLabel = compLabel,
-                modifier = Modifier.weight(1f)
-            )
-            MetricCardWithTrend(
-                title = "Avg Order",
-                value = "Rs ${Money.format(state.avgOrderValue)}",
-                trend = "${state.margin}% Margin",
-                isPositive = true,
-                comparisonLabel = "Total Efficiency",
-                modifier = Modifier.weight(1f)
-            )
-        }
+        val sectionSpacing = if (compactLayout) 16.dp else 24.dp
+        val chartHeight = if (compactLayout) 280.dp else 320.dp
 
-        // 2. Primary Insights: Sales Trend & Busiest Hours
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        Column(
+            modifier = Modifier.widthIn(max = 1200.dp),
+            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
         ) {
-            ChartCard(
-                title = "Revenue & Gross Profit Trend",
-                modifier = Modifier.weight(1.5f)
-            ) {
-                DashboardLineChart(
-                    revenueData = state.salesTrend,
-                    profitData = state.profitTrend,
-                    modifier = Modifier.fillMaxSize()
+            // Data Completeness Info
+            if (state.profitDataCompleteness.isNotEmpty()) {
+                Text(
+                    text = "ℹ ${state.profitDataCompleteness}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
 
-            ChartCard(
-                title = "Period Performance",
-                modifier = Modifier.weight(1f)
-            ) {
-                if (state.hourlySales.isEmpty()) {
-                    EmptyStateMessage("No data for this period")
-                } else {
-                    DashboardBarChart(
-                        labels = state.hourlySales.map { it.hourLabel },
-                        revenueValues = state.hourlySales.map { it.totalSales },
-                        valuePrefix = "Rs ",
-                        modifier = Modifier.fillMaxSize()
+            // 1. Summary Metrics
+            if (veryCompactLayout) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    MetricCardWithTrend(
+                        title = "Total Revenue",
+                        value = "Rs ${Money.format(state.totalRevenue)}",
+                        trend = state.revenueTrendPercentage,
+                        isPositive = state.isRevenueTrendPositive,
+                        comparisonLabel = compLabel,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    MetricCardWithTrend(
+                        title = "Gross Profit",
+                        value = "Rs ${Money.format(state.grossProfit)}",
+                        trend = state.profitTrendPercentage,
+                        isPositive = state.isProfitTrendPositive,
+                        comparisonLabel = compLabel,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    MetricCardWithTrend(
+                        title = "Orders",
+                        value = state.totalOrders.toString(),
+                        trend = state.ordersTrendPercentage,
+                        isPositive = state.isOrdersTrendPositive,
+                        comparisonLabel = compLabel,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    MetricCardWithTrend(
+                        title = "Avg Order",
+                        value = "Rs ${Money.format(state.avgOrderValue)}",
+                        trend = "${state.margin}% Margin",
+                        isPositive = true,
+                        comparisonLabel = "Total Efficiency",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else if (compactLayout) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        MetricCardWithTrend(
+                            title = "Total Revenue",
+                            value = "Rs ${Money.format(state.totalRevenue)}",
+                            trend = state.revenueTrendPercentage,
+                            isPositive = state.isRevenueTrendPositive,
+                            comparisonLabel = compLabel,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MetricCardWithTrend(
+                            title = "Gross Profit",
+                            value = "Rs ${Money.format(state.grossProfit)}",
+                            trend = state.profitTrendPercentage,
+                            isPositive = state.isProfitTrendPositive,
+                            comparisonLabel = compLabel,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        MetricCardWithTrend(
+                            title = "Orders",
+                            value = state.totalOrders.toString(),
+                            trend = state.ordersTrendPercentage,
+                            isPositive = state.isOrdersTrendPositive,
+                            comparisonLabel = compLabel,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MetricCardWithTrend(
+                            title = "Avg Order",
+                            value = "Rs ${Money.format(state.avgOrderValue)}",
+                            trend = "${state.margin}% Margin",
+                            isPositive = true,
+                            comparisonLabel = "Total Efficiency",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    MetricCardWithTrend(
+                        title = "Total Revenue",
+                        value = "Rs ${Money.format(state.totalRevenue)}",
+                        trend = state.revenueTrendPercentage,
+                        isPositive = state.isRevenueTrendPositive,
+                        comparisonLabel = compLabel,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricCardWithTrend(
+                        title = "Gross Profit",
+                        value = "Rs ${Money.format(state.grossProfit)}",
+                        trend = state.profitTrendPercentage,
+                        isPositive = state.isProfitTrendPositive,
+                        comparisonLabel = compLabel,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricCardWithTrend(
+                        title = "Orders",
+                        value = state.totalOrders.toString(),
+                        trend = state.ordersTrendPercentage,
+                        isPositive = state.isOrdersTrendPositive,
+                        comparisonLabel = compLabel,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricCardWithTrend(
+                        title = "Avg Order",
+                        value = "Rs ${Money.format(state.avgOrderValue)}",
+                        trend = "${state.margin}% Margin",
+                        isPositive = true,
+                        comparisonLabel = "Total Efficiency",
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
-        }
 
-        // 3. Middle Insights: Payments & Category Performance
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            ChartCard(
-                title = "Payment Methods",
-                modifier = Modifier.weight(1f)
-            ) {
-                DashboardDonutChart(
-                    data = state.paymentBreakdown,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            // 2. Primary Insights: Sales Trend & Busiest Hours
+            if (compactLayout) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(sectionSpacing)
+                ) {
+                    ChartCard(
+                        title = "Revenue & Gross Profit Trend",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        DashboardLineChart(
+                            revenueData = state.salesTrend,
+                            profitData = state.profitTrend,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-            ChartCard(
-                title = "Category Performance",
-                modifier = Modifier.weight(1.3f)
-            ) {
-                if (state.categorySales.isEmpty()) {
-                    EmptyStateMessage("No category data yet")
-                } else {
-                    DashboardBarChart(
-                        labels = state.categorySales.map { it.category },
-                        revenueValues = state.categorySales.map { it.totalRevenue },
-                        profitValues = state.categorySales.map { it.knownCostRevenue - it.totalCOGS },
-                        valuePrefix = "Rs ",
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    ChartCard(
+                        title = "Period Performance",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (state.hourlySales.isEmpty()) {
+                            EmptyStateMessage("No data for this period")
+                        } else {
+                            DashboardBarChart(
+                                labels = state.hourlySales.map { it.hourLabel },
+                                revenueValues = state.hourlySales.map { it.totalSales },
+                                valuePrefix = "Rs ",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                 }
-            }
-        }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    ChartCard(
+                        title = "Revenue & Gross Profit Trend",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.weight(1.5f)
+                    ) {
+                        DashboardLineChart(
+                            revenueData = state.salesTrend,
+                            profitData = state.profitTrend,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-        // 4. Profitability Insights
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-        ) {
-            Row(
-                modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                InsightItem("Most Profitable Category", state.mostProfitableCategory, Modifier.weight(1f))
-                InsightItem("Highest Margin Category", state.highestMarginCategory, Modifier.weight(1f))
-                InsightItem("Most Profitable Product", state.mostProfitableProduct, Modifier.weight(1f))
-            }
-        }
-
-        // 5. Secondary Insights: Top Products & Inventory
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            Card(
-                modifier = Modifier.weight(1.2f),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Text(
-                        text = "Top Selling Products",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    if (state.topProducts.isEmpty()) {
-                        EmptyStateMessage("No sales recorded")
-                    } else {
-                        state.topProducts.forEach { product ->
-                            TopProductRow(
-                                name = product.productName,
-                                count = product.totalQuantity,
-                                maxCount = state.topProducts.firstOrNull()?.totalQuantity ?: 1
+                    ChartCard(
+                        title = "Period Performance",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (state.hourlySales.isEmpty()) {
+                            EmptyStateMessage("No data for this period")
+                        } else {
+                            DashboardBarChart(
+                                labels = state.hourlySales.map { it.hourLabel },
+                                revenueValues = state.hourlySales.map { it.totalSales },
+                                valuePrefix = "Rs ",
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // 3. Middle Insights: Payments & Category Performance
+            if (compactLayout) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(sectionSpacing)
+                ) {
+                    ChartCard(
+                        title = "Payment Methods",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        DashboardDonutChart(
+                            data = state.paymentBreakdown,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    ChartCard(
+                        title = "Category Performance",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (state.categorySales.isEmpty()) {
+                            EmptyStateMessage("No category data yet")
+                        } else {
+                            DashboardBarChart(
+                                labels = state.categorySales.map { it.category },
+                                revenueValues = state.categorySales.map { it.totalRevenue },
+                                profitValues = state.categorySales.map { it.knownCostRevenue - it.totalCOGS },
+                                valuePrefix = "Rs ",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    ChartCard(
+                        title = "Payment Methods",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        DashboardDonutChart(
+                            data = state.paymentBreakdown,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    ChartCard(
+                        title = "Category Performance",
+                        chartHeight = chartHeight,
+                        modifier = Modifier.weight(1.3f)
+                    ) {
+                        if (state.categorySales.isEmpty()) {
+                            EmptyStateMessage("No category data yet")
+                        } else {
+                            DashboardBarChart(
+                                labels = state.categorySales.map { it.category },
+                                revenueValues = state.categorySales.map { it.totalRevenue },
+                                profitValues = state.categorySales.map { it.knownCostRevenue - it.totalCOGS },
+                                valuePrefix = "Rs ",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 4. Profitability Insights
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
             ) {
-                InventoryAlertCard(
-                    title = "Low Stock Alerts",
-                    items = state.lowStockItems.map { "${it.productName} (${it.stockQuantity} left)" },
-                    isError = false,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                InventoryAlertCard(
-                    title = "Out of Stock",
-                    items = state.outOfStockItems.map { it.productName },
-                    isError = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (compactLayout) {
+                    Column(
+                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        InsightItem("Most Profitable Category", state.mostProfitableCategory, Modifier.fillMaxWidth())
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                        InsightItem("Highest Margin Category", state.highestMarginCategory, Modifier.fillMaxWidth())
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                        InsightItem("Most Profitable Product", state.mostProfitableProduct, Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        InsightItem("Most Profitable Category", state.mostProfitableCategory, Modifier.weight(1f))
+                        InsightItem("Highest Margin Category", state.highestMarginCategory, Modifier.weight(1f))
+                        InsightItem("Most Profitable Product", state.mostProfitableProduct, Modifier.weight(1f))
+                    }
+                }
+            }
+
+            // 5. Secondary Insights: Top Products & Inventory
+            if (compactLayout) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(sectionSpacing)
+                ) {
+                    TopProductsCard(
+                        topProducts = state.topProducts,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    InventoryAlertCard(
+                        title = "Low Stock Alerts",
+                        items = state.lowStockItems.map { "${it.productName} (${it.stockQuantity} left)" },
+                        isError = false,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    InventoryAlertCard(
+                        title = "Out of Stock",
+                        items = state.outOfStockItems.map { it.productName },
+                        isError = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    TopProductsCard(
+                        topProducts = state.topProducts,
+                        modifier = Modifier.weight(1.2f)
+                    )
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        InventoryAlertCard(
+                            title = "Low Stock Alerts",
+                            items = state.lowStockItems.map { "${it.productName} (${it.stockQuantity} left)" },
+                            isError = false,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        InventoryAlertCard(
+                            title = "Out of Stock",
+                            items = state.outOfStockItems.map { it.productName },
+                            isError = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopProductsCard(
+    topProducts: List<TopProduct>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = "Top Selling Products",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            if (topProducts.isEmpty()) {
+                EmptyStateMessage("No sales recorded")
+            } else {
+                val maxCount = topProducts.firstOrNull()?.totalQuantity ?: 1
+                topProducts.forEach { product ->
+                    TopProductRow(
+                        name = product.productName,
+                        count = product.totalQuantity,
+                        maxCount = maxCount
+                    )
+                }
             }
         }
     }
@@ -336,10 +568,11 @@ private fun InsightItem(title: String, value: String, modifier: Modifier = Modif
 private fun ChartCard(
     title: String,
     modifier: Modifier = Modifier,
+    chartHeight: Dp = 320.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     Card(
-        modifier = modifier.height(320.dp),
+        modifier = modifier.height(chartHeight),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
@@ -372,10 +605,23 @@ private fun TopProductRow(name: String, count: Int, maxCount: Int) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Text(text = "$count sold", style = MaterialTheme.typography.bodySmall, color = RoyalGold)
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "$count sold",
+                style = MaterialTheme.typography.bodySmall,
+                color = RoyalGold
+            )
         }
         Spacer(modifier = Modifier.height(4.dp))
         val progress = count.toFloat() / maxCount.toFloat()
@@ -439,4 +685,3 @@ private fun InventoryAlertCard(
         }
     }
 }
-
