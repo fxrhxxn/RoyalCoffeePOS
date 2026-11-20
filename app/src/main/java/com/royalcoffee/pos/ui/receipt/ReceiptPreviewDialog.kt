@@ -1,14 +1,15 @@
 package com.royalcoffee.pos.ui.receipt
 
 import com.royalcoffee.pos.model.Money
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -32,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,10 +47,10 @@ import com.royalcoffee.pos.ui.theme.CinzelFontFamily
  * ReceiptPreviewDialog displays a print-ready thermal receipt preview.
  *
  * Updated layout:
- * - The receipt paper stays centered on the left/main area.
- * - The action buttons are placed in a fixed column on the right.
- * - The Close button is placed at the top right to reduce accidental closing.
- * - Main receipt actions are large and placed at the bottom right.
+ * - Responsive layout for both wide landscape tablets and compact/multi-window views.
+ * - Thermal receipt paper stays centered.
+ * - Action buttons adapt between side panel (wide) and bottom panel (compact).
+ * - Close button is explicitly placed to avoid accidental dismiss.
  */
 @Composable
 fun ReceiptPreviewDialog(
@@ -68,116 +70,121 @@ fun ReceiptPreviewDialog(
              */
         },
         properties = DialogProperties(
-            /**
-             * Gives us full control of dialog width on tablet screens.
-             */
             usePlatformDefaultWidth = false,
-
-            /**
-             * Prevent accidental closing of the receipt preview.
-             */
             dismissOnBackPress = false,
             dismissOnClickOutside = false
         )
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .widthIn(max = 1100.dp)
-                .heightIn(min = 560.dp, max = 820.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
+            val availableHeight = maxHeight
+            val dialogHeight = (availableHeight * 0.92f).coerceAtMost(820.dp)
+
+            Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(26.dp)
-            ) {
-                Text(
-                    text = "Receipt Preview",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    .fillMaxWidth(0.94f)
+                    .widthIn(max = 1100.dp)
+                    .height(dialogHeight),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                /**
-                 * Main content area.
-                 *
-                 * Left side:
-                 * - Thermal receipt preview.
-                 *
-                 * Right side:
-                 * - Close button at the top.
-                 * - Receipt actions at the bottom.
-                 */
+            ) {
                 BoxWithConstraints(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
                 ) {
-                    val actionPanelWidth = (maxWidth * 0.22f).coerceIn(
-                        minimumValue = 200.dp,
-                        maximumValue = 250.dp
-                    )
+                    val dialogContentWidth = maxWidth
+                    val compactLayout = dialogContentWidth < 760.dp
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(),
-                        horizontalArrangement = Arrangement.spacedBy(26.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        /**
-                         * Receipt preview area.
-                         *
-                         * The receipt is intentionally narrow to resemble a real
-                         * 58mm thermal receipt.
-                         */
-                        BoxWithConstraints(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            val paperWidth = (maxWidth * 0.55f).coerceIn(
-                                minimumValue = 320.dp,
-                                maximumValue = 390.dp
-                            )
-
-                            ThermalReceiptPaper(
-                                receipt = receipt,
-                                modifier = Modifier.width(paperWidth)
-                            )
-                        }
-
-                        /**
-                         * Right-side action panel.
-                         */
-                        ReceiptSideActionPanel(
-                            isHistorical = isHistorical,
-                            onClose = onClose,
-                            onNextOrder = onNextOrder,
-
-                            /**
-                             * The dialog does not decide how printing works.
-                             * It simply tells the parent screen that the user clicked Print Receipt.
-                             */
-                            onShareWhatsApp = { onShareWhatsApp(receipt) },
-                            onPrintReceipt = {
-                                onPrintReceipt(receipt)
-                            },
-                            onDownloadPdf = {
-                                onDownloadPdf(receipt)
-                            },
-                            modifier = Modifier
-                                .width(actionPanelWidth)
-                                .fillMaxHeight()
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = "Receipt Preview",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        if (compactLayout) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                BoxWithConstraints(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth(),
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    val paperWidth = (maxWidth * 0.90f).coerceIn(280.dp, 380.dp)
+                                    ThermalReceiptPaper(
+                                        receipt = receipt,
+                                        modifier = Modifier.width(paperWidth)
+                                    )
+                                }
+
+                                CompactActionPanel(
+                                    isHistorical = isHistorical,
+                                    onClose = onClose,
+                                    onNextOrder = onNextOrder,
+                                    onShareWhatsApp = { onShareWhatsApp(receipt) },
+                                    onPrintReceipt = { onPrintReceipt(receipt) },
+                                    onDownloadPdf = { onDownloadPdf(receipt) },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val actionPanelWidth = (dialogContentWidth * 0.22f).coerceIn(
+                                    minimumValue = 200.dp,
+                                    maximumValue = 250.dp
+                                )
+
+                                BoxWithConstraints(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    val paperWidth = (maxWidth * 0.55f).coerceIn(
+                                        minimumValue = 300.dp,
+                                        maximumValue = 390.dp
+                                    )
+
+                                    ThermalReceiptPaper(
+                                        receipt = receipt,
+                                        modifier = Modifier.width(paperWidth)
+                                    )
+                                }
+
+                                ReceiptSideActionPanel(
+                                    isHistorical = isHistorical,
+                                    onClose = onClose,
+                                    onNextOrder = onNextOrder,
+                                    onShareWhatsApp = { onShareWhatsApp(receipt) },
+                                    onPrintReceipt = { onPrintReceipt(receipt) },
+                                    onDownloadPdf = { onDownloadPdf(receipt) },
+                                    modifier = Modifier
+                                        .width(actionPanelWidth)
+                                        .fillMaxHeight()
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -186,14 +193,93 @@ fun ReceiptPreviewDialog(
 }
 
 /**
- * Right-side action panel.
- *
- * Layout:
- * - Close button at the top.
- * - Main receipt action buttons at the bottom.
- *
- * This reduces the chance of accidentally closing the receipt preview while
- * trying to print, share, download, or start the next order.
+ * Compact action panel used when horizontal width is restricted.
+ */
+@Composable
+private fun CompactActionPanel(
+    onClose: () -> Unit,
+    onNextOrder: () -> Unit,
+    onPrintReceipt: () -> Unit,
+    onDownloadPdf: () -> Unit,
+    onShareWhatsApp: () -> Unit,
+    isHistorical: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ReceiptSecondaryActionButton(
+                text = "Download Receipt",
+                onClick = onDownloadPdf,
+                modifier = Modifier.weight(1f)
+            )
+            ReceiptSecondaryActionButton(
+                text = "Share via WhatsApp",
+                onClick = onShareWhatsApp,
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .weight(0.8f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = "Close",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onPrintReceipt,
+                modifier = Modifier
+                    .weight(1.2f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = if (isHistorical) "Reprint Receipt" else "Print Receipt",
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (!isHistorical) {
+                OutlinedButton(
+                    onClick = onNextOrder,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = "Next Order",
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Right-side action panel for wide layout.
  */
 @Composable
 private fun ReceiptSideActionPanel(
@@ -205,15 +291,10 @@ private fun ReceiptSideActionPanel(
     isHistorical: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        /**
-         * Close is intentionally placed alone at the top.
-         */
         OutlinedButton(
             onClick = onClose,
             modifier = Modifier
@@ -226,11 +307,6 @@ private fun ReceiptSideActionPanel(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        /**
-         * Bottom action group.
-         *
-         * These buttons are large so they are easy to tap on a tablet POS.
-         */
         ReceiptSecondaryActionButton(
             text = "Download Receipt",
             onClick = onDownloadPdf
@@ -245,12 +321,6 @@ private fun ReceiptSideActionPanel(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        /**
-         * Print Receipt is the main receipt action.
-         *
-         * For now, because no physical printer is connected, it shows a
-         * professional printer connection error.
-         */
         Button(
             onClick = onPrintReceipt,
             modifier = Modifier
@@ -266,39 +336,35 @@ private fun ReceiptSideActionPanel(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        /**
-         * Next Order completes the current order and clears the POS screen.
-         */
-        if (!isHistorical) OutlinedButton(
-            onClick = onNextOrder,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Text(
-                text = "Next Order",
-                style = MaterialTheme.typography.titleSmall
-            )
+        if (!isHistorical) {
+            OutlinedButton(
+                onClick = onNextOrder,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = "Next Order",
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
         }
     }
 }
 
 /**
- * Reusable secondary action button for receipt actions that are not yet primary.
- *
- * Used for:
- * - Download Receipt
- * - Share via WhatsApp
+ * Reusable secondary action button for receipt actions.
  */
 @Composable
 private fun ReceiptSecondaryActionButton(
     text: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(54.dp),
         shape = RoundedCornerShape(16.dp)
@@ -306,20 +372,15 @@ private fun ReceiptSecondaryActionButton(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
 /**
  * ThermalReceiptPaper represents the actual printed receipt preview.
- *
- * Design decisions:
- * - Narrow width like a real receipt.
- * - Light paper background.
- * - Monospace text to imitate ESC/POS thermal printer output.
- * - Compact spacing.
- * - Text dividers instead of full app-style dividers.
  */
 @Composable
 private fun ThermalReceiptPaper(
@@ -327,7 +388,7 @@ private fun ThermalReceiptPaper(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.heightIn(max = 620.dp),
+        modifier = modifier.fillMaxHeight(),
         shape = RoundedCornerShape(4.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFFFFFEF8)
@@ -376,9 +437,6 @@ private fun ThermalReceiptPaper(
 
 /**
  * Header section of the printed receipt.
- *
- * Later, company name, address, BRN, VAT, and phone number
- * can come from the Company table in the database.
  */
 @Composable
 private fun ThermalReceiptHeader(
@@ -437,10 +495,6 @@ private fun ThermalReceiptHeader(
 
 /**
  * Item section.
- *
- * Each item is displayed in a compact thermal-printer style:
- * product name and total on the first line,
- * quantity and unit price on the second line.
  */
 @Composable
 private fun ThermalReceiptItems(
@@ -477,9 +531,6 @@ private fun ThermalReceiptItems(
 
 /**
  * Shows subtotal, discount, tax, and final total.
- *
- * The total is larger and bold because it is the most important
- * financial value on the receipt.
  */
 @Composable
 private fun ThermalReceiptSummary(
@@ -520,9 +571,6 @@ private fun ThermalReceiptSummary(
 
 /**
  * Shows payment details.
- *
- * For cash payments, amount paid and change are useful.
- * For card/mobile payments, amount paid usually equals the total.
  */
 @Composable
 private fun ThermalPaymentSection(
@@ -564,9 +612,6 @@ private fun ThermalPaymentSection(
 
 /**
  * Reusable monospace text used inside the thermal receipt.
- *
- * Thermal receipts normally use printer-like fixed-width text.
- * FontFamily.Monospace helps imitate that look in the preview.
  */
 @Composable
 private fun ReceiptMonoText(
@@ -591,9 +636,6 @@ private fun ReceiptMonoText(
 
 /**
  * Thermal receipt divider.
- *
- * ESC/POS receipts often use text-based separators like:
- * --------------------------------
  */
 @Composable
 private fun ThermalDivider() {
@@ -610,13 +652,6 @@ private fun ThermalDivider() {
 
 /**
  * Formats a left/right receipt row for a fixed-width thermal receipt.
- *
- * Example:
- * left = "Subtotal"
- * right = "Rs 120"
- *
- * Result:
- * Subtotal                  Rs 120
  */
 private fun formatReceiptLine(
     left: String,
@@ -636,10 +671,4 @@ private fun formatReceiptLine(
     return trimmedLeft.padEnd(availableLeftSpace, ' ') + cleanRight
 }
 
-/**
- * Approximate number of characters per line for a 58mm thermal printer.
- *
- * Many 58mm ESC/POS printers support around 32 characters per line.
- * When we add 80mm printers later, this can become configurable.
- */
 private const val THERMAL_LINE_WIDTH = 32

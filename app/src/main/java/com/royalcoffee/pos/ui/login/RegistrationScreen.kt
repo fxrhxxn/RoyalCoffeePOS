@@ -26,6 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import com.royalcoffee.pos.ui.theme.RoyalGreenDark
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +40,8 @@ fun RegistrationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var currentStep by remember { mutableStateOf(1) }
+
+    val scrollState = rememberScrollState()
 
     // Step 1: Business Info
     var businessName by remember { mutableStateOf("Royal Coffee") }
@@ -115,11 +122,11 @@ fun RegistrationScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(if (Modifier.fillMaxSize().let { true }) 0.9f else 0.9f) // responsive width would be better
+                    .fillMaxWidth(0.9f)
                     .widthIn(max = 600.dp)
                     .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .imePadding()
+                    .verticalScroll(scrollState),
             ) {
                 // Progress Indicator
                 Row(
@@ -132,7 +139,7 @@ fun RegistrationScreen(
                     StepIndicator(step = 2, active = currentStep >= 2, label = "Admin")
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(48.dp))
 
                 // Registration card
                 Card(
@@ -324,7 +331,7 @@ fun BusinessInfoStep(
             value = businessName,
             onValueChange = { onBusinessNameChange(it)},
             label = { Text("Business Name") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             leadingIcon = { Icon(Icons.Default.Business, null) },
 
             singleLine = true,
@@ -342,7 +349,7 @@ fun BusinessInfoStep(
             value = address,
             onValueChange = { onAddressChange(it)},
             label = { Text("Address") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused()
         )
         Spacer(Modifier.height(12.dp))
 
@@ -363,7 +370,7 @@ fun BusinessInfoStep(
                 }
             },
             label = { Text("Phone Number") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Phone
@@ -382,7 +389,7 @@ fun BusinessInfoStep(
                     }
                 },
                 label = { Text("BRN") },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).keepVisibleWhenFocused(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Ascii
@@ -402,7 +409,7 @@ fun BusinessInfoStep(
                     }
                 },
                 label = { Text("VAT") },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).keepVisibleWhenFocused(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number
@@ -418,7 +425,7 @@ fun BusinessInfoStep(
             value = country,
             onValueChange = { onCountryChange(it)},
             label = { Text("Country") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             singleLine = true,
             isError = validationErrors.country != null,
             supportingText = {
@@ -432,7 +439,7 @@ fun BusinessInfoStep(
             value = email,
             onValueChange = {onEmailChange(it)},
             label = { Text("Business Email") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
@@ -472,18 +479,18 @@ fun AdminCredentialsStep(
             value = fullName,
             onValueChange = { onFullNameChange(it)},
             label = { Text("Full Name") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             leadingIcon = { Icon(Icons.Default.Person, null) },
             supportingText = { Text("Example: John Doe") } // { Text("Example: Mungada Christa") }
         )
         Spacer(Modifier.height(12.dp))
 
 
-        // Usernae
+        // Username
         OutlinedTextField(
             value = username, onValueChange = onUsernameChange,
             label = { Text("Login Username") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             supportingText = { Text("Username used for login in. Example: JohnDoe") } // { Text("This is what you type to log in (e.g., 'admin')") }
         )
         Spacer(Modifier.height(12.dp))
@@ -498,7 +505,7 @@ fun AdminCredentialsStep(
                 }
             },
             label = { Text("Security PIN") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             supportingText = {
@@ -523,7 +530,7 @@ fun AdminCredentialsStep(
                 }
             },
             label = { Text("Confirm PIN") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().keepVisibleWhenFocused(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
                 keyboardType =
@@ -549,4 +556,28 @@ fun AdminCredentialsStep(
     }
 }
 
+/**
+ * Keeps a focused input field visible when the software keyboard opens.
+ *
+ * The field asks its scrollable parent to move it into view whenever
+ * it receives focus.
+ */
+@Composable
+private fun Modifier.keepVisibleWhenFocused(): Modifier {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
+    return this
+        .bringIntoViewRequester(bringIntoViewRequester)
+        .onFocusChanged { focusState ->
+            if (focusState.isFocused) {
+                coroutineScope.launch {
+                    // Small delay gives the keyboard time to start opening
+                    // before calculating the field's visible position.
+                    delay(200)
+                    bringIntoViewRequester.bringIntoView()
+                }
+            }
+        }
+}
 

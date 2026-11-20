@@ -1,0 +1,97 @@
+<resources>
+    <string name="app_name">Royal Coffee POS</string>
+    <string name="welcome">Bienvenue</string>
+    <string name="login_subtitle">Entrez votre nom d\'utilisateur et votre code PIN pour vous connecter.</string>
+    <string name="username">Nom d\'utilisateur</string>
+    <string name="pin">Code PIN</string>
+    <string name="log_in">Se connecter</string>
+    <string name="english">English</string>
+    <string name="french">Français</string>
+    <string name="settings">Paramètres</string>
+    <string name="language">Langue</string>
+    <string name="language_change_notice">Le changement de langue prendra effet lors de votre prochaine connexion.</string>
+
+    <!-- Common / Shared -->
+    <string name="common_ok">OK</string>
+    <string name="common_cancel">Annuler</string>
+
+    <!-- Sales Screen Navigation -->
+    <string name="sales_nav_sales">Ventes</string>
+    <string name="sales_nav_dashboard">Tableau de bord</string>
+    <string name="sales_nav_inventory">Inventaire</string>
+    <string name="sales_nav_notifications">Notifications</string>
+    <string name="sales_nav_receipts">Reçus</string>
+    <string name="sales_nav_settings">Paramètres</string>
+    <string name="sales_nav_logout">Déconnexion</string>
+
+    <!-- Sales Screen Header & Product Area -->
+    <string name="sales_pos_subtitle">Point de Vente</string>
+    <string name="sales_cancel_order">Annuler la commande</string>
+    <string name="sales_search_placeholder">Rechercher des produits…</string>
+    <string name="sales_category_all">Tous</string>
+    <string name="sales_no_products_found">Aucun produit ne correspond à cette recherche ou catégorie.</string>
+    <string name="sales_no_products_catalog">Aucun produit n\'a encore été ajouté. Ouvrez l\'inventaire pour ajouter des produits avant de commencer une vente.</string>
+    <string name="sales_out_of_stock">RUPTURE DE STOCK</string>
+    <string name="sales_stock_left">%1$d restant(s)</string>
+    <string name="sales_stock_available">%1$d disponible(s)</string>
+
+    <!-- Sales Screen Ticket Panel -->
+    <string name="sales_ticket_title">Ticket</string>
+    <string name="sales_ticket_subtitle">Commande en cours</string>
+    <string name="sales_ticket_item_count">%1$d article(s)</string>
+    <string name="sales_ticket_empty_title">Aucun article ajouté</string>
+    <string name="sales_ticket_empty_subtitle">Sélectionnez des produits dans le menu pour commencer une commande.</string>
+    <string name="sales_cart_item_each">Rs %1$s unité</string>
+
+    <!-- Sales Screen Summary & Payment -->
+    <string name="sales_summary_title">Récapitulatif de la commande</string>
+    <string name="sales_summary_subtotal">Sous-total</string>
+    <string name="sales_summary_discount">Remise (%1$d%%)</string>
+    <string name="sales_summary_vat_included">TVA incluse</string>
+    <string name="sales_summary_total">Total</string>
+
+    <string name="sales_payment_confirmed">Paiement confirmé</string>
+    <string name="sales_payment_method">Mode de paiement</string>
+    <string name="sales_payment_amount_paid">Montant payé</string>
+    <string name="sales_payment_change">Rendu monnaie</string>
+
+    <string name="sales_payment_cash">Espèces</string>
+    <string name="sales_payment_card">Carte bancaire</string>
+    <string name="sales_payment_mobile">Paiement mobile / Juice</string>
+
+    <string name="sales_clear_ticket">Vider le ticket</string>
+    <string name="sales_charge_amount">Encaisser Rs %1$s</string>
+    <string name="sales_view_receipt">Voir le reçu</string>
+
+    <!-- Sales Screen Dialogs -->
+    <string name="sales_stock_limit_title">Limite de stock atteinte</string>
+    <string name="sales_stock_limit_message">%1$s : Toutes les unités disponibles de ce produit sont dans la commande. Veuillez réapprovisionner avant d\'en ajouter davantage.</string>
+    <string name="sales_error_title">Erreur de commande</string>
+    <string name="sales_cancel_order_dialog_title">Annuler la commande ?</string>
+    <string name="sales_cancel_order_dialog_message">Ceci videra le ticket actuel et annulera la commande en cours.</string>
+    <string name="sales_cancel_order_confirm">Annuler la commande</string>
+    <string name="sales_cancel_order_keep">Conserver la commande</string>
+    <string name="sales_clear_ticket_dialog_title">Vider la commande en cours ?</string>
+    <string name="sales_clear_ticket_dialog_message">Tous les articles seront retirés du ticket actuel.</string>
+    <string name="sales_clear_ticket_confirm">Vider le ticket</string>
+
+    <!-- Payment Dialogs -->
+    <string name="payment_select_method">Sélectionner le mode de paiement</string>
+    <string name="payment_amount_due">Montant dû :</string>
+    <string name="payment_cash">Espèces</string>
+    <string name="payment_card">Carte bancaire</string>
+    <string name="payment_mobile">Paiement mobile</string>
+    <string name="payment_cash_title">Paiement en espèces</string>
+    <string name="payment_amount_received">Montant reçu</string>
+    <string name="payment_change_format">Rendu : Rs %1$s</string>
+    <string name="payment_confirm">Confirmer le paiement</string>
+    <string name="payment_error_enter_amount">Saisir le montant reçu</string>
+    <string name="payment_error_insufficient">Le montant reçu est inférieur au total</string>
+    <string name="payment_card_title">Paiement par carte</string>
+    <string name="payment_mobile_title">Paiement mobile / Juice</string>
+    <string name="payment_card_waiting">En attente de la confirmation du paiement par carte.</string>
+    <string name="payment_mobile_waiting">En attente de la confirmation du paiement mobile.</string>
+    <string name="payment_amount_due_format">Montant dû : Rs %1$s</string>
+    <string name="receipt_not_found">Données du reçu introuvables.</string>
+    <string name="receipt_load_error">Impossible de charger le reçu.</string>
+</resources>

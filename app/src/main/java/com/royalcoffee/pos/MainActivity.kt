@@ -1,22 +1,23 @@
 package com.royalcoffee.pos
 
 import android.os.Bundle
+import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.Lifecycle
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
-import com.royalcoffee.pos.notifications.StockAlertDelivery
 import com.royalcoffee.pos.data.local.database.RoyalCoffeeDatabaseProvider
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
+import com.royalcoffee.pos.notifications.StockAlertDelivery
 import com.royalcoffee.pos.ui.RoyalCoffeeApp
 import com.royalcoffee.pos.ui.theme.RoyalCoffeePOSTheme
+import com.royalcoffee.pos.util.LanguageHelper
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LanguageHelper.applySavedLanguage(this)
         StockAlertDelivery.schedule(this)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {

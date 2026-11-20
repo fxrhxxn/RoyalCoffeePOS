@@ -18,6 +18,8 @@ import com.royalcoffee.pos.data.local.entity.ReceiptHeaderEntity
 import com.royalcoffee.pos.data.local.entity.UserEntity
 import com.royalcoffee.pos.data.local.dao.CategoryDao
 import com.royalcoffee.pos.data.local.entity.CategoryEntity
+import com.royalcoffee.pos.data.local.dao.CustomerDao
+import com.royalcoffee.pos.data.local.entity.CustomerEntity
 
 /**
  * RoyalCoffeeDatabase is the main Room database for the app.
@@ -37,9 +39,10 @@ import com.royalcoffee.pos.data.local.entity.CategoryEntity
         BusinessEntity::class,
         StockBatch::class,
         StockAlert::class,
-        CategoryEntity::class
+        CategoryEntity::class,
+        CustomerEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class RoyalCoffeeDatabase : RoomDatabase() {
@@ -51,6 +54,9 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
     // Gives access to category-related database operations.
     abstract fun CategoryDao(): CategoryDao
+
+    // Gives access to customer-related database operations.
+    abstract fun customerDao(): CustomerDao
 
     // Gives access to receipt-related database operations.
     abstract fun receiptDao(): ReceiptDao
@@ -67,6 +73,26 @@ abstract class RoyalCoffeeDatabase : RoomDatabase() {
 
 
     companion object {
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `customers` (
+                        `customer_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `customer_name` TEXT NOT NULL,
+                        `phone_number` TEXT NOT NULL,
+                        `created_at` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_customers_phone_number` ON `customers` (`phone_number`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_customers_customer_name` ON `customers` (`customer_name`)"
+                )
+            }
+        }
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE products ADD COLUMN legacy_history_uncertain INTEGER NOT NULL DEFAULT 0")

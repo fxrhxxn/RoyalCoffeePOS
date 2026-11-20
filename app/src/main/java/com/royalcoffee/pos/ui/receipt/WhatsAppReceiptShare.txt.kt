@@ -15,6 +15,7 @@ import androidx.core.content.FileProvider
 import com.royalcoffee.pos.model.Money
 import com.royalcoffee.pos.model.Receipt
 import com.royalcoffee.pos.util.ReceiptPdfGenerator
+import com.royalcoffee.pos.util.WhatsAppShareUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,18 +23,16 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Creates a PDF receipt and opens WhatsApp's share flow immediately.
- *
- * WhatsApp lets the user choose the recipient and confirm sending. This
- * function does not send a message automatically or access the contact list.
+ * Creates a PDF receipt and opens WhatsApp's share flow.
+ * Accepts an optional target phone number for best-effort recipient targeting.
  */
 @Composable
-fun rememberWhatsAppReceiptSharer(): (Receipt) -> Unit {
+fun rememberWhatsAppReceiptSharer(): (receipt: Receipt, targetPhoneNumber: String?) -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isPreparing by remember { mutableStateOf(false) }
 
-    return { receipt ->
+    return { receipt, targetPhoneNumber ->
         // Ignore repeated taps while the PDF is being generated.
         if (!isPreparing) {
             isPreparing = true
@@ -73,26 +72,40 @@ fun rememberWhatsAppReceiptSharer(): (Receipt) -> Unit {
                         uri
                     }
 
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/pdf"
-                        setPackage("com.whatsapp")
-                        putExtra(Intent.EXTRA_STREAM, pdfUri)
-                        putExtra(
-                            Intent.EXTRA_TEXT,
-                            "Thank you for visiting ${receipt.storeName}! " +
-                                    "Your receipt ${receipt.receiptNumber} for " +
-                                    "Rs ${Money.format(receipt.total)} is attached."
-                        )
-                        clipData = ClipData.newUri(
-                            context.contentResolver,
-                            "Receipt PDF",
-                            pdfUri
-                        )
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val jid = targetPhoneNumber?.let { WhatsAppShareUtils.buildRecipientJid(it) }
+
+                    fun createShareIntent(includeJid: Boolean): Intent {
+                        return Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            setPackage("com.whatsapp")
+                            if (includeJid && jid != null) {
+                                // "jid" is an undocumented, best-effort WhatsApp intent parameter for targeting a recipient.
+                                putExtra("jid", jid)
+                            }
+                            putExtra(Intent.EXTRA_STREAM, pdfUri)
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                "Thank you for visiting ${receipt.storeName}! " +
+                                        "Your receipt ${receipt.receiptNumber} for " +
+                                        "Rs ${Money.format(receipt.total)} is attached."
+                            )
+                            clipData = ClipData.newUri(
+                                context.contentResolver,
+                                "Receipt PDF",
+                                pdfUri
+                            )
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
                     }
 
-                    // Starting the intent directly avoids an in-app recipient form.
-                    context.startActivity(shareIntent)
+                    try {
+                        context.startActivity(createShareIntent(includeJid = true))
+                    } catch (activityException: ActivityNotFoundException) {
+                        throw activityException
+                    } catch (_: Exception) {
+                        // Fallback: Retry without recipient JID if targeted intent fails unexpectedly.
+                        context.startActivity(createShareIntent(includeJid = false))
+                    }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: ActivityNotFoundException) {
