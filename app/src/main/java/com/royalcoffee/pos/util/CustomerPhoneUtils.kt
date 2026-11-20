@@ -31,18 +31,43 @@ object CustomerPhoneUtils {
         if (rawDigits.isEmpty()) return null
 
         val finalDigits = if (isInternational) {
+            // Explicit international numbers such as:
+            // +447700900123
+            // 00447700900123
             rawDigits
         } else {
-            if (rawDigits.startsWith("230") && rawDigits.length >= 10) {
-                rawDigits
-            } else {
-                "230$rawDigits"
+            when {
+                // Mauritius number already written with country code.
+                // Example: 23052581234
+                rawDigits.startsWith("230") -> {
+                    val localDigits = rawDigits.removePrefix("230")
+
+                    // Mauritius local number must contain exactly 8 digits.
+                    if (localDigits.length != 8) {
+                        return null
+                    }
+
+                    rawDigits
+                }
+
+                // Local Mauritius number.
+                // Example: 52581234
+                else -> {
+                    if (rawDigits.length != 8) {
+                        return null
+                    }
+
+                    "230$rawDigits"
+                }
             }
         }
 
+// General E.164-style validation for the final international number.
         if (finalDigits.length !in 7..15) {
             return null
         }
+
+        return "+$finalDigits"
 
         return "+$finalDigits"
     }

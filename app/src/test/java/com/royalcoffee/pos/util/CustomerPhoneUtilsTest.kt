@@ -23,6 +23,14 @@ class CustomerPhoneUtilsTest {
     }
 
     @Test
+    fun incompleteMauritianNumbersAreRejected() {
+        assertNull(CustomerPhoneUtils.normalizeCustomerPhone("5258"))
+        assertNull(CustomerPhoneUtils.normalizeCustomerPhone("5258123"))
+        assertNull(CustomerPhoneUtils.normalizeCustomerPhone("2305258"))
+        assertNull(CustomerPhoneUtils.normalizeCustomerPhone("2305258123"))
+    }
+
+    @Test
     fun testFormatCustomerPhoneForDisplay() {
         assertEquals("+230 5258 1234", CustomerPhoneUtils.formatCustomerPhoneForDisplay("+23052581234"))
         assertEquals("+230 5258 1234", CustomerPhoneUtils.formatCustomerPhoneForDisplay("5258 1234"))
@@ -33,5 +41,13 @@ class CustomerPhoneUtilsTest {
     fun testExtractPhoneDigits() {
         assertEquals("52581234", CustomerPhoneUtils.extractPhoneDigits("5258 1234"))
         assertEquals("23052581234", CustomerPhoneUtils.extractPhoneDigits("+230 5258-1234"))
+    }
+
+    @Test
+    fun validMauritianNumbersAreNormalized() {
+        assertEquals("+23052581234",CustomerPhoneUtils.normalizeCustomerPhone("52581234"))
+        assertEquals("+23052581234",CustomerPhoneUtils.normalizeCustomerPhone("5258 1234"))
+        assertEquals("+23052581234",CustomerPhoneUtils.normalizeCustomerPhone("23052581234"))
+        assertEquals("+23052581234",CustomerPhoneUtils.normalizeCustomerPhone("+23052581234"))
     }
 }
