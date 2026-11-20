@@ -147,6 +147,32 @@ fun SalesScreen(
         )
     )
 
+    val customerRepository = remember(database) {
+        com.royalcoffee.pos.data.local.repository.CustomerRepository(
+            customerDao = database.customerDao()
+        )
+    }
+
+    val customerViewModel: com.royalcoffee.pos.ui.customer.CustomerViewModel = viewModel(
+        factory = com.royalcoffee.pos.ui.customer.CustomerViewModelFactory(
+            customerRepository = customerRepository
+        )
+    )
+
+    val customerReceiptShareViewModel: com.royalcoffee.pos.ui.customer.CustomerReceiptShareViewModel = viewModel(
+        key = "customer-receipt-share-${authenticatedUser.sessionId}",
+        factory = com.royalcoffee.pos.ui.customer.CustomerReceiptShareViewModelFactory(
+            customerRepository = customerRepository
+        )
+    )
+
+    var pendingWhatsAppReceipt by remember { mutableStateOf<Receipt?>(null) }
+
+    fun requestWhatsAppShare(receipt: Receipt) {
+        customerReceiptShareViewModel.reset()
+        pendingWhatsAppReceipt = receipt
+    }
+
     val defaultPrinter = remember { PrinterConfig.placeholderBluetoothPrinter() }
     val receiptPrinter = remember { FakeReceiptPrinter() }
 
@@ -358,6 +384,13 @@ fun SalesScreen(
                             modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
+                    AppScreen.CUSTOMERS -> {
+                        com.royalcoffee.pos.ui.customer.CustomerManagementScreen(
+                            userRole = userRole,
+                            viewModel = customerViewModel,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        )
+                    }
                     AppScreen.RECEIPTS -> {
                         val notFoundMsg = stringResource(R.string.receipt_not_found)
                         val loadErrMsg = stringResource(R.string.receipt_load_error)
@@ -519,7 +552,7 @@ fun SalesScreen(
                 Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
             },
             onDownloadPdf = downloadReceipt,
-            onShareWhatsApp = shareReceiptViaWhatsApp
+            onShareWhatsApp = { requestWhatsAppShare(it) }
         )
     }
 
@@ -532,9 +565,30 @@ fun SalesScreen(
                 val res = receiptPrinter.printReceipt(receipt, defaultPrinter)
                 Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             },
-            onShareWhatsApp = shareReceiptViaWhatsApp,
+            onShareWhatsApp = { requestWhatsAppShare(it) },
             onDownloadPdf = { receipt ->
                 downloadReceipt(receipt)
+            }
+        )
+    }
+
+    pendingWhatsAppReceipt?.let { receiptToShare ->
+        com.royalcoffee.pos.ui.customer.CustomerWhatsAppShareDialog(
+            receipt = receiptToShare,
+            viewModel = customerReceiptShareViewModel,
+            onDismiss = {
+                customerReceiptShareViewModel.reset()
+                pendingWhatsAppReceipt = null
+            },
+            onSelectCustomerToShare = { customer ->
+                customerReceiptShareViewModel.reset()
+                pendingWhatsAppReceipt = null
+                shareReceiptViaWhatsApp(receiptToShare, customer.phoneNumber)
+            },
+            onShareUnsavedPhone = { normalizedPhone ->
+                customerReceiptShareViewModel.reset()
+                pendingWhatsAppReceipt = null
+                shareReceiptViaWhatsApp(receiptToShare, normalizedPhone)
             }
         )
     }
@@ -557,7 +611,7 @@ private fun SideNavigation(
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -569,6 +623,7 @@ private fun SideNavigation(
             if (userRole == UserRole.ADMIN) {
                 NavigationItem(stringResource(R.string.sales_nav_dashboard), currentScreen == AppScreen.DASHBOARD) { onScreenSelected(AppScreen.DASHBOARD) }
                 NavigationItem(stringResource(R.string.sales_nav_inventory), currentScreen == AppScreen.INVENTORY) { onScreenSelected(AppScreen.INVENTORY) }
+                NavigationItem("Customers", currentScreen == AppScreen.CUSTOMERS) { onScreenSelected(AppScreen.CUSTOMERS) }
             }
             NavigationItem(stringResource(R.string.sales_nav_notifications), currentScreen == AppScreen.NOTIFICATIONS) { onScreenSelected(AppScreen.NOTIFICATIONS) }
             NavigationItem(stringResource(R.string.sales_nav_receipts), currentScreen == AppScreen.RECEIPTS) { onScreenSelected(AppScreen.RECEIPTS) }

@@ -26,6 +26,11 @@ enum class AppScreen(
     INVENTORY("Inventory"),
 
     /**
+     * Admin customer management screen for saved customer directory.
+     */
+    CUSTOMERS("Customers"),
+
+    /**
      * Admin receipt history screen for past transactions.
      */
    RECEIPTS("Receipts"),
