@@ -42,6 +42,7 @@ import com.royalcoffee.pos.data.local.repository.ProductRepository
 import com.royalcoffee.pos.model.InventoryProduct
 import com.royalcoffee.pos.model.UserRole
 import com.royalcoffee.pos.notifications.NamedBatch
+import com.royalcoffee.pos.ui.common.ExpiryDatePickerField
 import com.royalcoffee.pos.ui.theme.CinzelFontFamily
 import com.royalcoffee.pos.ui.theme.RoyalGold
 import java.util.Locale
@@ -1115,9 +1116,7 @@ fun ProductFormDialog(
     var stock by remember { mutableStateOf(product?.stockQuantity?.toString() ?: "0") }
     var reorder by remember { mutableStateOf(product?.reorderLevel?.toString() ?: "5") }
 
-    var initialExpiryText by remember { mutableStateOf("") }
-    val initialExpiryDay = initialExpiryText.trim().takeIf(String::isNotEmpty)
-        ?.let { runCatching { java.time.LocalDate.parse(it).toEpochDay() }.getOrNull() }
+    var initialExpiryDay by remember { mutableStateOf<Long?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1238,14 +1237,11 @@ fun ProductFormDialog(
                         singleLine = true
                     )
 
-                    OutlinedTextField(
-                        value = initialExpiryText,
-                        onValueChange = { initialExpiryText = it },
-                        label = { Text("Initial stock expiry (YYYY-MM-DD, optional)") },
-                        supportingText = { Text("Applies to the initial stock batch.") },
-                        isError = initialExpiryText.isNotBlank() && initialExpiryDay == null,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                    ExpiryDatePickerField(
+                        expiryDay = initialExpiryDay,
+                        onExpiryChanged = { initialExpiryDay = it },
+                        label = "Initial stock expiry (optional)",
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -1280,8 +1276,7 @@ fun ProductFormDialog(
                         Money.parse(price) != null &&
                         Money.parse(cost) != null &&
                         reorder.toIntOrNull() != null &&
-                        (initialExpiryText.isBlank() || initialExpiryDay != null) &&
-                        (initialExpiryText.isBlank() || (stock.toIntOrNull() ?: 0) > 0),
+                        (product != null || (stock.toIntOrNull() ?: 0) >= 0),
                 onClick = {
                     onConfirm(
                         name.trim(),
@@ -1467,13 +1462,9 @@ private fun StockBatchManagementDialog(
     onAddBatch: (quantity: Int, expiryDay: Long?) -> Unit
 ) {
     var editingBatch by remember { mutableStateOf<NamedBatch?>(null) }
-    var expiryText by remember { mutableStateOf("") }
-    var dateError by remember { mutableStateOf<String?>(null) }
-
     var showAddBatchDialog by remember { mutableStateOf(false) }
     var newBatchQuantity by remember { mutableStateOf("") }
-    var newBatchExpiryText by remember { mutableStateOf("") }
-    var newBatchDateError by remember { mutableStateOf<String?>(null) }
+    var newBatchExpiryDay by remember { mutableStateOf<Long?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1510,7 +1501,12 @@ private fun StockBatchManagementDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(items = batches, key = { it.id }) { batch ->
-                            val expiryDate = batch.expiryDay?.let(java.time.LocalDate::ofEpochDay)
+                            val formattedExpiry = remember(batch.expiryDay) {
+                                batch.expiryDay?.let { day ->
+                                    val date = java.time.LocalDate.ofEpochDay(day)
+                                    date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))
+                                }
+                            }
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(
                                     modifier = Modifier
@@ -1524,13 +1520,11 @@ private fun StockBatchManagementDialog(
                                     )
                                     Text(text = "Remaining quantity: ${batch.remaining}")
                                     Text(
-                                        text = if (expiryDate != null) "Expiry: $expiryDate" else "Expiry: Not set"
+                                        text = if (formattedExpiry != null) "Expiry: $formattedExpiry" else "Expiry: Not set"
                                     )
                                     TextButton(
                                         onClick = {
                                             editingBatch = batch
-                                            expiryText = expiryDate?.toString().orEmpty()
-                                            dateError = null
                                         }
                                     ) {
                                         Text(text = "Edit Expiry")
@@ -1546,8 +1540,7 @@ private fun StockBatchManagementDialog(
                 OutlinedButton(
                     onClick = {
                         newBatchQuantity = ""
-                        newBatchExpiryText = ""
-                        newBatchDateError = null
+                        newBatchExpiryDay = null
                         showAddBatchDialog = true
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -1567,6 +1560,8 @@ private fun StockBatchManagementDialog(
 
     // Edit batch expiry dialog
     editingBatch?.let { batch ->
+        var editingBatchExpiryDay by remember(batch) { mutableStateOf(batch.expiryDay) }
+
         AlertDialog(
             onDismissRequest = { editingBatch = null },
             title = { Text(text = "Edit Batch Expiry", maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -1576,47 +1571,23 @@ private fun StockBatchManagementDialog(
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                         .imePadding(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(text = "Batch ${batch.id} · ${batch.remaining} units")
-                    OutlinedTextField(
-                        value = expiryText,
-                        onValueChange = {
-                            expiryText = it
-                            dateError = null
-                        },
-                        label = { Text("YYYY-MM-DD") },
-                        supportingText = { Text("Leave blank to remove the expiry date.") },
-                        singleLine = true,
-                        isError = dateError != null,
+                    ExpiryDatePickerField(
+                        expiryDay = editingBatchExpiryDay,
+                        onExpiryChanged = { editingBatchExpiryDay = it },
+                        label = "Expiry Date (optional)",
+                        restrictPastDates = false,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    dateError?.let { error ->
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
                 }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val expiryDay = if (expiryText.isBlank()) {
-                            null
-                        } else {
-                            runCatching {
-                                java.time.LocalDate.parse(expiryText.trim()).toEpochDay()
-                            }.getOrNull()
-                        }
-
-                        if (expiryText.isNotBlank() && expiryDay == null) {
-                            dateError = "Enter a valid date such as 2026-12-31."
-                        } else {
-                            onUpdateExpiry(batch.id, expiryDay)
-                            editingBatch = null
-                        }
+                        onUpdateExpiry(batch.id, editingBatchExpiryDay)
+                        editingBatch = null
                     }
                 ) {
                     Text(text = "Save")
@@ -1632,14 +1603,6 @@ private fun StockBatchManagementDialog(
 
     // Add stock batch dialog
     if (showAddBatchDialog) {
-        val newBatchExpiryDay = if (newBatchExpiryText.isBlank()) {
-            null
-        } else {
-            runCatching {
-                java.time.LocalDate.parse(newBatchExpiryText.trim()).toEpochDay()
-            }.getOrNull()
-        }
-
         AlertDialog(
             onDismissRequest = { showAddBatchDialog = false },
             title = { Text(text = "Add Stock Batch", maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -1666,40 +1629,21 @@ private fun StockBatchManagementDialog(
                         singleLine = true
                     )
 
-                    OutlinedTextField(
-                        value = newBatchExpiryText,
-                        onValueChange = {
-                            newBatchExpiryText = it
-                            newBatchDateError = null
-                        },
-                        label = { Text("Expiry YYYY-MM-DD (optional)") },
-                        supportingText = { Text("Leave blank for stock without an expiry date.") },
-                        isError = newBatchExpiryText.isNotBlank() && newBatchExpiryDay == null,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                    ExpiryDatePickerField(
+                        expiryDay = newBatchExpiryDay,
+                        onExpiryChanged = { newBatchExpiryDay = it },
+                        label = "Expiry Date (optional)",
+                        modifier = Modifier.fillMaxWidth()
                     )
-
-                    newBatchDateError?.let { error ->
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
                 }
             },
             confirmButton = {
                 Button(
-                    enabled = (newBatchQuantity.toIntOrNull() ?: 0) > 0 &&
-                            (newBatchExpiryText.isBlank() || newBatchExpiryDay != null),
+                    enabled = (newBatchQuantity.toIntOrNull() ?: 0) > 0,
                     onClick = {
                         val quantity = newBatchQuantity.toIntOrNull() ?: 0
-                        if (newBatchExpiryText.isNotBlank() && newBatchExpiryDay == null) {
-                            newBatchDateError = "Enter a valid date such as 2026-12-31."
-                        } else {
-                            onAddBatch(quantity, newBatchExpiryDay)
-                            showAddBatchDialog = false
-                        }
+                        onAddBatch(quantity, newBatchExpiryDay)
+                        showAddBatchDialog = false
                     }
                 ) {
                     Text(text = "Add Batch")
@@ -1728,8 +1672,7 @@ fun StockActionDialog(
         expiryDay: Long?
     ) -> Unit
 ) {
-    var expiryText by remember { mutableStateOf("") }
-    val expiryDay = runCatching { java.time.LocalDate.parse(expiryText.trim()).toEpochDay() }.getOrNull()
+    var expiryDay by remember { mutableStateOf<Long?>(null) }
     var qty by remember { mutableStateOf("") }
     var reason by remember { mutableStateOf("") }
 
@@ -1772,12 +1715,10 @@ fun StockActionDialog(
                 )
 
                 if (type == InventoryTransactionType.RESTOCK) {
-                    OutlinedTextField(
-                        value = expiryText,
-                        onValueChange = { expiryText = it },
-                        label = { Text("Expiry YYYY-MM-DD (optional)") },
-                        singleLine = true,
-                        isError = expiryText.isNotBlank() && expiryDay == null,
+                    ExpiryDatePickerField(
+                        expiryDay = expiryDay,
+                        onExpiryChanged = { expiryDay = it },
+                        label = "Expiry Date (optional)",
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -1794,8 +1735,7 @@ fun StockActionDialog(
         },
         confirmButton = {
             Button(
-                enabled = (expiryText.isBlank() || expiryDay != null) &&
-                        qty.toIntOrNull() != null &&
+                enabled = qty.toIntOrNull() != null &&
                         (qty.toIntOrNull() ?: 0) > 0 &&
                         (type == InventoryTransactionType.RESTOCK || reason.isNotBlank()),
                 onClick = {
