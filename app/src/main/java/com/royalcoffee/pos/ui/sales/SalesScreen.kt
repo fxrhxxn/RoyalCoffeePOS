@@ -159,6 +159,20 @@ fun SalesScreen(
         )
     )
 
+    val customerReceiptShareViewModel: com.royalcoffee.pos.ui.customer.CustomerReceiptShareViewModel = viewModel(
+        key = "customer-receipt-share-${authenticatedUser.sessionId}",
+        factory = com.royalcoffee.pos.ui.customer.CustomerReceiptShareViewModelFactory(
+            customerRepository = customerRepository
+        )
+    )
+
+    var pendingWhatsAppReceipt by remember { mutableStateOf<Receipt?>(null) }
+
+    fun requestWhatsAppShare(receipt: Receipt) {
+        customerReceiptShareViewModel.reset()
+        pendingWhatsAppReceipt = receipt
+    }
+
     val defaultPrinter = remember { PrinterConfig.placeholderBluetoothPrinter() }
     val receiptPrinter = remember { FakeReceiptPrinter() }
 
@@ -538,7 +552,7 @@ fun SalesScreen(
                 Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
             },
             onDownloadPdf = downloadReceipt,
-            onShareWhatsApp = shareReceiptViaWhatsApp
+            onShareWhatsApp = { requestWhatsAppShare(it) }
         )
     }
 
@@ -551,9 +565,30 @@ fun SalesScreen(
                 val res = receiptPrinter.printReceipt(receipt, defaultPrinter)
                 Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             },
-            onShareWhatsApp = shareReceiptViaWhatsApp,
+            onShareWhatsApp = { requestWhatsAppShare(it) },
             onDownloadPdf = { receipt ->
                 downloadReceipt(receipt)
+            }
+        )
+    }
+
+    pendingWhatsAppReceipt?.let { receiptToShare ->
+        com.royalcoffee.pos.ui.customer.CustomerWhatsAppShareDialog(
+            receipt = receiptToShare,
+            viewModel = customerReceiptShareViewModel,
+            onDismiss = {
+                customerReceiptShareViewModel.reset()
+                pendingWhatsAppReceipt = null
+            },
+            onSelectCustomerToShare = { customer ->
+                customerReceiptShareViewModel.reset()
+                pendingWhatsAppReceipt = null
+                shareReceiptViaWhatsApp(receiptToShare, customer.phoneNumber)
+            },
+            onShareUnsavedPhone = { normalizedPhone ->
+                customerReceiptShareViewModel.reset()
+                pendingWhatsAppReceipt = null
+                shareReceiptViaWhatsApp(receiptToShare, normalizedPhone)
             }
         )
     }
