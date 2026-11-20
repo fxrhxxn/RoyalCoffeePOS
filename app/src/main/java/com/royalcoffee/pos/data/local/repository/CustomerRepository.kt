@@ -23,11 +23,11 @@ class CustomerRepository(
      */
     fun searchCustomers(query: String): Flow<List<CustomerEntity>> {
         val trimmed = query.trim()
-        return if (trimmed.isBlank()) {
-            customerDao.observeAllCustomers()
-        } else {
-            customerDao.searchCustomers(trimmed)
+        if (trimmed.isBlank()) {
+            return customerDao.observeAllCustomers()
         }
+        val phoneDigits = CustomerPhoneUtils.extractPhoneDigits(trimmed)
+        return customerDao.searchCustomers(query = trimmed, phoneDigits = phoneDigits)
     }
 
     suspend fun getCustomerById(customerId: Long): CustomerEntity? {

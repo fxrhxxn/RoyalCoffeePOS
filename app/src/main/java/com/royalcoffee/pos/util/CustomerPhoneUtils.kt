@@ -54,6 +54,19 @@ object CustomerPhoneUtils {
         return input.filter { it.isDigit() }
     }
 
+    /**
+     * Formats a normalized phone number for friendly UI display.
+     * e.g. "+23052581234" -> "+230 5258 1234"
+     */
+    fun formatCustomerPhoneForDisplay(phoneNumber: String): String {
+        val normalized = normalizeCustomerPhone(phoneNumber) ?: phoneNumber.trim()
+        if (normalized.startsWith("+230") && normalized.length == 12) {
+            val digits = normalized.substring(4)
+            return "+230 ${digits.substring(0, 4)} ${digits.substring(4)}"
+        }
+        return normalized
+    }
+
     private fun isValidPhoneChars(s: String): Boolean {
         return s.all { it.isDigit() || it.isWhitespace() || it == '-' || it == '(' || it == ')' || it == '.' }
     }

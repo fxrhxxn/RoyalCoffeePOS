@@ -19,11 +19,11 @@ interface CustomerDao {
         """
         SELECT * FROM customers 
         WHERE customer_name LIKE '%' || :query || '%' 
-           OR phone_number LIKE '%' || :query || '%' 
+           OR (:phoneDigits <> '' AND phone_number LIKE '%' || :phoneDigits || '%') 
         ORDER BY customer_name COLLATE NOCASE ASC
         """
     )
-    fun searchCustomers(query: String): Flow<List<CustomerEntity>>
+    fun searchCustomers(query: String, phoneDigits: String): Flow<List<CustomerEntity>>
 
     @Query("SELECT * FROM customers WHERE customer_id = :customerId")
     suspend fun getCustomerById(customerId: Long): CustomerEntity?
