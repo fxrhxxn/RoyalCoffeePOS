@@ -1,15 +1,5 @@
 <resources>
     <string name="app_name">Royal Coffee POS</string>
-    <string name="welcome">Bienvenue</string>
-    <string name="login_subtitle">Entrez votre nom d\'utilisateur et votre code PIN pour vous connecter.</string>
-    <string name="username">Nom d\'utilisateur</string>
-    <string name="pin">Code PIN</string>
-    <string name="log_in">Se connecter</string>
-    <string name="english">English</string>
-    <string name="french">Français</string>
-    <string name="settings">Paramètres</string>
-    <string name="language">Langue</string>
-    <string name="language_change_notice">Le changement de langue prendra effet lors de votre prochaine connexion.</string>
 
     <!-- Common / Shared -->
     <string name="common_ok">OK</string>
@@ -18,8 +8,65 @@
     <string name="common_delete">Supprimer</string>
     <string name="common_edit">Modifier</string>
     <string name="common_close">Fermer</string>
+    <string name="common_continue">Continuer</string>
+    <string name="common_all">Tous</string>
+    <string name="common_back">Retour</string>
+    <string name="common_next">Suivant</string>
+    <string name="common_done">Terminé</string>
 
-    <!-- Sales Screen Navigation -->
+    <!-- Welcome -->
+    <string name="welcome">Bienvenue</string>
+    <string name="welcome_title">Bienvenue sur Royal Coffee POS</string>
+    <string name="welcome_tagline">Votre solution élégante et moderne de point de vente pour café.</string>
+    <string name="welcome_get_started">Commencer</string>
+
+    <!-- Registration -->
+    <string name="registration_title">Configuration de l\'entreprise</string>
+    <string name="registration_subtitle">Configurez le profil de votre café et le compte administrateur initial.</string>
+    <string name="registration_title_bar">Bienvenue sur la page d\'inscription</string>
+    <string name="registration_step_business">Entreprise</string>
+    <string name="registration_step_admin">Administrateur</string>
+    <string name="registration_business_section">Profil du café</string>
+    <string name="registration_business_title">Coordonnées de l\'entreprise</string>
+    <string name="registration_business_subtitle">Informations légales pour les reçus et rapports</string>
+    <string name="registration_business_name">Nom de l\'entreprise</string>
+    <string name="registration_business_name_hint">Exemple : Royal Coffee - Ébène</string>
+    <string name="registration_address">Adresse</string>
+    <string name="registration_phone">Numéro de téléphone</string>
+    <string name="registration_brn">BRN</string>
+    <string name="registration_brn_hint">Exemple : C123456789</string>
+    <string name="registration_vat">TVA</string>
+    <string name="registration_vat_hint">Entrez un numéro de TVA valide à 8 chiffres</string>
+    <string name="registration_country">Pays</string>
+    <string name="registration_email">E-mail professionnel</string>
+    <string name="registration_email_hint">Entrez un e-mail valide : johndoe@example.com</string>
+    <string name="registration_admin_section">Premier compte administrateur</string>
+    <string name="registration_admin_title">Compte administrateur</string>
+    <string name="registration_admin_subtitle">Créer le premier compte administrateur</string>
+    <string name="registration_full_name">Nom complet</string>
+    <string name="registration_full_name_hint">Exemple : Jean Dupont</string>
+    <string name="registration_username">Nom d\'utilisateur</string>
+    <string name="registration_username_hint">Nom d\'utilisateur pour la connexion. Exemple : JeanDupont</string>
+    <string name="registration_pin">Code PIN de sécurité</string>
+    <string name="registration_pin_min">Le PIN doit contenir au moins 4 chiffres</string>
+    <string name="registration_pin_min_entered">Le PIN saisi doit contenir au moins 4 chiffres</string>
+    <string name="registration_confirm_pin">Confirmer le code PIN</string>
+    <string name="registration_pins_not_match">Les codes PIN ne correspondent pas</string>
+    <string name="registration_pins_match">Les codes PIN correspondent</string>
+    <string name="registration_reenter_pin">Saisissez à nouveau le code PIN</string>
+    <string name="registration_complete_button">Terminer la configuration</string>
+
+    <!-- Login -->
+    <string name="login_brand_title">Royal Coffee</string>
+    <string name="login_brand_subtitle">Système de point de vente pour café</string>
+    <string name="login_subtitle">Entrez votre nom d\'utilisateur et votre code PIN pour vous connecter.</string>
+    <string name="username">Nom d\'utilisateur</string>
+    <string name="pin">Code PIN</string>
+    <string name="log_in">Se connecter</string>
+    <string name="english">English</string>
+    <string name="french">Français</string>
+
+    <!-- Navigation -->
     <string name="sales_nav_sales">Ventes</string>
     <string name="sales_nav_dashboard">Tableau de bord</string>
     <string name="sales_nav_inventory">Inventaire</string>
@@ -28,7 +75,7 @@
     <string name="sales_nav_settings">Paramètres</string>
     <string name="sales_nav_logout">Déconnexion</string>
 
-    <!-- Sales Screen Header & Product Area -->
+    <!-- Sales -->
     <string name="sales_pos_subtitle">Point de Vente</string>
     <string name="sales_cancel_order">Annuler la commande</string>
     <string name="sales_search_placeholder">Rechercher des produits…</string>
@@ -38,36 +85,27 @@
     <string name="sales_out_of_stock">RUPTURE DE STOCK</string>
     <string name="sales_stock_left">%1$d restant(s)</string>
     <string name="sales_stock_available">%1$d disponible(s)</string>
-
-    <!-- Sales Screen Ticket Panel -->
     <string name="sales_ticket_title">Ticket</string>
     <string name="sales_ticket_subtitle">Commande en cours</string>
     <string name="sales_ticket_item_count">%1$d article(s)</string>
     <string name="sales_ticket_empty_title">Aucun article ajouté</string>
     <string name="sales_ticket_empty_subtitle">Sélectionnez des produits dans le menu pour commencer une commande.</string>
     <string name="sales_cart_item_each">Rs %1$s unité</string>
-
-    <!-- Sales Screen Summary & Payment -->
     <string name="sales_summary_title">Récapitulatif de la commande</string>
     <string name="sales_summary_subtotal">Sous-total</string>
     <string name="sales_summary_discount">Remise (%1$d%%)</string>
     <string name="sales_summary_vat_included">TVA incluse</string>
     <string name="sales_summary_total">Total</string>
-
     <string name="sales_payment_confirmed">Paiement confirmé</string>
     <string name="sales_payment_method">Mode de paiement</string>
     <string name="sales_payment_amount_paid">Montant payé</string>
     <string name="sales_payment_change">Rendu monnaie</string>
-
     <string name="sales_payment_cash">Espèces</string>
     <string name="sales_payment_card">Carte bancaire</string>
     <string name="sales_payment_mobile">Paiement mobile / Juice</string>
-
     <string name="sales_clear_ticket">Vider le ticket</string>
     <string name="sales_charge_amount">Encaisser Rs %1$s</string>
     <string name="sales_view_receipt">Voir le reçu</string>
-
-    <!-- Sales Screen Dialogs -->
     <string name="sales_stock_limit_title">Limite de stock atteinte</string>
     <string name="sales_stock_limit_message">%1$s : Toutes les unités disponibles de ce produit sont dans la commande. Veuillez réapprovisionner avant d\'en ajouter davantage.</string>
     <string name="sales_error_title">Erreur de commande</string>
@@ -79,7 +117,7 @@
     <string name="sales_clear_ticket_dialog_message">Tous les articles seront retirés du ticket actuel.</string>
     <string name="sales_clear_ticket_confirm">Vider le ticket</string>
 
-    <!-- Payment Dialogs -->
+    <!-- Payment -->
     <string name="payment_select_method">Sélectionner le mode de paiement</string>
     <string name="payment_amount_due">Montant dû :</string>
     <string name="payment_cash">Espèces</string>
@@ -99,7 +137,82 @@
     <string name="receipt_not_found">Données du reçu introuvables.</string>
     <string name="receipt_load_error">Impossible de charger le reçu.</string>
 
-    <!-- Stock Notifications Screen -->
+    <!-- Dashboard -->
+    <string name="dashboard_title">Tableau de bord</string>
+    <string name="dashboard_subtitle">Performance des ventes et analyses commerciales</string>
+    <string name="dashboard_header_title">Tableau de bord d\'entreprise</string>
+    <string name="dashboard_header_subtitle">Analyses en temps réel et aperçu des performances</string>
+    <string name="dashboard_todays_revenue">Chiffre d\'affaires du jour</string>
+    <string name="dashboard_total_revenue">Chiffre d\'affaires total</string>
+    <string name="dashboard_gross_profit">Marge brute</string>
+    <string name="dashboard_orders">Commandes</string>
+    <string name="dashboard_orders_today">Commandes aujourd\'hui</string>
+    <string name="dashboard_avg_order">Panier moyen</string>
+    <string name="dashboard_trend_title">Tendance du chiffre d\'affaires et de la marge brute</string>
+    <string name="dashboard_period_perf">Performance de la période</string>
+    <string name="dashboard_payment_methods">Modes de paiement</string>
+    <string name="dashboard_category_perf">Performance par catégorie</string>
+    <string name="dashboard_most_profitable_cat">Catégorie la plus rentable</string>
+    <string name="dashboard_highest_margin_cat">Catégorie à plus forte marge</string>
+    <string name="dashboard_most_profitable_prod">Produit le plus rentable</string>
+    <string name="dashboard_top_products">Meilleures ventes</string>
+    <string name="dashboard_recent_activity">Activité récente</string>
+    <string name="dashboard_cashier_perf">Performance des caissiers</string>
+    <string name="dashboard_low_stock_alerts">Alertes de stock faible</string>
+    <string name="dashboard_out_of_stock">Rupture de stock</string>
+    <string name="dashboard_sold_format">%1$d vendu(s)</string>
+    <string name="dashboard_left_format">%1$s restant(s)</string>
+    <string name="dashboard_vs_yesterday">vs hier</string>
+    <string name="dashboard_vs_day_before">vs jour précédent</string>
+    <string name="dashboard_vs_last_week">vs semaine dernière</string>
+    <string name="dashboard_vs_last_month">vs mois dernier</string>
+    <string name="dashboard_total_efficiency">Efficacité totale</string>
+    <string name="dashboard_margin_format">Marge de %1$s%%</string>
+    <string name="dashboard_no_data_period">Aucune donnée pour cette période</string>
+    <string name="dashboard_no_category_data">Aucune donnée de catégorie pour le moment</string>
+    <string name="dashboard_no_sales_recorded">Aucune vente enregistrée</string>
+    <string name="dashboard_all_clear">Tout est en ordre</string>
+    <string name="dashboard_more_items">+ %1$d autre(s)</string>
+
+    <!-- Inventory -->
+    <string name="inventory_title">Inventaire</string>
+    <string name="inventory_subtitle">Gérez les produits, les niveaux de stock, les catégories et les lots.</string>
+    <string name="inventory_total_products">Total des produits</string>
+    <string name="inventory_total_stock">Stock total</string>
+    <string name="inventory_low_stock">Stock faible</string>
+    <string name="inventory_out_of_stock">Rupture de stock</string>
+    <string name="inventory_search_placeholder">Rechercher des produits…</string>
+    <string name="inventory_add_product">Ajouter un produit</string>
+    <string name="inventory_manage_categories">Catégories</string>
+    <string name="inventory_stock_quantity">Quantité en stock</string>
+    <string name="inventory_reorder_level">Niveau de réapprovisionnement</string>
+    <string name="inventory_cost_price">Prix d\'achat</string>
+    <string name="inventory_selling_price">Prix de vente</string>
+    <string name="inventory_product_name">Nom du produit</string>
+    <string name="inventory_category">Catégorie</string>
+    <string name="inventory_edit_product_title">Modifier le produit</string>
+    <string name="inventory_delete_product_title">Supprimer le produit</string>
+    <string name="inventory_delete_product_confirm">Voulez-vous vraiment supprimer %1$s ?</string>
+    <string name="inventory_restock">Réapprovisionner</string>
+    <string name="inventory_adjust_stock">Ajuster le stock</string>
+    <string name="inventory_record_waste">Enregistrer une perte</string>
+    <string name="inventory_reactivate">Réactiver</string>
+    <string name="inventory_deactivate">Désactiver</string>
+    <string name="inventory_product_updated">Produit mis à jour</string>
+    <string name="inventory_initial_expiry">Expiration du stock initial</string>
+    <string name="inventory_manage_batches">Gérer les lots de stock et dates d\'expiration</string>
+    <string name="inventory_expiry_format">Expiration AAAA-MM-JJ</string>
+    <string name="inventory_add_batch">Ajouter un lot de stock</string>
+    <string name="inventory_edit_expiry">Modifier l\'expiration</string>
+    <string name="inventory_error_add_category">Impossible d\'ajouter la catégorie.</string>
+    <string name="inventory_error_remove_category">Impossible de supprimer la catégorie.</string>
+    <string name="inventory_error_add_product">Impossible d\'ajouter le produit.</string>
+    <string name="inventory_error_update_product">Impossible de mettre à jour le produit.</string>
+    <string name="inventory_error_stock_update">Échec de la mise à jour du stock.</string>
+    <string name="inventory_deleted_message">Produit supprimé définitivement.</string>
+    <string name="inventory_deactivated_message">Produit désactivé. Tout l\'historique est conservé.</string>
+
+    <!-- Notifications -->
     <string name="notifications_title">Notifications</string>
     <string name="notifications_subtitle">Alertes de stock et historique d\'expiration</string>
     <string name="notifications_clear_all">Tout effacer</string>
@@ -122,7 +235,37 @@
     <string name="notifications_status_resolved">Résolu</string>
     <string name="notifications_delete_content_description">Supprimer la notification</string>
 
-    <!-- Settings Screen -->
+    <!-- Receipt History -->
+    <string name="receipts_title">Historique des reçus</string>
+    <string name="receipts_subtitle">Consultez les transactions terminées enregistrées localement sur cet appareil.</string>
+    <string name="receipts_filter_all">Tout l\'historique</string>
+    <string name="receipts_filter_today">Aujourd\'hui</string>
+    <string name="receipts_filter_yesterday">Hier</string>
+    <string name="receipts_filter_this_week">Cette semaine</string>
+    <string name="receipts_filter_this_month">Ce mois-ci</string>
+    <string name="receipts_filter_custom">Sélectionner une date</string>
+    <string name="receipts_empty_filtered">Aucun reçu ne correspond au filtre de date sélectionné.</string>
+    <string name="receipts_empty_all">Aucun reçu trouvé dans l\'historique.</string>
+    <string name="receipts_summary_total_sales">Ventes totales</string>
+    <string name="receipts_summary_transactions">Transactions</string>
+    <string name="receipts_item_cashier">Caissier : %1$s</string>
+    <string name="receipts_item_payment">Paiement : %1$s</string>
+    <string name="receipts_download_pdf">Télécharger le PDF</string>
+    <string name="receipts_no_receipts_date">Aucun reçu trouvé pour cette date</string>
+    <string name="receipts_no_receipts_yet">Aucun reçu enregistré pour l\'instant</string>
+    <string name="receipts_empty_subtitle_filtered">Essayez de sélectionner une autre plage de dates ou un autre filtre.</string>
+    <string name="receipts_empty_subtitle_all">Terminez une commande et appuyez sur Commande suivante pour enregistrer un reçu.</string>
+    <string name="receipts_saved_title">Reçus enregistrés</string>
+    <string name="receipts_saved_subtitle">%1$d reçu(s) enregistré(s) localement. Appuyez sur un reçu pour voir les détails.</string>
+    <string name="receipts_col_product">Produit</string>
+    <string name="receipts_col_qty">Qté</string>
+    <string name="receipts_col_total">Total ligne</string>
+    <string name="receipts_no_details">Aucun détail d\'article trouvé.</string>
+
+    <!-- Settings -->
+    <string name="settings">Paramètres</string>
+    <string name="language">Langue</string>
+    <string name="language_change_notice">Le changement de langue prendra effet lors de votre prochaine connexion.</string>
     <string name="settings_staff_management_title">Gestion du personnel</string>
     <string name="settings_add_staff_button">Ajouter du personnel</string>
     <string name="settings_staff_user_subtitle">%1$s • %2$s</string>
@@ -141,55 +284,24 @@
     <string name="settings_role_admin">Administrateur</string>
     <string name="settings_add_button">Ajouter</string>
 
-    <!-- Receipt History Screen -->
-    <string name="receipts_title">Historique des reçus</string>
-    <string name="receipts_subtitle">Consultez les transactions terminées enregistrées localement sur cet appareil.</string>
-    <string name="receipts_filter_all">Tout l\'historique</string>
-    <string name="receipts_filter_today">Aujourd\'hui</string>
-    <string name="receipts_filter_yesterday">Hier</string>
-    <string name="receipts_filter_this_week">Cette semaine</string>
-    <string name="receipts_filter_this_month">Ce mois-ci</string>
-    <string name="receipts_filter_custom">Sélectionner une date</string>
-    <string name="receipts_empty_filtered">Aucun reçu ne correspond au filtre de date sélectionné.</string>
-    <string name="receipts_empty_all">Aucun reçu trouvé dans l\'historique.</string>
-    <string name="receipts_summary_total_sales">Ventes totales</string>
-    <string name="receipts_summary_transactions">Transactions</string>
-    <string name="receipts_item_cashier">Caissier : %1$s</string>
-    <string name="receipts_item_payment">Paiement : %1$s</string>
-    <string name="receipts_download_pdf">Télécharger le PDF</string>
+    <!-- Validation / Errors -->
+    <string name="error_invalid_credentials">Nom d\'utilisateur ou code PIN invalide</string>
+    <string name="error_business_name_required">Le nom de l\'entreprise est obligatoire.</string>
+    <string name="error_brn_required">Le numéro d\'enregistrement de l\'entreprise (BRN) est obligatoire.</string>
+    <string name="error_brn_format">Le BRN doit contenir 1 lettre suivie d\'exactement 9 chiffres.</string>
+    <string name="error_vat_required">Le numéro de TVA est obligatoire.</string>
+    <string name="error_vat_format">Le numéro de TVA doit contenir exactement 8 chiffres.</string>
+    <string name="error_country_required">Le pays est obligatoire.</string>
+    <string name="error_email_required">L\'e-mail professionnel est obligatoire.</string>
+    <string name="error_email_format">L\'e-mail professionnel doit contenir un @.</string>
+    <string name="error_payment_mismatch">Le paiement ne correspond pas au total de la commande.</string>
+    <string name="error_business_unavailable">Les détails de l\'entreprise ne sont pas disponibles.</string>
+    <string name="error_sale_failed">Impossible de terminer la vente : %1$s</string>
+    <string name="error_registration_failed">Échec de l\'inscription</string>
+    <string name="error_business_info_invalid">Veuillez vous assurer que les informations de l\'entreprise sont saisies correctement.</string>
 
-    <!-- Dashboard Screen -->
-    <string name="dashboard_title">Tableau de bord</string>
-    <string name="dashboard_subtitle">Performance des ventes et analyses commerciales</string>
-    <string name="dashboard_todays_revenue">Chiffre d\'affaires du jour</string>
-    <string name="dashboard_orders_today">Commandes aujourd\'hui</string>
-    <string name="dashboard_avg_order">Panier moyen</string>
-    <string name="dashboard_top_products">Meilleures ventes</string>
-    <string name="dashboard_recent_activity">Activité récente</string>
-    <string name="dashboard_cashier_perf">Performance des caissiers</string>
-
-    <!-- Welcome & Registration Screens -->
-    <string name="welcome_title">Bienvenue sur Royal Coffee POS</string>
-    <string name="welcome_tagline">Votre solution élégante et moderne de point de vente pour café.</string>
-    <string name="welcome_get_started">Commencer</string>
-    <string name="registration_title">Configuration de l\'entreprise</string>
-    <string name="registration_subtitle">Configurez le profil de votre café et le compte administrateur initial.</string>
-    <string name="registration_business_section">Profil du café</string>
-    <string name="registration_admin_section">Premier compte administrateur</string>
-    <string name="registration_complete_button">Terminer la configuration</string>
-
-    <!-- Inventory Screen -->
-    <string name="inventory_title">Inventaire</string>
-    <string name="inventory_subtitle">Gérez les produits, les niveaux de stock, les catégories et les lots.</string>
-    <string name="inventory_add_product">Ajouter un produit</string>
-    <string name="inventory_manage_categories">Catégories</string>
-    <string name="inventory_stock_quantity">Quantité en stock</string>
-    <string name="inventory_reorder_level">Niveau de réapprovisionnement</string>
-    <string name="inventory_cost_price">Prix d\'achat</string>
-    <string name="inventory_selling_price">Prix de vente</string>
-    <string name="inventory_product_name">Nom du produit</string>
-    <string name="inventory_category">Catégorie</string>
-    <string name="inventory_edit_product_title">Modifier le produit</string>
-    <string name="inventory_delete_product_title">Supprimer le produit</string>
-    <string name="inventory_delete_product_confirm">Voulez-vous vraiment supprimer %1$s ?</string>
+    <!-- Accessibility / Android System -->
+    <string name="notification_channel_stock">Stock et expiration</string>
+    <string name="notification_title_stock_alert">Alerte de stock Royal Coffee</string>
+    <string name="cd_coffee_icon">Icône de tasse de café</string>
 </resources>
